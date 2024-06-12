@@ -36,7 +36,6 @@ from optexp.optimizers import (
     ScaledSign,
     Sign,
 )
-from optexp.plotter import DataPoint, PlottingData
 from optexp.problems import (
     Classification,
     ClassificationWithPerClassStats,

@@ -21,5 +21,6 @@ module = [
     "torchtext.*",
     "sklearn.*",
     "matplotlib.*",
+    "pandas.*",
 ]
 ignore_missing_imports = true

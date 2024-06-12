@@ -24,6 +24,11 @@ Start by installing Pytorch. We use version `2.3.0` along with the following pac
   pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cu121
   pip install torchtext==0.18.0 
   ```
+- CUDA 12.1
+  ```
+  pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.2.0 --index-url https://download.pytorch.org/whl/cu121
+  pip install torchtext==0.17.0 
+  ```
 - CPU only
   ```
   pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cpu

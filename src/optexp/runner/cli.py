@@ -12,9 +12,6 @@ from optexp.config import get_logger
 from optexp.datasets import download_dataset
 from optexp.experiments.experiment import Experiment
 from optexp.experiments.lightning_experiment import LightningExperiment
-from optexp.plotter.best_run_plotter import plot_best
-from optexp.plotter.grid_plotter import plot_grids
-from optexp.plotter.plot_per_class import plot_per_class
 from optexp.runner.slurm.sbatch_writers import (
     make_jobarray_file_contents,
     make_jobarray_file_contents_split,
@@ -117,43 +114,11 @@ def exp_runner_cli(
         help="Clear cache of downloaded data from wandb",
         default=False,
     )
-    action_group.add_argument(
-        "--plot",
-        action="store_true",
-        help="plot data from experiments",
-        default=False,
-    )
-    action_group.add_argument(
-        "--plot-perclass",
-        action="store_true",
-        help="",
-        default=False,
-    )
     parser.add_argument(
         "-f",
         "--force-rerun",
         action="store_true",
         help="Force rerun of experiments that are already saved.",
-        default=False,
-    )
-    parser.add_argument(
-        "--epoch",
-        type=int,
-        help="epoch used for plotting",
-        default=None,
-    )
-
-    parser.add_argument(
-        "--step",
-        type=int,
-        help="step used for plotting",
-        default=None,
-    )
-
-    parser.add_argument(
-        "--use_step",
-        action="store_true",
-        help="use steps instead of epochs",
         default=False,
     )
 
@@ -234,38 +199,6 @@ def exp_runner_cli(
     if args.clear_download:
         get_logger().info(f"Clearing cache for {len(experiments)} experiments")
         clear_downloaded_data(experiments)
-        return
-    if args.plot:
-        get_logger().info(f"Preparing to plot from {len(experiments)} experiments")
-        if args.use_step:
-            plot_grids(
-                experiments=experiments, plotting_time=args.step, using_step=True
-            )
-            plot_best(experiments=experiments, plotting_time=args.step, using_step=True)
-        else:
-            plot_grids(experiments=experiments, plotting_time=args.epoch)
-            plot_best(experiments=experiments, plotting_time=args.epoch)
-        return
-    if args.plot_perclass:
-        get_logger().info(f"Preparing to plot from {len(experiments)} experiments")
-
-        if not all(
-            ["PerClass" in exp.problem.__class__.__name__ for exp in experiments]
-        ):
-            print("Not a per-class experiment.")
-            return
-        if not all([experiments[0].group == exp.group for exp in experiments]):
-            raise ValueError("Experiments from different groups")
-        if not all(
-            [experiments[0].problem == exp.problem for exp in experiments]
-        ) and not isinstance(experiments[0], LightningExperiment):
-            raise ValueError("Experiments on different problems")
-        if args.use_step:
-            plot_per_class(
-                experiments=experiments, plotting_time=args.step, using_step=True
-            )
-        else:
-            plot_per_class(experiments=experiments, plotting_time=args.epoch)
         return
 
     parser.print_help()

@@ -1,5 +1,6 @@
 isort
 black
 flake8
-docformatter
 mypy
+types-tqdm
+types-requests
