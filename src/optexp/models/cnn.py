@@ -43,9 +43,9 @@ class SimpleImageNetCNN(Model):
 class SimpleImageNetCNNTorch(nn.Module):
     def __init__(self, in_channels: int, num_classes: int):
         super().__init__()
-        self.conv1 = nn.Conv2d(in_channels, 64, 5, padding=2, stride=(2,2))
+        self.conv1 = nn.Conv2d(in_channels, 64, 5, padding=2, stride=(2, 2))
         self.conv2 = nn.Conv2d(64, 64, 5, padding=2)
-        self.conv3 = nn.Conv2d( 64, 64, 5, padding=2)
+        self.conv3 = nn.Conv2d(64, 64, 5, padding=2)
         self.conv4 = nn.Conv2d(64, 64, 5, padding=2)
         self.conv5 = nn.Conv2d(64, 64, 5, padding=2)
         self.pool = nn.MaxPool2d(2, 2)
@@ -62,25 +62,29 @@ class SimpleImageNetCNNTorch(nn.Module):
         x = self.fc1(x)
         return x
 
-        
-        
+
 @dataclass
 class ResNet50(Model):
     def load_model(self, input_shape, output_shape):
         get_logger().info("Creating model: " + self.__class__.__name__)
         return torchvision.models.resnet50(num_classes=output_shape[0])
-        
+
+
 @dataclass
 class ResNet34(Model):
     def load_model(self, input_shape, output_shape):
         get_logger().info("Creating model: " + self.__class__.__name__)
         return torchvision.models.resnet34(num_classes=output_shape[0])
 
+
 @dataclass
 class ResNet34LayerNorm(Model):
     def load_model(self, input_shape, output_shape):
         get_logger().info("Creating model: " + self.__class__.__name__)
-        return torchvision.models.resnet34(num_classes=output_shape[0], norm_layer=lambda x : nn.GroupNorm(1, x))
+        return torchvision.models.resnet34(
+            num_classes=output_shape[0], norm_layer=lambda x: nn.GroupNorm(1, x)
+        )
+
 
 @dataclass
 class ResNet18(Model):
@@ -88,11 +92,14 @@ class ResNet18(Model):
         get_logger().info("Creating model: " + self.__class__.__name__)
         return torchvision.models.resnet18(num_classes=output_shape[0])
 
+
 @dataclass
 class ResNet18LayerNorm(Model):
     def load_model(self, input_shape, output_shape):
         get_logger().info("Creating model: " + self.__class__.__name__)
-        return torchvision.models.resnet18(num_classes=output_shape[0], norm_layer=lambda x : nn.GroupNorm(1, x))
+        return torchvision.models.resnet18(
+            num_classes=output_shape[0], norm_layer=lambda x: nn.GroupNorm(1, x)
+        )
 
 
 @dataclass
@@ -100,14 +107,12 @@ class ImageNetSimpleViT(Model):
     def load_model(self, input_shape, output_shape):
         get_logger().info("Creating model: " + self.__class__.__name__)
         v = SimpleViT(
-            image_size = 224,
-            patch_size = 16,
-            num_classes = output_shape[0],
-            dim = 384,
-            depth = 12,
-            heads = 6,
-            mlp_dim = 1536
+            image_size=224,
+            patch_size=16,
+            num_classes=output_shape[0],
+            dim=384,
+            depth=12,
+            heads=6,
+            mlp_dim=1536,
         )
         return v
-
-

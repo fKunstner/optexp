@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.nn.functional import cross_entropy, mse_loss
 from optexp.config import get_device
 
+
 class Accuracy(nn.Module):
     def __init__(self, reduction="mean") -> None:
         super().__init__()

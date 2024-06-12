@@ -56,6 +56,7 @@ class ImageNet(ImageDataset):
     name: str = field(default="ImageNet", init=False)
     flatten: bool = False
 
+
 @dataclass(frozen=True)
 class HeavyTailedImageNet(ImageDataset):
     batch_size: int
@@ -70,7 +71,6 @@ class ImbalancedImageNet(ImageDataset):
     flatten: bool = False
 
 
-
 @dataclass(frozen=True)
 class TenBigClassImageNet(ImageDataset):
     batch_size: int
@@ -78,12 +78,12 @@ class TenBigClassImageNet(ImageDataset):
     flatten: bool = False
 
 
-
 @dataclass(frozen=True)
 class OneMajorClassImageNet(ImageDataset):
     batch_size: int
     name: str = field(default="OneMajorClassImageNet", init=False)
     flatten: bool = False
+
 
 @dataclass(frozen=True)
 class SmallImageNet(ImageDataset):

@@ -147,7 +147,6 @@ class Problem(ABC):
         num_samples = 0
         running_metrics: Dict[torch.nn.Module, torch.Tensor] = {}
         running_n_samples: Dict[torch.nn.Module, torch.Tensor] = {}
-        
 
         def add_(d, k, v):
             if k in d:
@@ -182,9 +181,9 @@ class Problem(ABC):
                         value, weight = outputs[0].detach(), outputs[1].detach()
                         add_(running_metrics, module, value)
                         add_(running_n_samples, module, weight)
-                
+
                 num_samples += len(features)
-                
+
                 del y_pred
                 del features
                 del labels

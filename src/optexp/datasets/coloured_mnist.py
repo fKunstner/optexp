@@ -193,7 +193,7 @@ def create_unbalanced_coloured_dataset(batch_size, device, many_colours=False):
 
     val_data = (val_data - train_data_means) / train_data_stds
     val_data[:, train_data_stds <= 10e-15] = 0.0
-    
+
     n_train = train_targets.size
     shuffel = np.random.permutation(n_train)
     train_data, train_targets = train_data[shuffel], train_targets[shuffel]
@@ -202,14 +202,11 @@ def create_unbalanced_coloured_dataset(batch_size, device, many_colours=False):
     shuffel = np.random.permutation(n_val)
     val_data, val_targets = val_data[shuffel], val_targets[shuffel]
 
-
     train_data = torch.from_numpy(train_data).to(torch.float32).to(device)
     train_targets = torch.from_numpy(train_targets).to(torch.long).to(device)
 
     val_data = torch.from_numpy(val_data).to(torch.float32).to(device)
     val_targets = torch.from_numpy(val_targets).to(torch.long).to(device)
-    
-    
 
     output_shape = np.array([int(train_targets.max()) + 1])
     input_shape = np.array([train_data.shape[1]])
@@ -226,7 +223,6 @@ def create_unbalanced_coloured_dataset(batch_size, device, many_colours=False):
     )
 
 
-
 @dataclass(frozen=True)
 class MNISTColouredNotNormalized(Dataset):
     """
@@ -235,7 +231,9 @@ class MNISTColouredNotNormalized(Dataset):
     """
 
     def load(self):
-        return create_balanced_coloured_dataset(self.batch_size, config.get_device(), normalize=False)
+        return create_balanced_coloured_dataset(
+            self.batch_size, config.get_device(), normalize=False
+        )
 
     def should_download(self):
         return False

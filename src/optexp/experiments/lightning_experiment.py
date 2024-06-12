@@ -92,7 +92,7 @@ class LightningExperiment(Experiment):
         try:
             with self.fabric.rank_zero_first():
                 self.problem.init_problem()
-            
+
             opt = self.optim.load(self.problem.torch_model)
 
             self.problem.torch_model, opt = self.fabric.setup(
@@ -152,28 +152,32 @@ class LightningExperiment(Experiment):
             for t in range(1, self.steps + 1):
                 loss_to_save: float = 0.0
                 total_weight: float = 0.0
-                
+
                 for t_acc in range(self.gradient_acc_steps):
                     features, labels = get_batch()
                     y_pred = self.problem.torch_model(features)
-                    output = (
-                        self.problem.criterion(y_pred, labels) #/ self.gradient_acc_steps
-                    )
-                    
+                    output = self.problem.criterion(
+                        y_pred, labels
+                    )  # / self.gradient_acc_steps
+
                     if type(output) is tuple:
                         loss, weight = output
                     else:
                         loss = output
-                        weight = len(features) #/ (self.dataset.batch_size * self.gradient_acc_steps)
+                        weight = len(
+                            features
+                        )  # / (self.dataset.batch_size * self.gradient_acc_steps)
                         loss *= weight
-                    
+
                     total_weight += weight
                     loss_to_save += loss.item()
 
                     if math.isnan(loss) or math.isinf(loss):
                         exceptions["DivergenceException"] = True
 
-                    train_loss += loss.item() #* len(features) * self.gradient_acc_steps
+                    train_loss += (
+                        loss.item()
+                    )  # * len(features) * self.gradient_acc_steps
 
                     self.fabric.backward(loss)
                     del y_pred
@@ -192,7 +196,7 @@ class LightningExperiment(Experiment):
                 reduced_total_weight = self.fabric.all_reduce(
                     total_weight, reduce_op="sum"
                 )
-                reduced_mini_batch_loss = reduced_mini_batch_loss/reduced_total_weight
+                reduced_mini_batch_loss = reduced_mini_batch_loss / reduced_total_weight
                 mini_batch_losses.append(reduced_mini_batch_loss.cpu().item())
                 del reduced_mini_batch_loss
                 opt.step()
@@ -214,7 +218,9 @@ class LightningExperiment(Experiment):
                     reduced_total_weight = self.fabric.all_reduce(
                         total_weight, reduce_op="sum"
                     )
-                    reduced_live_train_loss = reduced_live_train_loss/reduced_total_weight
+                    reduced_live_train_loss = (
+                        reduced_live_train_loss / reduced_total_weight
+                    )
                     metrics_training = {
                         "live_train_loss": reduced_live_train_loss.cpu().item(),
                         "mini_batch_losses": mini_batch_losses,

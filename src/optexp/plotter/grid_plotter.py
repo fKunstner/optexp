@@ -28,7 +28,9 @@ def plot_grids(
 
     if not all(exp.group == group for exp in experiments):
         raise ValueError("All experiments must have the same group.")
-    if not all(exp.problem == problem for exp in experiments) and not isinstance(experiments[0], LightningExperiment):
+    if not all(exp.problem == problem for exp in experiments) and not isinstance(
+        experiments[0], LightningExperiment
+    ):
         raise ValueError("All experiments must have the same problem.")
 
     if using_step:
@@ -64,7 +66,7 @@ def plot_grids(
     for _, metric in enumerate(metric_names):
         if metric not in exps_df.columns:
             continue
-        
+
         fig, ax = make_fig_axs(plt, rel_width=0.5)
         max_value = float("-inf")
         for opt_plot in optimizers:

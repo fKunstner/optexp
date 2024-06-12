@@ -39,7 +39,7 @@ _displayname = {
     "CNN_SmallImageNet_PerClassStats_Cedar": "Overall Loss",
     "ResNet18LayerNorm_DecayingImageNet_PerClassStats_Cedar": "Overall Loss",
     "ResNet18BatchNorm_DecayingImageNet_PerClassStats_Cedar": "Overall Loss",
-    "CNN_DecayingImageNet_PerClassStats_Cedar": "Overall Loss"
+    "CNN_DecayingImageNet_PerClassStats_Cedar": "Overall Loss",
 }
 
 
@@ -93,11 +93,11 @@ def get_ylims_for_problem_linear(exp: Experiment, key: str):
     if "BalancedXImbalancedY" in exp.group:
         if "CrossEntropy" in key:
             return [0, 11]
-    
+
     if "DecayingImageNet" in exp.group:
         if "CrossEntropy" in key:
             return [0, 10]
-    
+
     if "SmallImageNet" in exp.group:
         if "CrossEntropy" in key:
             return [0, 10]

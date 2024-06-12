@@ -256,7 +256,9 @@ def exp_runner_cli(
             return
         if not all([experiments[0].group == exp.group for exp in experiments]):
             raise ValueError("Experiments from different groups")
-        if not all([experiments[0].problem == exp.problem for exp in experiments]) and not isinstance(experiments[0], LightningExperiment):
+        if not all(
+            [experiments[0].problem == exp.problem for exp in experiments]
+        ) and not isinstance(experiments[0], LightningExperiment):
             raise ValueError("Experiments on different problems")
         if args.use_step:
             plot_per_class(
