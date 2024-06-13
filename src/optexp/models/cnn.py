@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 
-from vit_pytorch import SimpleViT
 from optexp.config import get_logger
 from optexp.models.model import Model
 
@@ -100,19 +99,3 @@ class ResNet18LayerNorm(Model):
         return torchvision.models.resnet18(
             num_classes=output_shape[0], norm_layer=lambda x: nn.GroupNorm(1, x)
         )
-
-
-@dataclass
-class ImageNetSimpleViT(Model):
-    def load_model(self, input_shape, output_shape):
-        get_logger().info("Creating model: " + self.__class__.__name__)
-        v = SimpleViT(
-            image_size=224,
-            patch_size=16,
-            num_classes=output_shape[0],
-            dim=384,
-            depth=12,
-            heads=6,
-            mlp_dim=1536,
-        )
-        return v

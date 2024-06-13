@@ -1,8 +1,8 @@
+from colorsys import hsv_to_rgb
 from dataclasses import dataclass
 
 import numpy as np
 import torch
-from matplotlib.colors import hsv_to_rgb
 from torchvision.datasets import MNIST
 
 from optexp import Dataset, config
