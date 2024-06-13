@@ -1,11 +1,12 @@
 import math
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, TypeVar
 
 import lightning as ptl
 import torch
 from torch import Tensor
+from torch.nn import Module
 
 from optexp import Experiment
 from optexp.config import get_device, get_logger
@@ -14,11 +15,15 @@ from optexp.loggers.asdict_with_classes import asdict_with_class
 from optexp.problems import DivergingException
 
 
-def reduce_float_sum(fabric, val: float) -> Tensor:
+def reduce(fabric, val: float) -> Tensor:
     return fabric.all_reduce(val, reduce_op="sum")  # type: ignore[arg-type]
 
 
-def gather_bool(fabric, val: bool) -> Tensor:
+def reduce_tensor(fabric, val: Tensor, reduce_op: str = "sum") -> Tensor:
+    return fabric.all_reduce(val, reduce_op=reduce_op)  # type: ignore[arg-type]
+
+
+def gather(fabric, val: float) -> Tensor:
     return fabric.all_gather(val)  # type: ignore[arg-type]
 
 
@@ -111,10 +116,8 @@ class LightningExperiment(Experiment):
                         move_to_device=True,
                     )
                 )
-            metrics_and_counts_eval_train = self.problem.eval(
-                val=False, return_raw=True
-            )
-            metrics_and_counts_eval_val = self.problem.eval(val=True, return_raw=True)
+            metrics_and_counts_eval_train = self.problem.eval_raw(val=False)
+            metrics_and_counts_eval_val = self.problem.eval_raw(val=True)
 
             metrics_eval_train = self.aggregate_metrics(
                 metrics_and_counts_eval_train, key_prefix="tr"
@@ -188,8 +191,8 @@ class LightningExperiment(Experiment):
                 self._grad_norms(grad_norms_dict=grad_norms)
                 mini_batch_loss = loss_to_save
 
-                reduced_mini_batch_loss = reduce_float_sum(self.fabric, mini_batch_loss)
-                reduced_total_weight = reduce_float_sum(self.fabric, total_weight)
+                reduced_mini_batch_loss = reduce(self.fabric, mini_batch_loss)
+                reduced_total_weight = reduce(self.fabric, total_weight)
 
                 reduced_mini_batch_loss = reduced_mini_batch_loss / reduced_total_weight
                 mini_batch_losses.append(reduced_mini_batch_loss.cpu().item())
@@ -199,17 +202,13 @@ class LightningExperiment(Experiment):
                 torch.cuda.empty_cache()
 
                 if t % self.eval_every == 0:
-                    metrics_and_counts_eval_train = self.problem.eval(
-                        val=False, return_raw=True
-                    )
-                    metrics_and_counts_eval_val = self.problem.eval(
-                        val=True, return_raw=True
-                    )
+
+                    metrics_and_counts_eval_train = self.problem.eval_raw(val=False)
+                    metrics_and_counts_eval_val = self.problem.eval_raw(val=True)
+
                     live_train_loss = train_loss
-                    reduced_live_train_loss = reduce_float_sum(
-                        self.fabric, live_train_loss
-                    )
-                    reduced_total_weight = reduce_float_sum(self.fabric, total_weight)
+                    reduced_live_train_loss = reduce(self.fabric, live_train_loss)
+                    reduced_total_weight = reduce(self.fabric, total_weight)
                     reduced_live_train_loss = (
                         reduced_live_train_loss / reduced_total_weight
                     )
@@ -274,7 +273,7 @@ class LightningExperiment(Experiment):
             if self.fabric.global_rank == 0:
                 get_logger().info("All Processes Terminating")
 
-        experiment_success = any(gather_bool(self.fabric, experiment_success))
+        experiment_success = any(gather(self.fabric, experiment_success))
         if self.fabric.global_rank == 0 and experiment_success:
             get_logger().info("Experiment finished.")
             if data_logger is not None:
@@ -289,20 +288,23 @@ class LightningExperiment(Experiment):
         elif any(all_exceptions["BaseException"]):
             raise BaseException
 
-    def aggregate_metrics(self, metrics_and_counts: Dict, key_prefix: str) -> Dict:
+    def aggregate_metrics(
+        self,
+        metrics_and_counts: Tuple[int, Dict[Module, Tensor], Dict[Module, Tensor]],
+        key_prefix: str,
+    ) -> Dict:
         self.fabric.barrier()
-        metric_values = metrics_and_counts["metric_values"]
-        metric_n_samples = metrics_and_counts["metric_n_samples"]
-        total_samples = metrics_and_counts["total_samples"]
-        total_samples = self.fabric.all_reduce(total_samples, reduce_op="sum").item()
+
+        total_samples, metric_values, metric_n_samples = metrics_and_counts
+        total_samples = int(reduce(self.fabric, total_samples))
 
         for module in metric_values.keys():
-            metric_values[module] = self.fabric.all_reduce(
-                metric_values[module], reduce_op="sum"
+            metric_values[module] = reduce_tensor(
+                self.fabric, metric_values[module], reduce_op="sum"
             )
             if module in metric_n_samples.keys():
-                metric_n_samples[module] = self.fabric.all_reduce(
-                    metric_n_samples[module], reduce_op="sum"
+                metric_n_samples[module] = reduce_tensor(
+                    self.fabric, metric_n_samples[module], reduce_op="sum"
                 )
                 metric_values[module] = metric_values[module] / metric_n_samples[module]
             else:

@@ -2,7 +2,7 @@ import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Any, Dict, Iterable, List, Tuple
 
 import torch
 
@@ -54,6 +54,56 @@ class Problem(ABC):
         ).to(get_device())
         self.criterion = self.init_loss()
 
+    def eval_raw(
+        self, val: bool = True
+    ) -> Tuple[
+        int, Dict[torch.nn.Module, torch.Tensor], Dict[torch.nn.Module, torch.Tensor]
+    ]:
+        num_samples = 0
+        running_metrics: Dict[torch.nn.Module, torch.Tensor] = {}
+        running_n_samples: Dict[torch.nn.Module, torch.Tensor] = {}
+
+        def add_(d, k, v):
+            if k in d:
+                d[k] += v
+            else:
+                d[k] = v
+            return d
+
+        if val:
+            loader = self.eval_val_loader if self.is_mixed_batch else self.val_loader
+        else:
+            loader = (
+                self.eval_train_loader if self.is_mixed_batch else self.train_loader
+            )
+        with torch.no_grad():
+            for _, (features, labels) in enumerate(loader):
+                features = features.to(config.get_device())
+                labels = labels.to(config.get_device())
+
+                y_pred = self.torch_model(features)
+                for module in self.get_criterions():
+                    outputs = module(y_pred, labels)
+                    if type(outputs) is not tuple:
+                        value = outputs.detach()
+
+                        if math.isnan(value) or math.isinf(value):
+                            raise DivergingException(
+                                f"{str(module)[:-2]} ({'va' if val else 'tr'})is NAN or INF."
+                            )
+                        add_(running_metrics, module, value * len(features))
+                    else:
+                        value, weight = outputs[0].detach(), outputs[1].detach()
+                        add_(running_metrics, module, value)
+                        add_(running_n_samples, module, weight)
+
+                num_samples += len(features)
+
+                del y_pred
+                del features
+                del labels
+        return num_samples, running_metrics, running_n_samples
+
     def eval(self, val: bool = True, return_raw: bool = False) -> dict:
         """Wrapper to evaluate model. Provides the list of criterions to use.
 
@@ -65,7 +115,34 @@ class Problem(ABC):
             A dictionary where keys are strings representing the name of the criterions and values
             are the accumulated values of the criterions on the entire dataset.
         """
-        return self._evaluate(self.get_criterions(), val, return_raw)
+        criterions = self.get_criterions()
+        num_samples, running_metrics, running_n_samples = self.eval_raw(val=val)
+        key_prefix = "va" if val else "tr"
+        if return_raw:
+            result = {
+                "metric_values": running_metrics,
+                "metric_n_samples": running_n_samples,
+                "total_samples": num_samples,
+            }
+
+        else:
+            for module in criterions:
+                if torch.numel(running_metrics[module]) > 1:
+                    running_metrics[module] = (
+                        running_metrics[module] / running_n_samples[module]
+                    )
+                else:
+                    running_metrics[module] /= num_samples
+
+            metrics: Dict[str, Any] = {
+                f"{key_prefix}_{str(module)[:-2]}": (
+                    value.tolist() if torch.numel(value) > 1 else value.item()
+                )
+                for module, value in running_metrics.items()
+            }
+
+            result = metrics
+        return result
 
     def one_epoch(self, optimizer: torch.optim.Optimizer) -> dict:
         """Optimizes the model on a specific loss function defined for this
@@ -125,98 +202,6 @@ class Problem(ABC):
         metrics.update(param_norms)
         metrics.update(grad_norms)
         return metrics
-
-    def _evaluate(
-        self,
-        criterions: List[torch.nn.Module],
-        val: bool = True,
-        return_raw: bool = False,
-    ) -> dict:
-        """Evaluates the model on the dataset on the given criterions without
-        any optimization.
-
-        Args:
-            criterions (List[torch.nn.Module]): A list of loss functions and other metrics used for evaluation.
-            val (bool, optional): When True model is evaluated on validation dataset,
-                otherwise training dataset. Defaults to True.
-
-        Raises:
-            DivergingException: Raised when the value for any of the metrics is NAN or INF.
-
-        Returns:
-            A dictionary where keys are strings representing the name of the criterions and values
-                are the accumulated values of the criterions on the entire dataset.
-        """
-        num_samples = 0
-        running_metrics: Dict[torch.nn.Module, torch.Tensor] = {}
-        running_n_samples: Dict[torch.nn.Module, torch.Tensor] = {}
-
-        def add_(d, k, v):
-            if k in d:
-                d[k] += v
-            else:
-                d[k] = v
-            return d
-
-        if val:
-            loader = self.eval_val_loader if self.is_mixed_batch else self.val_loader
-            key_prefix = "va"
-        else:
-            loader = (
-                self.eval_train_loader if self.is_mixed_batch else self.train_loader
-            )
-            key_prefix = "tr"
-
-        with torch.no_grad():
-            for _, (features, labels) in enumerate(loader):
-                features = features.to(config.get_device())
-                labels = labels.to(config.get_device())
-
-                y_pred = self.torch_model(features)
-                for module in criterions:
-                    outputs = module(y_pred, labels)
-                    if type(outputs) is not tuple:
-                        value = outputs.detach()
-
-                        if math.isnan(value) or math.isinf(value):
-                            raise DivergingException(
-                                f"{key_prefix}_{str(module)[:-2]} is NAN or INF."
-                            )
-                        add_(running_metrics, module, value * len(features))
-                    else:
-                        value, weight = outputs[0].detach(), outputs[1].detach()
-                        add_(running_metrics, module, value)
-                        add_(running_n_samples, module, weight)
-
-                num_samples += len(features)
-
-                del y_pred
-                del features
-                del labels
-        if return_raw:
-            return {
-                "metric_values": running_metrics,
-                "metric_n_samples": running_n_samples,
-                "total_samples": num_samples,
-            }
-
-        else:
-            for module in criterions:
-                if torch.numel(running_metrics[module]) > 1:
-                    running_metrics[module] = (
-                        running_metrics[module] / running_n_samples[module]
-                    )
-                else:
-                    running_metrics[module] /= num_samples
-
-            metrics = {
-                f"{key_prefix}_{str(module)[:-2]}": (
-                    value.tolist() if torch.numel(value) > 1 else value.item()
-                )
-                for module, value in running_metrics.items()
-            }
-
-            return metrics
 
     def _grad_norms(self, grad_norms_dict: dict) -> None:
         """Computes the norm of the gradient. Intended to be called every mini-
