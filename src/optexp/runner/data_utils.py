@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 def should_convert_column_to_numpy(series: pd.Series):
     def is_string_repr_of_array(entry):
         if isinstance(entry, str):
