@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 
-from torch.nn import Module
-from torch.optim import SGD as TorchSGD
-from torch.optim import Optimizer as TorchOptimizer
+import torch
 
 from optexp.optimizers.hyperparameter import LearningRate
 from optexp.optimizers.optimizer import Optimizer
@@ -19,11 +17,11 @@ class SGD(Optimizer):
     nesterov: bool = False
     decay_strategy: WeightDecayStrategy = DecayEverything()
 
-    def load(self, model: Module) -> TorchOptimizer:
+    def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
 
         param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)
 
-        return TorchSGD(
+        return torch.optim.SGD(
             param_groups,
             lr=self.lr.as_float(),
             momentum=self.momentum,

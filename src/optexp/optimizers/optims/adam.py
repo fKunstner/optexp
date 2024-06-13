@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 
-from torch.nn import Module
-from torch.optim import Adam as TorchAdam
-from torch.optim import Optimizer as TorchOptimizer
+import torch
 
 from optexp.optimizers.hyperparameter import LearningRate
 from optexp.optimizers.optimizer import Optimizer
@@ -19,9 +17,9 @@ class Adam(Optimizer):
     amsgrad: bool = False
     decay_strategy: WeightDecayStrategy = DecayEverything()
 
-    def load(self, model: Module) -> TorchOptimizer:
+    def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
         param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)
-        return TorchAdam(
+        return torch.optim.Adam(
             param_groups,
             lr=self.lr.as_float(),
             betas=(self.beta1, self.beta2),

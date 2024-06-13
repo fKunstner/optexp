@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 
-from torch.nn import Module
-from torch.optim import Adagrad as TorchAdagrad
-from torch.optim import Optimizer as TorchOptimizer
+import torch
 
 from optexp.optimizers import LearningRate
 from optexp.optimizers.optimizer import Optimizer
@@ -17,11 +15,11 @@ class Adagrad(Optimizer):
     lr_decay: float = 0.0
     decay_strategy: WeightDecayStrategy = DecayEverything()
 
-    def load(self, model: Module) -> TorchOptimizer:
+    def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
 
         param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)
 
-        return TorchAdagrad(
+        return torch.optim.Adagrad(
             param_groups,
             lr=self.lr.as_float(),
             lr_decay=self.lr_decay,

@@ -1,6 +1,7 @@
 import torch
-import torch.nn as nn
+from torch import nn as nn
 from torch.nn.functional import cross_entropy, mse_loss
+
 from optexp.config import get_device
 
 
@@ -207,11 +208,3 @@ class CrossEntropyPerSequenceLength(nn.Module):
     def __str__(self) -> str:
         x = f"{super().__str__()[:-2]}_{self.seq_len}()"
         return x
-
-
-class DivergingException(Exception):
-    """Called when loss is NAN or INF."""
-
-    def __init__(self, message="Live training loss is NAN or INF") -> None:
-        self.message = message
-        super().__init__(self.message)
