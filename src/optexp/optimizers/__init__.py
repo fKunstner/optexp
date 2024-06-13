@@ -15,4 +15,3 @@ from optexp.optimizers.normalized_opts import (
 )
 from optexp.optimizers.optimizer import Optimizer
 from optexp.optimizers.SGD import SGD, SGD_M, SGD_NM
-from optexp.optimizers.LineSGD import LineSearchSGD, LSGD

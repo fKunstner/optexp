@@ -1,30 +1,27 @@
-import hashlib
 import math
-import os
-import random
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import lightning as ptl
-import numpy as np
-import pandas as pd
 import torch
 from torch import Tensor
 
-from optexp import Experiment, config
+from optexp import Experiment
 from optexp.config import get_device, get_logger
 from optexp.loggers import DataLogger
 from optexp.loggers.asdict_with_classes import asdict_with_class
-from optexp.optimizers import Optimizer
-from optexp.problems import DivergingException, Problem
-
-# from optexp.experiments import Experiment
+from optexp.problems import DivergingException
 
 
-# Note, in some cases, it won't kill all the gpu processes. before  figuring out how to   actually fix this, do nvidia-smi, see the PIDs listed, and do
-# kill -9 <PID> for each of them. attempting to figure out an automated shutdown system
+def reduce_float_sum(fabric, val: float) -> Tensor:
+    return fabric.all_reduce(val, reduce_op="sum")  # type: ignore[arg-type]
+
+
+def gather_bool(fabric, val: bool) -> Tensor:
+    return fabric.all_gather(val)  # type: ignore[arg-type]
+
+
 @dataclass
 class LightningExperiment(Experiment):
 
@@ -132,8 +129,8 @@ class LightningExperiment(Experiment):
 
             torch.cuda.empty_cache()
 
-            train_loss = 0.0
-            total_weight = 0.0
+            train_loss: float = 0.0
+            total_weight: float = 0.0
             mini_batch_losses = []
             grad_norms: Dict[str, List] = {}
             loader = iter(self.problem.train_loader)
@@ -150,8 +147,8 @@ class LightningExperiment(Experiment):
             opt.zero_grad()
 
             for t in range(1, self.steps + 1):
-                loss_to_save: float = 0.0
-                total_weight: float = 0.0
+                loss_to_save = 0.0
+                total_weight = 0.0
 
                 for t_acc in range(self.gradient_acc_steps):
                     features, labels = get_batch()
@@ -190,12 +187,10 @@ class LightningExperiment(Experiment):
 
                 self._grad_norms(grad_norms_dict=grad_norms)
                 mini_batch_loss = loss_to_save
-                reduced_mini_batch_loss: Tensor = self.fabric.all_reduce(
-                    mini_batch_loss, reduce_op="sum"
-                )
-                reduced_total_weight = self.fabric.all_reduce(
-                    total_weight, reduce_op="sum"
-                )
+
+                reduced_mini_batch_loss = reduce_float_sum(self.fabric, mini_batch_loss)
+                reduced_total_weight = reduce_float_sum(self.fabric, total_weight)
+
                 reduced_mini_batch_loss = reduced_mini_batch_loss / reduced_total_weight
                 mini_batch_losses.append(reduced_mini_batch_loss.cpu().item())
                 del reduced_mini_batch_loss
@@ -204,7 +199,6 @@ class LightningExperiment(Experiment):
                 torch.cuda.empty_cache()
 
                 if t % self.eval_every == 0:
-
                     metrics_and_counts_eval_train = self.problem.eval(
                         val=False, return_raw=True
                     )
@@ -212,12 +206,10 @@ class LightningExperiment(Experiment):
                         val=True, return_raw=True
                     )
                     live_train_loss = train_loss
-                    reduced_live_train_loss = self.fabric.all_reduce(
-                        live_train_loss, reduce_op="sum"
+                    reduced_live_train_loss = reduce_float_sum(
+                        self.fabric, live_train_loss
                     )
-                    reduced_total_weight = self.fabric.all_reduce(
-                        total_weight, reduce_op="sum"
-                    )
+                    reduced_total_weight = reduce_float_sum(self.fabric, total_weight)
                     reduced_live_train_loss = (
                         reduced_live_train_loss / reduced_total_weight
                     )
@@ -282,14 +274,14 @@ class LightningExperiment(Experiment):
             if self.fabric.global_rank == 0:
                 get_logger().info("All Processes Terminating")
 
-        experiment_success = any(self.fabric.all_gather(experiment_success))
+        experiment_success = any(gather_bool(self.fabric, experiment_success))
         if self.fabric.global_rank == 0 and experiment_success:
             get_logger().info("Experiment finished.")
             if data_logger is not None:
                 data_logger.save(exit_code=0)
 
     def check_exceptions(self, exceptions: Dict[str, bool]) -> None:
-        all_exceptions = self.fabric.all_gather(exceptions)
+        all_exceptions: Dict[str, List[bool]] = self.fabric.all_gather(exceptions)  # type: ignore[assignment]
         if any(all_exceptions["DivergenceException"]):
             raise DivergingException()
         elif any(all_exceptions["Exception"]):

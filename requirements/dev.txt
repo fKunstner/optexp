@@ -3,4 +3,4 @@ black
 flake8
 mypy
 types-tqdm
-types-requests
+types-requests==2.31.0.6

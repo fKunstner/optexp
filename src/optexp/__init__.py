@@ -30,7 +30,6 @@ from optexp.optimizers import (
     Adam,
     AdamW,
     LearningRate,
-    LineSearchSGD,
     NormSGD,
     Optimizer,
     ScaledSign,

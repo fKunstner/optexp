@@ -6,7 +6,7 @@ import wandb
 
 from optexp import config
 from optexp.config import get_logger, get_wandb_timeout
-from optexp.plotter.data_utils import column_to_numpy, should_convert_column_to_numpy
+from optexp.runner.data_utils import column_to_numpy, should_convert_column_to_numpy
 
 
 class WandbAPI:
