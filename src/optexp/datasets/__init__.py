@@ -6,11 +6,10 @@ from optexp.datasets.dataset_getter import (
 )
 
 from optexp.datasets.dataset_downloader import download_dataset
-from optexp.datasets.dataset import Dataset, MixedBatchSizeDataset
+from optexp.datasets.dataset import Dataset
 from optexp.datasets.text_dataset import (
     TextDataset,
     VariableTokenTextDataset,
-    MixedBatchSizeTextDataset,
 )
 from optexp.datasets.image_dataset import ImageDataset
 from optexp.datasets.frozen_dataset import FrozenDataset

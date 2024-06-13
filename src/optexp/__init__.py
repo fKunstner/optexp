@@ -6,8 +6,6 @@ from optexp.datasets import (
     Dataset,
     FrozenDataset,
     ImageDataset,
-    MixedBatchSizeDataset,
-    MixedBatchSizeTextDataset,
     TextDataset,
     VariableTokenTextDataset,
 )
