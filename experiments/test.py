@@ -1,7 +1,9 @@
-from optexp import Classification, Experiment, exp_runner_cli
 from optexp.datasets.image_dataset import MNIST
+from optexp.experiments.experiment import Experiment
 from optexp.models.cnn import SimpleMNISTCNN
 from optexp.optimizers import SGD_NM
+from optexp.problems import Classification
+from optexp.runner.cli import exp_runner_cli
 from optexp.runner.slurm import slurm_config
 from optexp.utils import SEEDS_1, starting_grid_for
 
