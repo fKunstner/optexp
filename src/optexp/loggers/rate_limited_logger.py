@@ -1,6 +1,6 @@
 """A rate-limited logger.
 
-The main use case is to log the progress of an experiment to the
+The main use case is to log the progress of an experiments to the
 console, without spamming the console with too many messages.
 """
 

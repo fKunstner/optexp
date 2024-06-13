@@ -6,6 +6,7 @@ from typing import Dict, List
 
 import torch
 
+from optexp import config
 from optexp.config import get_device, get_logger
 from optexp.datasets import Dataset, MixedBatchSizeDataset
 from optexp.models import Model
@@ -86,6 +87,8 @@ class Problem(ABC):
         mini_batch_losses = []
         grad_norms: Dict[str, List] = {}
         for _, (features, labels) in enumerate(self.train_loader):
+            features = features.to(config.get_device())
+            labels = labels.to(config.get_device())
 
             def closure():
                 y_pred = self.torch_model(features)
@@ -166,6 +169,9 @@ class Problem(ABC):
 
         with torch.no_grad():
             for _, (features, labels) in enumerate(loader):
+                features = features.to(config.get_device())
+                labels = labels.to(config.get_device())
+
                 y_pred = self.torch_model(features)
                 for module in criterions:
                     outputs = module(y_pred, labels)

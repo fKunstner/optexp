@@ -3,8 +3,11 @@ from typing import Tuple
 
 import numpy as np
 import torch
+import torchvision
 from torch.utils.data import DataLoader
+from torchvision.datasets.mnist import MNIST as TorchMNIST
 
+from optexp import config
 from optexp.config import get_logger
 from optexp.datasets.dataset import Dataset
 from optexp.datasets.dataset_getter import get_image_dataset
@@ -29,7 +32,7 @@ class ImageDataset(Dataset):
             dataset_name=self.name,
             batch_size=self.batch_size,
             shuffle=True,
-            num_workers=8,
+            num_workers=0,
             normalize=True,
             flatten=self.flatten,
         )
@@ -48,6 +51,35 @@ class MNIST(ImageDataset):
     batch_size: int
     name: str = field(default="MNIST", init=False)
     flatten: bool = False
+
+    def load(
+        self,
+    ) -> Tuple[DataLoader, DataLoader, np.ndarray, np.ndarray, torch.Tensor]:
+        train_set = TorchMNIST(
+            str(config.get_dataset_directory()),
+            download=False,
+            train=True,
+            transform=torchvision.transforms.ToTensor(),
+        )
+        val_set = TorchMNIST(
+            str(config.get_dataset_directory()),
+            download=False,
+            train=False,
+            transform=torchvision.transforms.ToTensor(),
+        )
+        tr_ld = DataLoader(
+            train_set,
+            batch_size=self.batch_size,
+        )
+        va_ld = DataLoader(val_set, batch_size=self.batch_size)
+
+        return (
+            tr_ld,
+            va_ld,
+            np.array([1]),
+            np.array([10]),
+            torch.bincount(train_set.targets),
+        )
 
 
 @dataclass(frozen=True)

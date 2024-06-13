@@ -7,9 +7,9 @@ class LearningRate:
     """
     A wrapper class for a learning rate. For unknown reasons, using python
     floats to represent a learning rate results in small errors in the learning rate
-    value within the optimizer across instantiations of the same experiment. For example, lr may be 1e-5
-    but when instantiating the experiment again it may be 9.99999999e-6. This results in the hash
-    for the same experiment to differ across instantiations. This wrapper class is created to work
+    value within the optimizer across instantiations of the same experiments. For example, lr may be 1e-5
+    but when instantiating the experiments again it may be 9.99999999e-6. This results in the hash
+    for the same experiments to differ across instantiations. This wrapper class is created to work
     with the nice_logspace function and avoid the hashing issue stated above.
     """
 

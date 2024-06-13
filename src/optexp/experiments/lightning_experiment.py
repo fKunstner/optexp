@@ -41,14 +41,14 @@ class LightningExperiment(Experiment):
 
     def run_experiment(self) -> None:
         """
-        Performs a run of the experiment. Generates the run-id, applies the seed
+        Performs a run of the experiments. Generates the run-id, applies the seed
         and creates the data logger. Initializes the problem and optimizer and
         optimizes the problem given the optimizer for the defined amount of epochs.
         Logs the loss function values/metrics returned during the eval and training.
         Catches any exception raised during this process and logs it before exiting.
 
         Raises:
-            BaseException: Raised when user Ctrl+C when experiment is running.
+            BaseException: Raised when user Ctrl+C when experiments is running.
         """
         run_id = time.strftime("%Y-%m-%d--%H-%M-%S")
 
@@ -76,7 +76,7 @@ class LightningExperiment(Experiment):
             )
 
             get_logger().info("=" * 80)
-            get_logger().info(f"Initializing  experiment: {self}")
+            get_logger().info(f"Initializing  experiments: {self}")
             get_logger().info("=" * 80)
         self.fabric.barrier()
         exceptions = {

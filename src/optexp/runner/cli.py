@@ -78,7 +78,7 @@ def exp_runner_cli(
         "--run-single-locally",
         action="store",
         type=int,
-        help="Run a single experiment locally, by index.",
+        help="Run a single experiments locally, by index.",
         default=None,
     )
     action_group.add_argument(
@@ -99,7 +99,7 @@ def exp_runner_cli(
         "--test",
         "--run-single-slurm",
         action="store_true",
-        help="Run the first experiment in list as a test on slurm.",
+        help="Run the first experiments in list as a test on slurm.",
         default=False,
     )
     action_group.add_argument(
@@ -175,7 +175,7 @@ def exp_runner_cli(
         )
         return
     if args.test:
-        get_logger().info(f"Preparing to run first experiment in group")
+        get_logger().info(f"Preparing to run first experiments in group")
 
         if slurm_config is None:
             raise ValueError(
@@ -354,7 +354,7 @@ def download_data(experiments: List[Experiment]) -> None:
     for i, exp in enumerate(experiments):
         if exp.exp_id() not in successful_run_ids:
             get_logger().info(
-                f"The following experiment: {str(exp)} (idx {i}) was NOT SUCCESSFULL. NO DATA TO DOWNLOAD."
+                f"The following experiments: {str(exp)} (idx {i}) was NOT SUCCESSFULL. NO DATA TO DOWNLOAD."
             )
 
     runs_to_dl_ids = [exp.exp_id() for exp in experiments]

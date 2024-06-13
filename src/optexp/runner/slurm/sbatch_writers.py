@@ -61,8 +61,8 @@ def make_jobarray_content(
     """Creates the content of a jobarray sbatch file for Slurm.
 
     Args:
-        run_exp_by_idx_command: Command to call to run the i-th experiment
-        should_run: Whether the matching experiment should run
+        run_exp_by_idx_command: Command to call to run the i-th experiments
+        should_run: Whether the matching experiments should run
     """
 
     bash_script_idx_to_exp_script_idx = []

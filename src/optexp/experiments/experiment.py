@@ -21,12 +21,12 @@ from optexp.problems import DivergingException, Problem
 @dataclass
 class Experiment:
     """
-    Represents an experiment where a problem is optimized given an optimizer.
+    Represents an experiments where a problem is optimized given an optimizer.
 
     Attributes:
         optim: The optimizer to use for optimizing the model defined in the problem.
         problem: The problem to optimize.
-        group: The group of experiments this experiment belongs to.
+        group: The group of experiments this experiments belongs to.
         seed: The seed to use.
         epochs: The number of epochs the problem is optimized.
     """
@@ -70,14 +70,14 @@ class Experiment:
 
     def run_experiment(self) -> None:
         """
-        Performs a run of the experiment. Generates the run-id, applies the seed
+        Performs a run of the experiments. Generates the run-id, applies the seed
         and creates the data logger. Initializes the problem and optimizer and
         optimizes the problem given the optimizer for the defined amount of epochs.
         Logs the loss function values/metrics returned during the eval and training.
         Catches any exception raised during this process and logs it before exiting.
 
         Raises:
-            BaseException: Raised when user Ctrl+C when experiment is running.
+            BaseException: Raised when user Ctrl+C when experiments is running.
         """
         run_id = time.strftime("%Y-%m-%d--%H-%M-%S")
 
@@ -92,7 +92,7 @@ class Experiment:
         )
 
         get_logger().info("=" * 80)
-        get_logger().info(f"Initializing  experiment: {self}")
+        get_logger().info(f"Initializing  experiments: {self}")
         get_logger().info("=" * 80)
 
         try:
@@ -139,7 +139,7 @@ class Experiment:
     def _apply_seed(self) -> None:
         """Apply the seed to all random number generators.
 
-        To be called before the experiment is run.
+        To be called before the experiments is run.
         """
         np.random.seed(self.seed)
         random.seed(self.seed)
@@ -147,7 +147,7 @@ class Experiment:
         torch.cuda.manual_seed_all(self.seed)
 
     def save_directory(self) -> Path:
-        """Return the directory where the experiment results are saved."""
+        """Return the directory where the experiments results are saved."""
         base = config.get_experiment_directory()
         exp_dir = (
             f"{self.problem.__class__.__name__}_"
@@ -158,16 +158,16 @@ class Experiment:
         return save_dir
 
     def exp_id(self) -> str:
-        """Return a unique identifier for this experiment.
+        """Return a unique identifier for this experiments.
 
-        Not a unique identifier for the current run of the experiment.
-        Should be unique for the definition of the experiment, combining
+        Not a unique identifier for the current run of the experiments.
+        Should be unique for the definition of the experiments, combining
         the problem, optimizer, and seed.
         """
         return hashlib.sha1(str.encode(str(self))).hexdigest()
 
     def load_data(self):
-        """Tries to load any data for the experiment.
+        """Tries to load any data for the experiments.
 
         Starts by trying to load data from the wandb download folder,
         if that fails it tries to load data from the local runs folder.
@@ -180,7 +180,7 @@ class Experiment:
         return df
 
     def _load_local_data(self) -> Optional[pd.DataFrame]:
-        """Loads the most recent experiment run data saved locally."""
+        """Loads the most recent experiments run data saved locally."""
         save_dir = self.save_directory()
         # get the timestamps of the runs from the names of the files
         time_stamps = [
@@ -199,7 +199,7 @@ class Experiment:
         return run_data
 
     def _load_wandb_data(self) -> pd.DataFrame:
-        """Loads data from most recent run of experiment from wandb"""
+        """Loads data from most recent run of experiments from wandb"""
         save_dir = (
             config.get_wandb_cache_directory()
             / Path(self.group)

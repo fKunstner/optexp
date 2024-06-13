@@ -43,7 +43,7 @@ def get_wandb_runs_for_group(group: str) -> List[wandb.apis.public.Run]:
 
 
 def get_successful_ids_and_runs(group: str):
-    """Get the experiment ids of all successful runs on wandb for a group."""
+    """Get the experiments ids of all successful runs on wandb for a group."""
     # https://docs.wandb.ai/guides/track/public-api-guide#querying-multiple-runs
     runs = get_wandb_runs_for_group(group)
     successful_runs = []

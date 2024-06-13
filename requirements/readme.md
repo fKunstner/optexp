@@ -31,7 +31,7 @@ Start by installing Pytorch. We use version `2.3.0` along with the following pac
   ```
 - CPU only
   ```
-  pip install torch==2.3.0 torchvision==0.18.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cpu
+  pip install torch==2.2.0 torchvision==0.17.0 torchaudio==2.3.0 --index-url https://download.pytorch.org/whl/cpu
   pip install torchtext==0.18.0 
   ```
 - Slurm cluster with pre-compiled wheels

@@ -29,13 +29,13 @@ class DataLogger:
         """Data logger for experiments.
 
         Delegates to a console logger to print progress.
-        Saves the data to a csv and experiment configuration to a json file.
+        Saves the data to a csv and experiments configuration to a json file.
         Creates the save_dir if it does not exist.
 
         Args:
             run_id: Unique id for the run
-                (an experiment might have multiple runs)
-            experiment: The experiment to log
+                (an experiments might have multiple runs)
+            experiments: The experiments to log
         """
         self.run_id = run_id
         self.config_dict = config_dict
@@ -104,17 +104,17 @@ class DataLogger:
             wandb.log({}, commit=True)
 
     def save(self, exit_code) -> None:
-        """Save the experiment configuration and results to disk."""
+        """Save the experiments configuration and results to disk."""
         filepath_csv = self.save_directory / f"{self.run_id}.csv"
         filepath_json = self.save_directory / f"{self.run_id}.json"
 
-        get_logger().info(f"Saving experiment configs to {filepath_json}")
+        get_logger().info(f"Saving experiments configs to {filepath_json}")
 
         json_data = json.dumps(self.config_dict, indent=4)
         with open(filepath_json, "w") as outfile:
             outfile.write(json_data)
 
-        get_logger().info(f"Saving experiment results to {filepath_csv}")
+        get_logger().info(f"Saving experiments results to {filepath_csv}")
 
         data_df = pd.DataFrame.from_records(self._dicts)
         data_df.to_csv(filepath_csv)

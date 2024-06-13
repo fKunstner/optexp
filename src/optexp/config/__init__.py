@@ -109,7 +109,7 @@ def get_workspace_directory() -> Path:
         raise ValueError(
             "Workspace not set. "
             f"Define the {ENV_VAR_WORKSPACE} environment variable"
-            "To define where to save datasets and experiment results."
+            "To define where to save datasets and experiments results."
         )
     return Path(workspace)
 

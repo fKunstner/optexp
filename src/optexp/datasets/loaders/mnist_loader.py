@@ -1,10 +1,9 @@
 from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
-
 import torch
+from torch.utils.data import DataLoader, Subset
 from torchvision import transforms
-from torch.utils.data import Subset, DataLoader
 from torchvision.datasets.mnist import MNIST
 
 
@@ -51,6 +50,28 @@ def load_micro_mnist(
     )
 
 
+def transform1(x):
+    return x.to(torch.float32).flatten()
+
+
+def transform2(x):
+    mean = torch.tensor(
+        0.1307, dtype=torch.float32, device=x.device, requires_grad=False
+    )
+    std = torch.tensor(
+        0.3081, dtype=torch.float32, device=x.device, requires_grad=False
+    )
+    return (x - mean) / std
+
+
+def transform3(x):
+    return torch.flatten(x)
+
+
+def transform4(x):
+    return x.unsqueeze(0)
+
+
 def load_mnist(
     save_path, batch_size, shuffle, num_workers, normalize, flatten, device, mode=None
 ):
@@ -65,20 +86,24 @@ def load_mnist(
         mean = torch.tensor(0, dtype=torch.float32, device=device)
         std = torch.tensor(1, dtype=torch.float32, device=device)
 
+    import pdb
+
     if flatten:
         transform = transforms.Compose(
             [
-                transforms.Lambda(lambda _: _.to(torch.float32)),
-                transforms.Lambda(lambda _: (_ - mean) / std),  # normalize inputs
-                transforms.Lambda(lambda _: torch.flatten(_)),
+                transforms.Lambda(transform1),
+                transforms.Lambda(lambda x: print("a", flatten) or pdb.set_trace()),
+                transforms.Lambda(transform2),
+                transforms.Lambda(transform3),
             ]
         )
     else:
         transform = transforms.Compose(
             [
-                transforms.Lambda(lambda _: _.to(torch.float32)),
-                transforms.Lambda(lambda _: (_ - mean) / std),  # normalize inputs,
-                transforms.Lambda(lambda _: _.unsqueeze(0)),
+                transforms.Lambda(transform1),
+                transforms.Lambda(lambda x: print("a", flatten) or pdb.set_trace()),
+                transforms.Lambda(transform2),
+                transforms.Lambda(transform4),
             ]
         )
 
