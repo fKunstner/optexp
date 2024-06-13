@@ -1,15 +1,15 @@
 import math
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple, TypeVar
+from typing import Any, Dict, List, Optional, Tuple
 
 import lightning as ptl
 import torch
 from torch import Tensor
 from torch.nn import Module
 
-from optexp import Experiment
 from optexp.config import get_device, get_logger
+from optexp.experiments.experiment import Experiment
 from optexp.loggers import DataLogger
 from optexp.loggers.asdict_with_classes import asdict_with_class
 from optexp.problems import DivergingException
