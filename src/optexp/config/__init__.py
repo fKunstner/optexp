@@ -29,6 +29,7 @@ class UseWandbProject:
 
     def __init__(self, project: Optional[str] = None):
         self.project_for_context = project
+        self.project_outside_context = None
 
     def __enter__(self):
         self.project_outside_context = self.global_project

@@ -1,103 +1,66 @@
 import os
-from dataclasses import dataclass, field
+import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from optexp import config
 from optexp.config import get_logger
-from optexp.datasets import Dataset
-from optexp.datasets.dataset import TrVa
+from optexp.datasets.dataset import (
+    ClassificationDataset,
+    DatasetNotDownloadableError,
+    TrVa,
+)
+
+
+class ImagenetNotDownloadableError(DatasetNotDownloadableError):
+    def __init__(self):
+        message = textwrap.dedent(
+            f"""
+            ImageNet cannot be downloaded automatically.
+            
+            Please download the dataset manually and place it in the workspace, at 
+                {config.get_dataset_directory() / "ImageNet"}
+            """
+        )
+        super().__init__(message)
 
 
 @dataclass(frozen=True)
-class ImageNet(Dataset):
-    batch_size: int
-    name: str = field(default="ImageNet", init=False)
-    normalize: bool = True
-    flatten: bool = False
-    num_workers: int = 8
-    shuffle: bool = True
+class ImageNet(ClassificationDataset):
 
-    def load(
-        self,
-        b: int,
-        tr_va: TrVa,
-        on_gpu: bool = False,
-    ) -> DataLoader:
-        dataset_dir = config.get_dataset_directory() / Path("ImageNet")
-        traindir = os.path.join(dataset_dir, "train")
-        valdir = os.path.join(dataset_dir, "val")
+    def get_dataloader(self, b: int, tr_va: TrVa, on_gpu: bool = False) -> DataLoader:
+        raise NotImplementedError()
 
-        if self.normalize:
-            normalize_transform = transforms.Normalize(
-                mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-            )
-        else:
-            normalize_transform = transforms.Normalize(
-                mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]
-            )
+    def input_shape(self, batch_size) -> torch.Size:
+        raise NotImplementedError()
 
-        train_dataset = datasets.ImageFolder(
-            traindir,
-            transforms.Compose(
-                [
-                    transforms.RandomResizedCrop(224),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.ToTensor(),
-                    normalize_transform,
-                ]
-            ),
-        )
+    def output_shape(self, batch_size) -> torch.Size:
+        return torch.Size([1000])
 
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
+    def should_download(self):
+        return True
 
-        val_dataset = datasets.ImageFolder(
-            valdir,
-            transforms.Compose(
-                [
-                    transforms.Resize(256),
-                    transforms.CenterCrop(224),
-                    transforms.ToTensor(),
-                    normalize_transform,
-                ]
-            ),
-        )
-
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset,
-            batch_size=self.batch_size,
-            shuffle=self.shuffle,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-        # targets = torch.tensor(train_dataset.targets)
-        # output_shape = np.array([targets.max().item() + 1])
-        # features, _ = next(iter(train_loader))
-        # input_shape = np.array(list(features[0].shape))
-        # return (
-        #     train_loader,
-        #     val_loader,
-        #     input_shape,
-        #     output_shape,
-        #     torch.bincount(targets),
-        # )
-
-        if tr_va == "tr":
-            return train_loader
-        return val_loader
+    def is_downloaded(self):
+        raise NotImplementedError()
 
     def download(self):
-        pass
+        raise ImagenetNotDownloadableError()
+
+    def should_move_to_local(self):
+        raise NotImplementedError()
+
+    def move_to_local(self):
+        raise NotImplementedError()
+
+    def is_on_local(self):
+        raise NotImplementedError()
+
+    def class_counts(self, tr_va: TrVa) -> torch.Tensor:
+        raise NotImplementedError()
 
 
 def load_imagenet(save_path, batch_size, shuffle, num_workers, normalize):
@@ -157,12 +120,9 @@ def load_imagenet(save_path, batch_size, shuffle, num_workers, normalize):
         num_workers=num_workers,
         pin_memory=True,
     )
-    targets = torch.tensor(train_dataset.targets)
-    output_shape = np.array([targets.max().item() + 1])
     loaders = {"train_loader": train_loader, "val_loader": val_loader}
-    features, _ = next(iter(train_loader))
-    input_shape = np.array(list(features[0].shape))
-    return loaders, input_shape, output_shape, torch.bincount(targets)
+
+    return loaders
 
 
 def extract(dataset_dir):
@@ -179,5 +139,70 @@ def extract(dataset_dir):
     return local_disk + "/imagenet"
 
 
+def get_dataloader(
+    self,
+    b: int,
+    tr_va: TrVa,
+    on_gpu: bool = False,
+) -> DataLoader:
+    dataset_dir = config.get_dataset_directory() / Path("ImageNet")
+    traindir = os.path.join(dataset_dir, "train")
+    valdir = os.path.join(dataset_dir, "val")
+
+    if self.normalize:
+        normalize_transform = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
+        )
+    else:
+        normalize_transform = transforms.Normalize(
+            mean=[0.0, 0.0, 0.0], std=[1.0, 1.0, 1.0]
+        )
+
+    train_dataset = datasets.ImageFolder(
+        traindir,
+        transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize_transform,
+            ]
+        ),
+    )
+
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        batch_size=self.batch_size,
+        shuffle=self.shuffle,
+        num_workers=self.num_workers,
+        pin_memory=True,
+    )
+
+    val_dataset = datasets.ImageFolder(
+        valdir,
+        transforms.Compose(
+            [
+                transforms.Resize(256),
+                transforms.CenterCrop(224),
+                transforms.ToTensor(),
+                normalize_transform,
+            ]
+        ),
+    )
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset,
+        batch_size=self.batch_size,
+        shuffle=self.shuffle,
+        num_workers=self.num_workers,
+        pin_memory=True,
+    )
+
+    if tr_va == "tr":
+        return train_loader
+    return val_loader
+
+
 if __name__ == "__main__":
-    extract("/home/anon/optexp/datasets/ImageNet")
+    # extract("/home/anon/optexp/datasets/ImageNet")
+    raise ImagenetNotDownloadableError()

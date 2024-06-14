@@ -35,6 +35,7 @@ Example usage::
 import copy
 import inspect
 from dataclasses import fields
+from fractions import Fraction
 
 _FIELDS = "__dataclass_fields__"
 
@@ -65,7 +66,7 @@ def _asdict_inner(obj, dict_factory):
 
     if isinstance(obj, tuple) and hasattr(obj, "_fields"):
         return type(obj)(*[_asdict_inner(v, dict_factory) for v in obj])
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple, set)):
         return type(obj)(_asdict_inner(v, dict_factory) for v in obj)
     if isinstance(obj, dict):
         return type(obj)(
@@ -73,6 +74,8 @@ def _asdict_inner(obj, dict_factory):
             for k, v in obj.items()
         )
     if inspect.isclass(obj) and obj.__class__.__name__ == "type":
+        return str(obj)
+    if isinstance(obj, Fraction):
         return str(obj)
     return copy.deepcopy(obj)
 
@@ -97,8 +100,7 @@ def asdict_with_class(obj, dict_factory=dict):
 
     If given, 'dict_factory' will be used instead of built-in dict.
     The function applies recursively to field values that are
-    dataclass instances. This will also look into built-in containers:
-    tuples, lists, and dicts.
+    dataclass instances and built-in containers (tuples, lists, and dicts)
 
     Adapted from
     https://github.com/python/cpython/blob/26f396a55f8f208f229bdb700f1d7a17ca81493d/Lib/dataclasses.py#L1263-L1284

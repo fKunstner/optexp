@@ -1,7 +1,7 @@
 import math
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal, Tuple, Type
 
 import torch
 
@@ -24,14 +24,14 @@ class Problem:
     model: Model
     dataset: Dataset
     batch_size: int
-    lossfunc: torch.nn.Module
-    metrics: List[torch.nn.Module]
+    lossfunc: Type[torch.nn.Module]
+    metrics: List[Type[torch.nn.Module]]
     micro_batch_size: Literal["auto"] | int = "auto"
 
     def init_problem(self) -> None:
         """Loads the dataset and the PyTorch model onto device."""
-        self.train_loader = self.dataset.load(b=self.batch_size, tr_va="tr")
-        self.val_loader = self.dataset.load(b=self.batch_size, tr_va="va")
+        self.train_loader = self.dataset.get_dataloader(tr_va="tr", b=self.batch_size)
+        self.val_loader = self.dataset.get_dataloader(tr_va="va", b=self.batch_size)
         self.input_shape = self.dataset.input_shape(self.batch_size)
         self.output_shape = self.dataset.output_shape(self.batch_size)
 
@@ -181,7 +181,7 @@ class Problem:
         return metrics
 
     def init_loss(self) -> torch.nn.Module:
-        return self.lossfunc
+        return self.lossfunc()
 
     def get_criterions(self) -> List[torch.nn.Module]:
-        return self.metrics
+        return [_() for _ in self.metrics]

@@ -15,13 +15,13 @@ model = LeNet5()
 problem = Problem(
     model,
     dataset,
-    batch_size=256,
-    lossfunc=torch.nn.CrossEntropyLoss(),
-    metrics=[torch.nn.CrossEntropyLoss(), Accuracy()],
+    batch_size=1024,
+    lossfunc=torch.nn.CrossEntropyLoss,
+    metrics=[torch.nn.CrossEntropyLoss, Accuracy],
 )
 opts_sparse = starting_grid_for([lambda lr: SGD(lr)], start=-6, end=-5)
 
-EPOCHS = 2
+EPOCHS = 1
 group = "testing"
 
 experiments = Experiment.generate_experiments_from_opts_and_seeds(

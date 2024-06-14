@@ -4,7 +4,7 @@ from fractions import Fraction
 
 @dataclass(frozen=True)
 class Hyperparameter:
-    """Representation of a hyperparmeter in scientific notation, base^exponent."""
+    """Representation of a hyperparameter in scientific notation, base^exponent."""
 
     exponent: Fraction
     base: int = 10

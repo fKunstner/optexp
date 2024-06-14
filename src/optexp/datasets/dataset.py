@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from typing import Literal
 
 import torch
-from torch.utils.data import DataLoader
 
 TrVa = Literal["tr", "va"]
 
@@ -11,12 +10,11 @@ TrVa = Literal["tr", "va"]
 @dataclass(frozen=True)
 class Dataset:
     @abstractmethod
-    def load(
+    def get_dataloader(
         self,
         b: int,
         tr_va: TrVa,
-        on_gpu: bool = False,
-    ) -> DataLoader:
+    ) -> torch.utils.data.DataLoader:
         raise NotImplementedError()
 
     @abstractmethod
@@ -28,11 +26,15 @@ class Dataset:
         raise NotImplementedError()
 
     @abstractmethod
-    def download(self):
+    def should_download(self):
         raise NotImplementedError()
 
     @abstractmethod
-    def should_download(self):
+    def is_downloaded(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def download(self):
         raise NotImplementedError()
 
     @abstractmethod
@@ -46,10 +48,18 @@ class Dataset:
     def move_to_local(self):
         raise NotImplementedError()
 
+    @abstractmethod
+    def is_on_local(self):
+        raise NotImplementedError()
+
 
 @dataclass(frozen=True)
 class ClassificationDataset(Dataset):
 
     @abstractmethod
-    def class_frequencies(self) -> torch.Tensor:
+    def class_counts(self, tr_va: TrVa) -> torch.Tensor:
         raise NotImplementedError()
+
+
+class DatasetNotDownloadableError(NotImplementedError):
+    pass

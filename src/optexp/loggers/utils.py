@@ -12,17 +12,7 @@ def pprint_dict(adict):
             return f"{k}={v:.2e}"
         return f"{k}={v}"
 
-    def filter_metric(k):
-        x = "PerSequenceLength" not in k
-        y = "norm" not in k
-        return x and y
-
-    return (
-        "{"
-        + ", ".join(
-            fmt_entry(k, v)
-            for k, v in sorted(adict.items())
-            if not hasattr(v, "__len__") and filter_metric(k)
-        )
-        + "}"
+    dict_str = ", ".join(
+        fmt_entry(k, v) for k, v in sorted(adict.items()) if not hasattr(v, "__len__")
     )
+    return "{" + dict_str + "}"
