@@ -12,8 +12,8 @@ from optexp.runner.data_utils import column_to_numpy, should_convert_column_to_n
 class WandbAPI:
     """Static class to provide a singleton handler to the wandb api.
 
-    When in need to call the Wandb API, use WandbAPI.get_handler()
-    instead of creating a new instance of wandb.Api().
+    When in need to call the Wandb API, use WandbAPI.get_handler() instead of creating a
+    new instance of wandb.Api().
     """
 
     api_handler = None

@@ -1,8 +1,8 @@
 def pprint_dict(adict):
     """Pretty printing for logging dictionaries.
 
-    Ignores keys containing lists, prints floating points in scientific
-    notation, shows accuracy in percentage.
+    Ignores keys containing lists, prints floating points in scientific notation, shows
+    accuracy in percentage.
     """
 
     def fmt_entry(k, v):

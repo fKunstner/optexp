@@ -11,7 +11,7 @@ from optexp.datasets.text.utils import prepare_data_loader, tokenize_and_numify
 
 
 def download_file(url: str, fname: str, chunk_size=1024):
-    """Helper function to download a file from a given url"""
+    """Helper function to download a file from a given url."""
     resp = requests.get(url, stream=True)
     with open(fname, "wb") as file:
         for data in resp.iter_content(chunk_size=chunk_size):
@@ -19,7 +19,7 @@ def download_file(url: str, fname: str, chunk_size=1024):
 
 
 def download_tiny_stories(save_path: Path):
-    """Downloads the TinyStories dataset to save_path"""
+    """Downloads the TinyStories dataset to save_path."""
     data_dir = save_path / "TinyStories"
     os.makedirs(data_dir, exist_ok=True)
 

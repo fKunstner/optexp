@@ -122,8 +122,9 @@ def tokenize_and_numify(
 
 
 def batchify(data: torch.Tensor, bsz: int) -> torch.Tensor:
-    """Divides the data into ``bsz`` separate sequences, removing extra elements that
-    wouldn't cleanly fit.
+    """Divides the data into ``bsz`` separate sequences.
+
+    Removes extra elements that wouldn't cleanly fit.
 
     Arguments:
         data: Tensor, shape ``[N]``

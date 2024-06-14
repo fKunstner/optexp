@@ -123,14 +123,13 @@ class Problem:
         return metrics
 
     def one_epoch(self, optimizer: torch.optim.Optimizer) -> dict:
-        """Optimizes the model on a specific loss function defined for this
-        problem for one epoch on the training set.
+        """Runs one epoch.
 
         Args:
             optimizer (torch.optim.Optimizer): The optimizer to use for updating model parameters
 
         Raises:
-            DivergingException: Raised when the value for any of the metrics is NAN or INF.
+            DivergingException: Raised if any of the metrics is NAN or INF.
 
         Returns:
             Keys are strings representing the name of the criterions and values

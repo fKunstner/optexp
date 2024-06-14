@@ -66,30 +66,6 @@ def starting_grid_for(
     return [opt(lr) for opt in optimizers for lr in lrs]
 
 
-def get_sparse_optimizers(start: int, end: int):
-    """Gets Adam + SGD optimizers with and w/o momentum using a sparse grid of
-    learning rates (density 0)
-
-    Args:
-        start: starting learning rate
-        end: final learning rate
-
-    Returns:
-        List[Optimizer]: A list of optimizers
-    """
-    learning_rates = lr_grid(start=start, end=end, base=10, density=0)
-    sgd_no_mom_optims: List[Optimizer] = [SGD(lr) for lr in learning_rates]
-    sgd_mom_optims: List[Optimizer] = [SGD(lr, momentum=0.9) for lr in learning_rates]
-    adam_no_mom_optims: List[Optimizer] = [Adam(lr, beta1=0.0) for lr in learning_rates]
-    adam_mom_optims: List[Optimizer] = [Adam(lr) for lr in learning_rates]
-
-    optimizers: List[Optimizer] = sum(
-        [sgd_no_mom_optims, sgd_mom_optims, adam_no_mom_optims, adam_mom_optims], []
-    )
-
-    return optimizers
-
-
 def remove_duplicate_exps(experiments: List[Experiment]):
     exps = []
     for exp in experiments:

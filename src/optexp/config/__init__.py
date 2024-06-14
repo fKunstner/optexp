@@ -19,10 +19,10 @@ LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
 class UseWandbProject:
-    """
-    Context manager to set the wandb project for a block of code.
-    Temporarily overrides the global project set in the environment variable.
-    Used in get_wandb_project().
+    """Context manager to set the wandb project for a block of code.
+
+    Temporarily overrides the global project set in the environment variable. Used in
+    get_wandb_project().
     """
 
     global_project: Optional[str] = None
@@ -142,8 +142,7 @@ def get_console_logging_level() -> str:
 
 
 def get_slurm_email() -> str:
-    """
-    Email to use for slurm notifications, defined in an environment variable.
+    """Email to use for slurm notifications, defined in an environment variable.
 
     Raises:
          ValueError: if the environment variable is not set.
@@ -158,8 +157,7 @@ def get_slurm_email() -> str:
 
 
 def get_slurm_account() -> str:
-    """
-    Account to use to submit to slurm, defined in an environment variable.
+    """Account to use to submit to slurm, defined in an environment variable.
 
     Raises:
          ValueError: if the environment variable is not set.

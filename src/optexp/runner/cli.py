@@ -222,13 +222,9 @@ def report(experiments: List[Experiment], by: Optional[str]) -> None:
 def remove_experiments_that_are_already_saved(
     experiments: List[Experiment],
 ) -> List[Experiment]:
-    """Checks a list of experiments against the experiments stored on wandb. Returns
-    only the experiments that are not saved and marked as successful.
+    """Checks a list of experiments against the experiments stored on wandb.
 
-    Args:
-        experiments: List of experiments to check
-
-    Returns: List of experiments that still need to run
+    Returns only the experiments that are not saved and marked as successful.
     """
 
     if len(experiments) == 0:

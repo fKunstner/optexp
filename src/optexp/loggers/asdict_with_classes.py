@@ -1,5 +1,5 @@
-"""Utility function to convert dataclass instances to dictionaries, while
-preserving the class name of the dataclass.
+"""Utility function to convert dataclass instances to dictionaries, while preserving the
+class name of the dataclass.
 
 The existing implementation of asdict in dataclasses.py creates
 dictionaries containing the content of the dataclass instance, but does
@@ -45,8 +45,10 @@ def _is_dataclass_instance(obj):
 
 
 def _asdict_inner(obj, dict_factory):
-    """Return the fields of a dataclass instance as a new dictionary mapping
-    field names to field values.
+    """Dataclass instance as a dictionary.
+
+    Return the fields of a dataclass instance as a new dictionary mapping field names to
+    field values.
 
     Main change from
     https://github.com/python/cpython/blob/26f396a55f8f208f229bdb700f1d7a17ca81493d/Lib/dataclasses.py#L1287-L1325
@@ -88,8 +90,8 @@ def _asdict_inner(obj, dict_factory):
 
 
 def asdict_with_class(obj, dict_factory=dict):
-    """Return the fields of a dataclass instance as a new dictionary mapping
-    field names to field values.
+    """Return the fields of a dataclass instance as a new dictionary mapping field names
+    to field values.
 
     Same as dataclasses.asdict, but with one difference:
     The class name of the dataclass is included in the __class__ field.

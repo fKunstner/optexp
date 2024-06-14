@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 from torch import nn as nn
 from torch.nn.functional import cross_entropy, mse_loss
@@ -16,12 +18,21 @@ class Accuracy(nn.Module):
             return torch.sum((classes == labels).float())
 
 
-def _groupby_average(inputs: torch.Tensor, classes, num_classes):
-    """Given inputs and classes, both of size [n], where classes contains indices in [1,
-    ..., num_classes]
+def _groupby_sum(
+    inputs: torch.Tensor, classes, num_classes
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """Sums by class.
 
-    - `sum_by_class`: [num_classes] containing the sum of the inputs per class
-    - `label_counts`: [num_classes] containing the number of elements per class
+    Args:
+        inputs: Tensor of size [n]
+        classes: Tensor of size [n] containing indices in [1, ..., num_classes]
+        num_classes: Number of classes
+
+    Returns:
+        tuple of (sum_by_class, label_counts) where
+        sum_by_class: [num_classes] containing the sum of the inputs per class
+        label_counts: [num_classes] containing the number of elements per class
+
     such that
         sum_by_class[c] == sum(inputs[classes == c])
         label_counts[c] == sum(classes == c)
@@ -45,7 +56,7 @@ class CrossEntropyLossPerClass(nn.Module):
     def forward(inputs, labels):
         num_classes = inputs.shape[1]
         losses = cross_entropy(inputs, labels, reduction="none")
-        return _groupby_average(losses, labels, num_classes)
+        return _groupby_sum(losses, labels, num_classes)
 
 
 class MSELossPerClass(nn.Module):
@@ -57,7 +68,7 @@ class MSELossPerClass(nn.Module):
         num_classes = inputs.shape[1]
         one_hot_labels = torch.nn.functional.one_hot(labels, num_classes=num_classes)
         losses = mse_loss(inputs, one_hot_labels, reduction="none")
-        return _groupby_average(losses.mean(axis=1), labels, num_classes)
+        return _groupby_sum(losses.mean(axis=1), labels, num_classes)
 
 
 class AccuracyPerClass(nn.Module):
@@ -69,7 +80,7 @@ class AccuracyPerClass(nn.Module):
         num_classes = inputs.shape[1]
         classes = torch.argmax(inputs, dim=1)
         accuracy_per_sample = (classes == labels).float()
-        return _groupby_average(accuracy_per_sample, labels, num_classes)
+        return _groupby_sum(accuracy_per_sample, labels, num_classes)
 
 
 class ClassificationSquaredLoss(nn.Module):

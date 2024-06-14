@@ -45,12 +45,11 @@ class LightningExperiment(Experiment):
             )
 
     def run_experiment(self) -> None:
-        """
-        Performs a run of the experiments. Generates the run-id, applies the seed
-        and creates the data logger. Initializes the problem and optimizer and
-        optimizes the problem given the optimizer for the defined amount of epochs.
-        Logs the loss function values/metrics returned during the eval and training.
-        Catches any exception raised during this process and logs it before exiting.
+        """Performs a run of the experiments. Generates the run-id, applies the seed and
+        creates the data logger. Initializes the problem and optimizer and optimizes the
+        problem given the optimizer for the defined amount of epochs. Logs the loss
+        function values/metrics returned during the eval and training. Catches any
+        exception raised during this process and logs it before exiting.
 
         Raises:
             BaseException: Raised when user Ctrl+C when experiments is running.
@@ -127,7 +126,6 @@ class LightningExperiment(Experiment):
             train_loss: float = 0.0
             total_weight: float = 0.0
             mini_batch_losses = []
-            grad_norms: Dict[str, List] = {}
             loader = iter(self.problem.train_loader)
 
             def get_batch():
@@ -180,7 +178,6 @@ class LightningExperiment(Experiment):
                     if p.grad is not None:
                         p.grad /= total_weight
 
-                self._grad_norms(grad_norms_dict=grad_norms)
                 mini_batch_loss = loss_to_save
 
                 reduced_mini_batch_loss = reduce(self.fabric, mini_batch_loss)
@@ -216,10 +213,6 @@ class LightningExperiment(Experiment):
                         metrics_and_counts_eval_val, key_prefix="val"
                     )
 
-                    param_norms = self._param_norms()
-                    metrics_training.update(param_norms)
-                    metrics_training.update(grad_norms)
-
                     self.synchronised_log(
                         data_logger,
                         metrics_eval_val,
@@ -232,7 +225,6 @@ class LightningExperiment(Experiment):
                     train_loss = 0.0
                     total_weight = 0.0
                     mini_batch_losses = []
-                    grad_norms = {}
 
                 self.check_exceptions(exceptions)
 
@@ -328,63 +320,3 @@ class LightningExperiment(Experiment):
             data_logger.log_data(step_dict)
             data_logger.commit()
         self.fabric.barrier()
-
-    def _grad_norms(self, grad_norms_dict: dict) -> None:
-        """Computes the norm of the gradient. Intended to be called every mini-
-        batch. Norms of gradients are computed per trainable layer. Also an
-        overall norm is computed by concatenating the gradient of all of the
-        trainable layers into one vector and computing the norm of that vector.
-
-        Args:
-            grad_norms_dict (dict): Keys correspond to the layers (and the overall gradient norm) and
-            the values are lists. The lists contain the values of gradients upto the current mini-batch.
-            When this function is called, it computes the gradients for each layer and appends the value
-            to the corresponding list.
-        """
-        v = torch.zeros((1,), device=get_device())
-
-        with torch.no_grad():
-            for name, param in self.problem.torch_model.named_parameters():
-                if param.requires_grad:
-                    if param.grad is None:
-                        raise ValueError(f"Param {name} has no gradient")
-                    layer_grad_norm = torch.linalg.norm(param.grad)
-
-                    if f"grad_{name}_norm" not in grad_norms_dict:
-                        grad_norms_dict[f"grad_{name}_norm"] = []
-
-                    grad_norms_dict[f"grad_{name}_norm"].append(
-                        layer_grad_norm.cpu().item()
-                    )
-                    v = torch.cat((v, param.grad.view(-1)))
-                    del layer_grad_norm
-            overall_grad_norm = torch.linalg.norm(v)
-
-            if "overall_grad_norm" not in grad_norms_dict:
-                grad_norms_dict["overall_grad_norm"] = []
-
-            grad_norms_dict["overall_grad_norm"].append(overall_grad_norm.cpu().item())
-            del overall_grad_norm
-
-    def _param_norms(self) -> dict:
-        """Computes the norm of the parameters. Intended to be called at the
-        end of every epoch. Norms of parameters are computed per  layer. Also
-        an overall norm is computed by concatenating all of the layers into one
-        vector and computing the norm of that vector.
-
-        Returns:
-            A dictionary where keys are string that correspond to the
-            layers of the model (and the overall norm) and the values are the norms.
-        """
-        param_norm_dict = {}
-        v = torch.zeros((1,), device=get_device())
-        with torch.no_grad():
-            for name, param in self.problem.torch_model.named_parameters():
-                layer_norm = torch.linalg.norm(param)
-                param_norm_dict[f"{name}_norm"] = layer_norm.cpu().item()
-                del layer_norm
-                v = torch.cat((v, param.view(-1)))
-        overall_norm = torch.linalg.norm(v)
-        param_norm_dict["params_norm"] = overall_norm.cpu().item()
-        del overall_norm
-        return param_norm_dict
