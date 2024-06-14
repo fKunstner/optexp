@@ -35,6 +35,17 @@ class Dataset:
     def should_download(self):
         raise NotImplementedError()
 
+    @abstractmethod
+    def should_move_to_local(self):
+        """Whether the dataset should be moved to the local machine when running on a
+        cluster."""
+
+        raise NotImplementedError()
+
+    @abstractmethod
+    def move_to_local(self):
+        raise NotImplementedError()
+
 
 @dataclass(frozen=True)
 class ClassificationDataset(Dataset):

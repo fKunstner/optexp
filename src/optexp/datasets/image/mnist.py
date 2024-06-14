@@ -4,7 +4,6 @@ from functools import partial
 import numpy as np
 import torch
 import torchvision
-from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 
 from optexp import config
@@ -22,7 +21,10 @@ class MNIST(Dataset):
         raise NotImplementedError()
 
     def should_download(self):
-        raise NotImplementedError()
+        return True
+
+    def should_move_to_local(self):
+        return True
 
     def input_shape(self, batch_size) -> torch.Size:
         raise NotImplementedError()
@@ -118,11 +120,11 @@ class MNIST(Dataset):
 
         train_targets = train_dataset.targets.to(torch.int)
         val_targets = val_dataset.targets.to(torch.int)
-        train_dataset = TensorDataset(
+        train_dataset = torch.utils.data.TensorDataset(
             raw_train_data.to(config.get_device()),
             train_targets.to(config.get_device()),
         )
-        val_dataset = TensorDataset(
+        val_dataset = torch.utils.data.TensorDataset(
             raw_val_data.to(config.get_device()),
             val_targets.to(config.get_device()),
         )
@@ -155,101 +157,6 @@ class MNIST(Dataset):
         )
 
     def download(self):
-        download_mnist(config.get_dataset_directory())
-
-
-def download_mnist(save_path):
-    for train in [True, False]:
-        MNIST(save_path, download=True, train=train)
-
-
-def transform1(x):
-    return x.to(torch.float32).flatten()
-
-
-def transform2(x):
-    mean = torch.tensor(
-        0.1307, dtype=torch.float32, device=x.device, requires_grad=False
-    )
-    std = torch.tensor(
-        0.3081, dtype=torch.float32, device=x.device, requires_grad=False
-    )
-    return (x - mean) / std
-
-
-def transform3(x):
-    return torch.flatten(x)
-
-
-def transform4(x):
-    return x.unsqueeze(0)
-
-
-def load_mnist(
-    save_path, batch_size, shuffle, num_workers, normalize, flatten, device, mode=None
-):
-    if normalize:
-        mean = torch.tensor(
-            0.1307, dtype=torch.float32, device=device, requires_grad=False
-        )
-        std = torch.tensor(
-            0.3081, dtype=torch.float32, device=device, requires_grad=False
-        )
-    else:
-        mean = torch.tensor(0, dtype=torch.float32, device=device)
-        std = torch.tensor(1, dtype=torch.float32, device=device)
-
-    import pdb
-
-    if flatten:
-        transform = transforms.Compose(
-            [
-                transforms.Lambda(transform1),
-                transforms.Lambda(lambda x: print("a", flatten) or pdb.set_trace()),
-                transforms.Lambda(transform2),
-                transforms.Lambda(transform3),
-            ]
-        )
-    else:
-        transform = transforms.Compose(
-            [
-                transforms.Lambda(transform1),
-                transforms.Lambda(lambda x: print("a", flatten) or pdb.set_trace()),
-                transforms.Lambda(transform2),
-                transforms.Lambda(transform4),
-            ]
-        )
-
-    train_set = torchvision.datasets.MNIST(
-        save_path,
-        download=False,
-        train=True,
-        transform=transform,
-    )
-
-    val_set = torchvision.datasets.MNIST(
-        save_path,
-        download=False,
-        train=False,
-        transform=transform,
-    )
-    train_set.data = train_set.data.to(device)
-    train_set.targets = train_set.targets.to(device)
-    val_set.data = val_set.data.to(device)
-    val_set.targets = val_set.targets.to(device)
-    output_shape = np.array([train_set.targets.max().item() + 1])
-
-    train_data_loader = DataLoader(
-        train_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
-    )
-    val_data_loader = DataLoader(
-        val_set,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers,
-    )
-    loaders = {"train_loader": train_data_loader, "val_loader": val_data_loader}
-    features, _ = next(iter(train_data_loader))
-    input_shape = np.array(list(features[0].shape))
-    result = loaders, input_shape, output_shape, torch.bincount(train_set.targets)
-    return result
+        path = str(config.get_dataset_directory())
+        for train in [True, False]:
+            torchvision.datasets.MNIST(path, download=True, train=train)

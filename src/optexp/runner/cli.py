@@ -123,7 +123,7 @@ def exp_runner_cli(
     args = parser.parse_args()
 
     if args.report:
-        report_by_key = args.report if type(args.report) == str else None
+        report_by_key = args.report if isinstance(args.report, str) else None
         report(experiments, report_by_key)
         return
 
@@ -173,7 +173,7 @@ def exp_runner_cli(
         )
         return
     if args.test:
-        get_logger().info(f"Preparing to run first experiments in group")
+        get_logger().info("Preparing to run first experiments in group")
 
         if slurm_config is None:
             raise ValueError(
@@ -222,8 +222,8 @@ def report(experiments: List[Experiment], by: Optional[str]) -> None:
 def remove_experiments_that_are_already_saved(
     experiments: List[Experiment],
 ) -> List[Experiment]:
-    """Checks a list of experiments against the experiments stored on wandb.
-    Returns only the experiments that are not saved and marked as successful.
+    """Checks a list of experiments against the experiments stored on wandb. Returns
+    only the experiments that are not saved and marked as successful.
 
     Args:
         experiments: List of experiments to check
@@ -319,7 +319,7 @@ def run_slurm(
 
     group = experiments[0].group
     tmp_filename = f"tmp_{group}.sh"
-    print(f"  Saving sbatch file in {tmp_filename}")
+    print("  Saving sbatch file in {tmp_filename}")
     with open(tmp_filename, "w+") as file:
         file.writelines(contents)
 
@@ -329,7 +329,7 @@ def run_slurm(
         if dataset.should_download():
             dataset.download()
 
-    print(f"  Sending experiments to Slurm - executing sbatch file")
+    print("  Sending experiments to Slurm - executing sbatch file")
     os.system(f"sbatch {tmp_filename}")
 
 

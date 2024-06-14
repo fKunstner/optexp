@@ -20,8 +20,7 @@ from optexp.problems import DivergingException, Problem
 
 @dataclass
 class Experiment:
-    """
-    Represents an experiments where a problem is optimized given an optimizer.
+    """Represents an experiments where a problem is optimized given an optimizer.
 
     Attributes:
         optim: The optimizer to use for optimizing the model defined in the problem.
@@ -69,12 +68,11 @@ class Experiment:
         ]
 
     def run_experiment(self) -> None:
-        """
-        Performs a run of the experiments. Generates the run-id, applies the seed
-        and creates the data logger. Initializes the problem and optimizer and
-        optimizes the problem given the optimizer for the defined amount of epochs.
-        Logs the loss function values/metrics returned during the eval and training.
-        Catches any exception raised during this process and logs it before exiting.
+        """Performs a run of the experiments. Generates the run-id, applies the seed and
+        creates the data logger. Initializes the problem and optimizer and optimizes the
+        problem given the optimizer for the defined amount of epochs. Logs the loss
+        function values/metrics returned during the eval and training. Catches any
+        exception raised during this process and logs it before exiting.
 
         Raises:
             BaseException: Raised when user Ctrl+C when experiments is running.
@@ -160,21 +158,21 @@ class Experiment:
     def exp_id(self) -> str:
         """Return a unique identifier for this experiments.
 
-        Not a unique identifier for the current run of the experiments.
-        Should be unique for the definition of the experiments, combining
-        the problem, optimizer, and seed.
+        Not a unique identifier for the current run of the experiments. Should be unique
+        for the definition of the experiments, combining the problem, optimizer, and
+        seed.
         """
         return hashlib.sha1(str.encode(str(self))).hexdigest()
 
     def load_data(self):
         """Tries to load any data for the experiments.
 
-        Starts by trying to load data from the wandb download folder,
-        if that fails it tries to load data from the local runs folder.
+        Starts by trying to load data from the wandb download folder, if that fails it
+        tries to load data from the local runs folder.
         """
         try:
             df = self._load_wandb_data()
-        except ValueError as _:
+        except FileNotFoundError:
             print(f"Experiment did not have wandb data for, trying local data [{self}]")
             df = self._load_local_data()
         return df
@@ -199,16 +197,14 @@ class Experiment:
         return run_data
 
     def _load_wandb_data(self) -> pd.DataFrame:
-        """Loads data from most recent run of experiments from wandb"""
+        """Loads data from most recent run of experiments from wandb."""
         save_dir = (
             config.get_wandb_cache_directory()
             / Path(self.group)
             / f"{self.exp_id()}.parquet"
         )
         if not save_dir.is_file():
-            raise ValueError(
-                f"Experiment data has not been downloaded for exp:{str(self)}"
-            )
+            raise FileNotFoundError(f"File not found for experiment {self}")
 
         run_data = pd.read_parquet(save_dir)
         return run_data

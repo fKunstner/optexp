@@ -121,7 +121,7 @@ class DataLogger:
         try:
             get_logger().info(f"Last saved dict: {pprint_dict(self._dicts[-1])}")
         except IndexError:
-            get_logger().debug(f"No info to log.")
+            get_logger().debug("No info to log.")
 
         if config.get_wandb_status():
             if self.run is None:

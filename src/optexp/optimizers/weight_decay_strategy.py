@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Iterable, Iterator, List, Union
+from typing import Dict, Iterable, List, Union
 
 from torch.nn import Module, Parameter
 

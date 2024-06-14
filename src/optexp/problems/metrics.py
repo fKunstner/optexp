@@ -2,8 +2,6 @@ import torch
 from torch import nn as nn
 from torch.nn.functional import cross_entropy, mse_loss
 
-from optexp.config import get_device
-
 
 class Accuracy(nn.Module):
     def __init__(self, reduction="mean") -> None:
@@ -19,7 +17,9 @@ class Accuracy(nn.Module):
 
 
 def _groupby_average(inputs: torch.Tensor, classes, num_classes):
-    """Given inputs and classes, both of size [n], where classes contains indices in [1, ..., num_classes]
+    """Given inputs and classes, both of size [n], where classes contains indices in [1,
+    ..., num_classes]
+
     - `sum_by_class`: [num_classes] containing the sum of the inputs per class
     - `label_counts`: [num_classes] containing the number of elements per class
     such that
