@@ -81,23 +81,12 @@ class MNIST(ImageDataset):
             torch.bincount(train_set.targets),
         )
 
+    def download(self):
+        raise NotImplementedError
+
 
 @dataclass(frozen=True)
 class ImageNet(ImageDataset):
     batch_size: int
     name: str = field(default="ImageNet", init=False)
-    flatten: bool = False
-
-
-@dataclass(frozen=True)
-class HeavyTailedImageNet(ImageDataset):
-    batch_size: int
-    name: str = field(default="HeavyTailedImageNet", init=False)
-    flatten: bool = False
-
-
-@dataclass(frozen=True)
-class SmallImageNet(ImageDataset):
-    batch_size: int
-    name: str = field(default="SmallImageNet", init=False)
     flatten: bool = False

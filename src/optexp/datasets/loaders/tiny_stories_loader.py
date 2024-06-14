@@ -1,16 +1,16 @@
 import os
-import requests
 from pathlib import Path
 from typing import Iterator
 
+import requests
 from torch.utils.data import IterableDataset
 from torchtext.vocab import build_vocab_from_iterator
 
-from optexp.datasets.loaders.tokenizers import _get_bpe_tokenizer, _create_bpe_tokenizer
 from optexp.datasets.loaders.language_loader import (
-    tokenize_and_numify,
     prepare_data_loader,
+    tokenize_and_numify,
 )
+from optexp.datasets.loaders.tokenizers import _get_bpe_tokenizer
 
 
 def download_file(url: str, fname: str, chunk_size=1024):

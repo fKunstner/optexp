@@ -12,44 +12,6 @@ def download_mnist(save_path):
         MNISTDataset(save_path, download=True, train=train)
 
 
-def download_tiny_mnist(save_path):
-    download_mnist(save_path)
-
-
-def load_tiny_mnist(
-    save_path, batch_size, shuffle, num_workers, normalize, flatten, device
-):
-    return load_mnist(
-        save_path,
-        batch_size,
-        shuffle,
-        num_workers,
-        normalize,
-        flatten,
-        device,
-        mode="tiny",
-    )
-
-
-def download_micro_mnist(save_path):
-    download_mnist(save_path)
-
-
-def load_micro_mnist(
-    save_path, batch_size, shuffle, num_workers, normalize, flatten, device
-):
-    return load_mnist(
-        save_path,
-        batch_size,
-        shuffle,
-        num_workers,
-        normalize,
-        flatten,
-        device,
-        mode="micro",
-    )
-
-
 def transform1(x):
     return x.to(torch.float32).flatten()
 
