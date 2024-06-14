@@ -1,7 +1,6 @@
 import math
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 import torch
 
@@ -13,7 +12,7 @@ from optexp.problems.exceptions import DivergingException
 
 
 @dataclass
-class Problem(ABC):
+class Problem:
     """Wrapper for a model and dataset defining a problem to optimize.
 
     Attributes:
@@ -26,6 +25,7 @@ class Problem(ABC):
     batch_size: int
     lossfunc: torch.nn.Module
     metrics: List[torch.nn.Module]
+    micro_batch_size: Literal["auto"] | int = "auto"
 
     def init_problem(self) -> None:
         """Loads the dataset and the PyTorch model onto device."""
@@ -175,23 +175,8 @@ class Problem(ABC):
         }
         return metrics
 
-    @abstractmethod
     def init_loss(self) -> torch.nn.Module:
-        """Get the loss function to use when optimizing the model for this
-        specific problem.
+        return self.lossfunc
 
-        Returns:
-            The PyTorch loss function,
-        """
-        pass
-
-    @abstractmethod
     def get_criterions(self) -> List[torch.nn.Module]:
-        """Get a list of loss functions to use when evaluating the model for
-        this specific problem. Also useful to call when plotting to know what
-        evaluation metrics/losses to plot.
-
-        Returns:
-            List of PyTorch loss functions.
-        """
-        pass
+        return self.metrics
