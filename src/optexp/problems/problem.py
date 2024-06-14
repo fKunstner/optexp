@@ -103,7 +103,7 @@ class Problem(ABC):
                 del labels
         return num_samples, running_metrics, running_n_samples
 
-    def eval(self, val: bool = True, return_raw: bool = False) -> dict:
+    def eval(self, val: bool = True) -> dict:
         """Wrapper to evaluate model. Provides the list of criterions to use.
 
         Args:
@@ -117,31 +117,23 @@ class Problem(ABC):
         criterions = self.get_criterions()
         num_samples, running_metrics, running_n_samples = self.eval_raw(val=val)
         key_prefix = "va" if val else "tr"
-        if return_raw:
-            result = {
-                "metric_values": running_metrics,
-                "metric_n_samples": running_n_samples,
-                "total_samples": num_samples,
-            }
 
-        else:
-            for module in criterions:
-                if torch.numel(running_metrics[module]) > 1:
-                    running_metrics[module] = (
-                        running_metrics[module] / running_n_samples[module]
-                    )
-                else:
-                    running_metrics[module] /= num_samples
-
-            metrics: Dict[str, Any] = {
-                f"{key_prefix}_{str(module)[:-2]}": (
-                    value.tolist() if torch.numel(value) > 1 else value.item()
+        for module in criterions:
+            if torch.numel(running_metrics[module]) > 1:
+                running_metrics[module] = (
+                    running_metrics[module] / running_n_samples[module]
                 )
-                for module, value in running_metrics.items()
-            }
+            else:
+                running_metrics[module] /= num_samples
 
-            result = metrics
-        return result
+        metrics: Dict[str, Any] = {
+            f"{key_prefix}_{str(module)[:-2]}": (
+                value.tolist() if torch.numel(value) > 1 else value.item()
+            )
+            for module, value in running_metrics.items()
+        }
+
+        return metrics
 
     def one_epoch(self, optimizer: torch.optim.Optimizer) -> dict:
         """Optimizes the model on a specific loss function defined for this

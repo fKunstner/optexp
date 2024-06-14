@@ -10,5 +10,7 @@ class Classification(Problem):
     def init_loss(self) -> torch.nn.Module:
         return torch.nn.CrossEntropyLoss()
 
+    _criterions = [torch.nn.CrossEntropyLoss(), Accuracy()]
+
     def get_criterions(self) -> List[torch.nn.Module]:
-        return [torch.nn.CrossEntropyLoss(), Accuracy()]
+        return self._criterions
