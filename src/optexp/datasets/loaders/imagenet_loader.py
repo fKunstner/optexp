@@ -234,7 +234,6 @@ def load_small_imagenet(
     return loaders, input_shape, output_shape, torch.bincount(targets)
 
 
-
 def load_imagenet(
     save_path, batch_size, shuffle, num_workers, normalize, flatten, device, mode=None
 ):
