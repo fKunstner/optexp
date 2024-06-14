@@ -9,9 +9,7 @@ from tqdm import tqdm
 
 from optexp import config
 from optexp.config import get_logger
-from optexp.datasets import download_dataset
 from optexp.experiments.experiment import Experiment
-from optexp.experiments.lightning_experiment import LightningExperiment
 from optexp.runner.slurm.sbatch_writers import (
     make_jobarray_file_contents,
     make_jobarray_file_contents_split,
@@ -263,7 +261,7 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
 
     for dataset in datasets:
         if dataset.should_download():
-            download_dataset(dataset_name=dataset.name)
+            dataset.download()
 
     for exp in tqdm(experiments):
         exp.run_experiment()
@@ -329,7 +327,7 @@ def run_slurm(
 
     for dataset in datasets:
         if dataset.should_download():
-            download_dataset(dataset_name=dataset.name)
+            dataset.download()
 
     print(f"  Sending experiments to Slurm - executing sbatch file")
     os.system(f"sbatch {tmp_filename}")

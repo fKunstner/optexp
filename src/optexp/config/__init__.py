@@ -137,14 +137,6 @@ def get_wandb_cache_directory() -> Path:
     return get_workspace_directory() / "wandb_cache"
 
 
-def get_plots_directory() -> Path:
-    return get_workspace_directory() / "plots"
-
-
-def get_final_plots_directory() -> Path:
-    return get_workspace_directory() / Path("plots") / "RESULTS"
-
-
 def get_console_logging_level() -> str:
     return os.environ.get(ENV_VAR_LOGGING, "DEBUG")
 

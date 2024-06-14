@@ -1,11 +1,4 @@
-from optexp.models.initializer import LayerInit, TransformerEncoderInitializer
-from optexp.models.mlp import MLP
 from optexp.models.model import Model
-from optexp.models.transformer_encoder import (
-    BasicTransformerModel,
-    FreezableTransformerModel,
-    GPTModel,
-    TransformerModel,
-)
+from optexp.models.vision import LeNet5, ResNet
 
-__all__ = ["MLP"]
+__all__ = ["Model", "LeNet5", "ResNet"]

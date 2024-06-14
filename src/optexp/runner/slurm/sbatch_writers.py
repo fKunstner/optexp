@@ -16,42 +16,21 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
         slurm_config: Slurm configuration to use
         n_jobs: Number of jobs to run in the batch
     """
-
-    gpu_str = ""
-    if slurm_config.gpu is not None:
-        if isinstance(slurm_config.gpu, str):
-            gpu_str = f"#SBATCH --gpus-per-node={slurm_config.gpu}:{slurm_config.n_gpu}"
-        elif isinstance(slurm_config.gpu, bool):
-            if slurm_config.gpu:
-                gpu_str = f"#SBATCH --gpus-per-node={slurm_config.n_gpu}"
-            else:
-                gpu_str = ""
-
-    bangline = "#!/bin/sh\n"
-
-    formatted_header = textwrap.dedent(
-        """
-        #SBATCH --account={acc}
-        #SBATCH --mem={mem}
-        #SBATCH --time={time}
-        #SBATCH --cpus-per-task={cpus}
-        #SBATCH --mail-user={email}
+    header = textwrap.dedent(
+        f"""
+        #!/bin/sh
+        #SBATCH --account={config.get_slurm_account()}
+        #SBATCH --mem={slurm_config.mem_str}
+        #SBATCH --time={slurm_config.time_str}
+        #SBATCH --cpus-per-task={slurm_config.n_cpus}
+        #SBATCH --mail-user={config.get_slurm_email()}
         #SBATCH --mail-type=ALL
-        #SBATCH --array=0-{last_job_idx}
-        {gpu_str}
+        #SBATCH --array=0-{n_jobs - 1}
+        {slurm_config.gpu_str}
 
         """
-    ).format(
-        acc=config.get_slurm_account(),
-        mem=slurm_config.mem,
-        time=slurm_config.time,
-        cpus=slurm_config.cpus,
-        email=config.get_slurm_email(),
-        gpu_str=gpu_str,
-        last_job_idx=n_jobs - 1,
     )
-
-    return bangline + formatted_header
+    return header
 
 
 def make_jobarray_content(
@@ -90,8 +69,6 @@ def make_jobarray_content_split(
     run_exp_by_idx_command: str, num_splits: int, split: int
 ):
     """Creates the content of a jobarray sbatch file for Slurm."""
-
-    # bash_script_idx_to_exp_script_idx = []
 
     commands_for_each_experiment = []
     for i in range(num_splits):

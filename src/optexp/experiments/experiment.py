@@ -152,7 +152,7 @@ class Experiment:
         exp_dir = (
             f"{self.problem.__class__.__name__}_"
             f"{self.problem.model.__class__.__name__}_"
-            f"{self.problem.dataset.name}"
+            f"{self.problem.dataset.__class__.__name__}"
         )
         save_dir = base / exp_dir / self.exp_id()
         return save_dir
