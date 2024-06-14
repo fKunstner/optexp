@@ -23,21 +23,20 @@ class Problem(ABC):
 
     model: Model
     dataset: Dataset
+    batch_size: int
 
     def init_problem(self) -> None:
         """Loads the dataset and the PyTorch model onto device."""
         get_logger().info("Loading problem: " + self.__class__.__name__)
 
-        (
-            self.train_loader,
-            self.val_loader,
-            self.input_shape,
-            self.output_shape,
-            self.class_freqs,
-        ) = self.dataset.load()
-        self.torch_model = self.model.load_model(
-            self.input_shape, self.output_shape
-        ).to(get_device())
+        self.train_loader = self.dataset.load(b=self.batch_size, tr_va="tr")
+        self.val_loader = self.dataset.load(b=self.batch_size, tr_va="va")
+        self.input_shape = self.dataset.input_shape(self.batch_size)
+        self.output_shape = self.dataset.output_shape(self.batch_size)
+
+        self.torch_model = self.model.load_model(self.input_shape, self.output_shape)
+        self.torch_model = self.torch_model.to(get_device())
+
         self.criterion = self.init_loss()
 
     def eval_raw(

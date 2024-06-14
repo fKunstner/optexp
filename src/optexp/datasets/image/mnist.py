@@ -1,29 +1,40 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partial
 
 import numpy as np
 import torch
+import torchvision
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
-from torchvision.datasets.mnist import MNIST as TorchMNIST
 
 from optexp import config
 from optexp.datasets import Dataset
+from optexp.datasets.dataset import TR_VA
 
 
 @dataclass(frozen=True)
 class MNIST(Dataset):
-    name: str = field(default="MNIST", init=False)
+
     normalize: bool = True
     flatten: bool = False
 
+    def output_shape(self, batch_size) -> torch.Size:
+        raise NotImplementedError()
+
+    def should_download(self):
+        raise NotImplementedError()
+
+    def input_shape(self, batch_size) -> torch.Size:
+        raise NotImplementedError()
+
     def load(
         self,
+        b: int,
+        tr_va: TR_VA,
+        on_gpu: bool = True,
         num_workers: int = 8,
         shuffle: bool = True,
-        on_gpu: bool = True,
     ):
-
         if on_gpu:
             return self.load_tensor_dataset(shuffle)
 
@@ -36,21 +47,21 @@ class MNIST(Dataset):
         else:
             transform_list.append(transforms.Lambda(partial(torch.unsqueeze, dim=0)))
 
-        train_dataset = TorchMNIST(
-            root=config.get_dataset_directory(),
+        train_dataset = torchvision.datasets.MNIST(
+            root=str(config.get_dataset_directory()),
             train=True,
             transform=transforms.Compose(transform_list),
         )
 
-        val_dataset = TorchMNIST(
-            root=config.get_dataset_directory(),
+        val_dataset = torchvision.datasets.MNIST(
+            root=str(config.get_dataset_directory()),
             train=False,
             transform=transforms.Compose(transform_list),
         )
 
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
-            batch_size=self.batch_size,
+            batch_size=b,
             shuffle=shuffle,
             num_workers=num_workers,
             pin_memory=True,
@@ -58,7 +69,7 @@ class MNIST(Dataset):
 
         val_loader = torch.utils.data.DataLoader(
             val_dataset,
-            batch_size=self.batch_size,
+            batch_size=b,
             shuffle=shuffle,
             num_workers=num_workers,
             pin_memory=True,
@@ -77,14 +88,14 @@ class MNIST(Dataset):
         )
 
     def load_tensor_dataset(self, shuffle):
-        train_dataset = TorchMNIST(
-            root=config.get_dataset_directory(),
+        train_dataset = torchvision.datasets.MNIST(
+            root=str(config.get_dataset_directory()),
             train=True,
             transform=transforms.ToTensor(),
         )
 
-        val_dataset = TorchMNIST(
-            root=config.get_dataset_directory(),
+        val_dataset = torchvision.datasets.MNIST(
+            root=str(config.get_dataset_directory()),
             train=False,
             transform=transforms.ToTensor(),
         )
@@ -144,9 +155,101 @@ class MNIST(Dataset):
         )
 
     def download(self):
-        for train in [True, False]:
-            TorchMNIST(
-                root=config.get_dataset_directory(),
-                download=True,
-                train=train,
-            )
+        download_mnist(config.get_dataset_directory())
+
+
+def download_mnist(save_path):
+    for train in [True, False]:
+        MNIST(save_path, download=True, train=train)
+
+
+def transform1(x):
+    return x.to(torch.float32).flatten()
+
+
+def transform2(x):
+    mean = torch.tensor(
+        0.1307, dtype=torch.float32, device=x.device, requires_grad=False
+    )
+    std = torch.tensor(
+        0.3081, dtype=torch.float32, device=x.device, requires_grad=False
+    )
+    return (x - mean) / std
+
+
+def transform3(x):
+    return torch.flatten(x)
+
+
+def transform4(x):
+    return x.unsqueeze(0)
+
+
+def load_mnist(
+    save_path, batch_size, shuffle, num_workers, normalize, flatten, device, mode=None
+):
+    if normalize:
+        mean = torch.tensor(
+            0.1307, dtype=torch.float32, device=device, requires_grad=False
+        )
+        std = torch.tensor(
+            0.3081, dtype=torch.float32, device=device, requires_grad=False
+        )
+    else:
+        mean = torch.tensor(0, dtype=torch.float32, device=device)
+        std = torch.tensor(1, dtype=torch.float32, device=device)
+
+    import pdb
+
+    if flatten:
+        transform = transforms.Compose(
+            [
+                transforms.Lambda(transform1),
+                transforms.Lambda(lambda x: print("a", flatten) or pdb.set_trace()),
+                transforms.Lambda(transform2),
+                transforms.Lambda(transform3),
+            ]
+        )
+    else:
+        transform = transforms.Compose(
+            [
+                transforms.Lambda(transform1),
+                transforms.Lambda(lambda x: print("a", flatten) or pdb.set_trace()),
+                transforms.Lambda(transform2),
+                transforms.Lambda(transform4),
+            ]
+        )
+
+    train_set = torchvision.datasets.MNIST(
+        save_path,
+        download=False,
+        train=True,
+        transform=transform,
+    )
+
+    val_set = torchvision.datasets.MNIST(
+        save_path,
+        download=False,
+        train=False,
+        transform=transform,
+    )
+    train_set.data = train_set.data.to(device)
+    train_set.targets = train_set.targets.to(device)
+    val_set.data = val_set.data.to(device)
+    val_set.targets = val_set.targets.to(device)
+    output_shape = np.array([train_set.targets.max().item() + 1])
+
+    train_data_loader = DataLoader(
+        train_set, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers
+    )
+    val_data_loader = DataLoader(
+        val_set,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
+    )
+    loaders = {"train_loader": train_data_loader, "val_loader": val_data_loader}
+    features, _ = next(iter(train_data_loader))
+    input_shape = np.array(list(features[0].shape))
+    result = loaders, input_shape, output_shape, torch.bincount(train_set.targets)
+    return result

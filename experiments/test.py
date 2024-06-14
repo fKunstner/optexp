@@ -1,4 +1,4 @@
-from optexp.datasets.image_dataset import MNIST
+from optexp.datasets.image import MNIST
 from optexp.experiments.experiment import Experiment
 from optexp.models.vision import LeNet5
 from optexp.optimizers import SGD
@@ -7,10 +7,10 @@ from optexp.runner.cli import exp_runner_cli
 from optexp.runner.slurm.slurm_config import SlurmConfig
 from optexp.utils import SEEDS_1, starting_grid_for
 
-dataset = MNIST(batch_size=256)
+dataset = MNIST()
 model = LeNet5()
-problem = Classification(model, dataset)
-opts_sparse = starting_grid_for([SGD], start=-6, end=-5)
+problem = Classification(model, dataset, batch_size=256)
+opts_sparse = starting_grid_for([lambda lr: SGD(lr)], start=-6, end=-5)
 
 EPOCHS = 2
 group = "testing"

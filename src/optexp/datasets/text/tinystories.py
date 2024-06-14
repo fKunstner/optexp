@@ -6,11 +6,8 @@ import requests
 from torch.utils.data import IterableDataset
 from torchtext.vocab import build_vocab_from_iterator
 
-from optexp.datasets.loaders.language_loader import (
-    prepare_data_loader,
-    tokenize_and_numify,
-)
-from optexp.datasets.loaders.tokenizers import _get_bpe_tokenizer
+from optexp.datasets.text.tokenizers import _get_bpe_tokenizer
+from optexp.datasets.text.utils import prepare_data_loader, tokenize_and_numify
 
 
 def download_file(url: str, fname: str, chunk_size=1024):
