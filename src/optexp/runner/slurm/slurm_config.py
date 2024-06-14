@@ -24,13 +24,15 @@ class SlurmConfig:
     def gpu_str(self) -> str:
         if self.gpu is None:
             return ""
-        else:
-            match self.gpu:
-                case None:
-                    return ""
-                case False:
-                    return ""
-                case True:
-                    return f"#SBATCH --gpus-per-node={self.n_gpus}"
-                case str():
-                    return f"#SBATCH --gpus-per-node={self.gpu}:{self.n_gpus}"
+        match self.gpu:
+            case None:
+                return ""
+            case False:
+                return ""
+            case True:
+                return f"#SBATCH --gpus-per-node={self.n_gpus}"
+            case str():
+                return f"#SBATCH --gpus-per-node={self.gpu}:{self.n_gpus}"
+        raise ValueError(
+            f"Invalid gpu value. Expected bool or str, got {type(self.gpu)}, {self.gpu}"
+        )

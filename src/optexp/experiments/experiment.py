@@ -43,13 +43,10 @@ class Experiment:
         epochs: int,
         group: str,
     ):
-        return sum(
-            [
-                Experiment.generate_all(opts, [problem], seeds, [epochs], group)
-                for (opts, seeds) in opts_and_seeds
-            ],
-            [],
-        )
+        all_exps = []
+        for opts, seeds in opts_and_seeds:
+            all_exps += Experiment.generate_all(opts, [problem], seeds, [epochs], group)
+        return all_exps
 
     @staticmethod
     def generate_all(

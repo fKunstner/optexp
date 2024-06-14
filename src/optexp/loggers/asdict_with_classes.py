@@ -61,32 +61,20 @@ def _asdict_inner(obj, dict_factory):
             result.append((f.name, value))
 
         result.append(("__class__", obj.__class__.__name__))
-
         return dict_factory(result)
 
-    elif isinstance(obj, tuple) and hasattr(obj, "_fields"):
+    if isinstance(obj, tuple) and hasattr(obj, "_fields"):
         return type(obj)(*[_asdict_inner(v, dict_factory) for v in obj])
-    elif isinstance(obj, (list, tuple)):
+    if isinstance(obj, (list, tuple)):
         return type(obj)(_asdict_inner(v, dict_factory) for v in obj)
-    elif isinstance(obj, dict):
+    if isinstance(obj, dict):
         return type(obj)(
             (_asdict_inner(k, dict_factory), _asdict_inner(v, dict_factory))
             for k, v in obj.items()
         )
-    elif inspect.isclass(obj) and obj.__class__.__name__ == "type":
+    if inspect.isclass(obj) and obj.__class__.__name__ == "type":
         return str(obj)
-    elif obj.__class__.__name__ == "Fraction":
-        return str(obj)
-    elif obj.__class__.__name__ == "LayerInit":
-        return dict(obj)
-    elif obj.__class__.__name__ == "TransformerEncoderInitializer":
-        return dict((k, _asdict_inner(v, dict_factory)) for k, v in dict(obj).items())
-    elif obj.__class__.__name__ == "VisionTransformerInitializer":
-        return dict((k, _asdict_inner(v, dict_factory)) for k, v in dict(obj).items())
-    elif obj.__class__.__name__ == "EncoderDecoderInitializer":
-        return dict((k, _asdict_inner(v, dict_factory)) for k, v in dict(obj).items())
-    else:
-        return copy.deepcopy(obj)
+    return copy.deepcopy(obj)
 
 
 def asdict_with_class(obj, dict_factory=dict):

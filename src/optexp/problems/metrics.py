@@ -1,11 +1,10 @@
 from typing import Tuple
 
 import torch
-from torch import nn as nn
 from torch.nn.functional import cross_entropy, mse_loss
 
 
-class Accuracy(nn.Module):
+class Accuracy(torch.nn.Module):
     def __init__(self, reduction="mean") -> None:
         super().__init__()
         self.reduction = reduction
@@ -14,8 +13,7 @@ class Accuracy(nn.Module):
         classes = torch.argmax(inputs, dim=1)
         if self.reduction == "mean":
             return torch.mean((classes == labels).float())
-        else:
-            return torch.sum((classes == labels).float())
+        return torch.sum((classes == labels).float())
 
 
 def _groupby_sum(
@@ -48,7 +46,7 @@ def _groupby_sum(
     return sum_by_class, label_counts
 
 
-class CrossEntropyLossPerClass(nn.Module):
+class CrossEntropyLossPerClass(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
@@ -59,19 +57,20 @@ class CrossEntropyLossPerClass(nn.Module):
         return _groupby_sum(losses, labels, num_classes)
 
 
-class MSELossPerClass(nn.Module):
+class MSELossPerClass(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
     @staticmethod
     def forward(inputs, labels):
         num_classes = inputs.shape[1]
+        # pylint: disable=not-callable
         one_hot_labels = torch.nn.functional.one_hot(labels, num_classes=num_classes)
         losses = mse_loss(inputs, one_hot_labels, reduction="none")
         return _groupby_sum(losses.mean(axis=1), labels, num_classes)
 
 
-class AccuracyPerClass(nn.Module):
+class AccuracyPerClass(torch.nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
@@ -83,7 +82,7 @@ class AccuracyPerClass(nn.Module):
         return _groupby_sum(accuracy_per_sample, labels, num_classes)
 
 
-class ClassificationSquaredLoss(nn.Module):
+class ClassificationSquaredLoss(torch.nn.Module):
     def __init__(self, reduction="mean") -> None:
         super().__init__()
         self.reduction = reduction
@@ -91,6 +90,7 @@ class ClassificationSquaredLoss(nn.Module):
     @staticmethod
     def forward(inputs, labels):
         num_classes = inputs.shape[1]
+        # pylint: disable=not-callable
         one_hot_labels = torch.nn.functional.one_hot(labels, num_classes=num_classes)
         class_sum = torch.sum(
             (torch.masked_select(inputs, one_hot_labels > 0) - 1) ** 2

@@ -8,7 +8,7 @@ from torchvision import transforms
 
 from optexp import config
 from optexp.datasets import Dataset
-from optexp.datasets.dataset import TR_VA
+from optexp.datasets.dataset import TrVa
 
 
 @dataclass(frozen=True)
@@ -32,13 +32,13 @@ class MNIST(Dataset):
     def load(
         self,
         b: int,
-        tr_va: TR_VA,
+        tr_va: TrVa,
         on_gpu: bool = True,
         num_workers: int = 8,
         shuffle: bool = True,
     ):
         if on_gpu:
-            return self.load_tensor_dataset(shuffle)
+            return self.load_tensor_dataset(shuffle, b)
 
         transform_list = [transforms.ToTensor()]
         if self.normalize:
@@ -89,7 +89,7 @@ class MNIST(Dataset):
             torch.bincount(targets),
         )
 
-    def load_tensor_dataset(self, shuffle):
+    def load_tensor_dataset(self, batch_size, shuffle):
         train_dataset = torchvision.datasets.MNIST(
             root=str(config.get_dataset_directory()),
             train=True,
@@ -131,7 +131,7 @@ class MNIST(Dataset):
 
         train_loader = torch.utils.data.DataLoader(
             train_dataset,
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             num_workers=0,
             pin_memory=False,
@@ -139,7 +139,7 @@ class MNIST(Dataset):
 
         val_loader = torch.utils.data.DataLoader(
             val_dataset,
-            batch_size=self.batch_size,
+            batch_size=batch_size,
             shuffle=shuffle,
             num_workers=0,
             pin_memory=False,

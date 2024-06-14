@@ -55,7 +55,8 @@ def _get_bpe_tokenizer(train_file, tokenizer_save_path):
                 using the same train_file argument and a vocab size.
                 You will find a .model file in your current working directory
                 after the _create_bpe_tokenizer has finished running.
-                Create a folder named tokenizers in the optexp workspace and put the .model file in that folder.
+                Create a folder named tokenizers in the optexp workspace 
+                and put the .model file in that folder.
                 Remove the call to _create_bpe_tokenizer and resume."""
             )
         )

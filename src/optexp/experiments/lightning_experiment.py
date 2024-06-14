@@ -1,7 +1,7 @@
 import math
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import lightning as ptl
 import torch
@@ -25,6 +25,14 @@ def reduce_tensor(fabric, val: Tensor, reduce_op: str = "sum") -> Tensor:
 
 def gather(fabric, val: float) -> Tensor:
     return fabric.all_gather(val)  # type: ignore[arg-type]
+
+
+def gather_dict(fabric, val: Dict[str, Tensor]) -> Dict[str, Tensor]:
+    return fabric.all_gather(val)  # type: ignore[arg-type]
+
+
+def gather_bool(fabric, exceptions: Dict[str, bool]) -> Dict[str, Tensor]:
+    return fabric.all_gather(exceptions)  # type: ignore[arg-type]
 
 
 @dataclass
@@ -143,20 +151,16 @@ class LightningExperiment(Experiment):
                 loss_to_save = 0.0
                 total_weight = 0.0
 
-                for t_acc in range(self.gradient_acc_steps):
+                for _ in range(self.gradient_acc_steps):
                     features, labels = get_batch()
                     y_pred = self.problem.torch_model(features)
-                    output = self.problem.criterion(
-                        y_pred, labels
-                    )  # / self.gradient_acc_steps
+                    output = self.problem.criterion(y_pred, labels)
 
-                    if type(output) is tuple:
+                    if isinstance(output, tuple):
                         loss, weight = output
                     else:
                         loss = output
-                        weight = len(
-                            features
-                        )  # / (self.dataset.batch_size * self.gradient_acc_steps)
+                        weight = len(features)
                         loss *= weight
 
                     total_weight += weight
@@ -165,9 +169,7 @@ class LightningExperiment(Experiment):
                     if math.isnan(loss) or math.isinf(loss):
                         exceptions["DivergenceException"] = True
 
-                    train_loss += (
-                        loss.item()
-                    )  # * len(features) * self.gradient_acc_steps
+                    train_loss += loss.item()
 
                     self.fabric.backward(loss)
                     del y_pred
@@ -264,12 +266,12 @@ class LightningExperiment(Experiment):
                 data_logger.save(exit_code=0)
 
     def check_exceptions(self, exceptions: Dict[str, bool]) -> None:
-        all_exceptions: Dict[str, List[bool]] = self.fabric.all_gather(exceptions)  # type: ignore[assignment]
+        all_exceptions: Dict[str, Tensor] = gather_bool(self.fabric, exceptions)
         if any(all_exceptions["DivergenceException"]):
             raise DivergingException()
-        elif any(all_exceptions["Exception"]):
+        if any(all_exceptions["Exception"]):
             raise Exception()
-        elif any(all_exceptions["BaseException"]):
+        if any(all_exceptions["BaseException"]):
             raise BaseException
 
     def aggregate_metrics(

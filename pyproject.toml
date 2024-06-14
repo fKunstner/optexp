@@ -30,3 +30,30 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "lightning.*"
 ignore_errors = true
+
+[tool.pylint.main]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "too-few-public-methods",
+    #
+    "logging-fstring-interpolation",
+    #
+    "protected-access",
+    #
+    "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-return-statements",
+    #
+    # "broad-exception-caught",
+    # "broad-exception-raised",
+    #
+    # "logging-not-lazy",
+    #
+    # "attribute-defined-outside-init",
+    # "abstract-method",
+]

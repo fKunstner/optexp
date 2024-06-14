@@ -27,3 +27,18 @@ class Adam(Optimizer):
             weight_decay=self.weight_decay,
             amsgrad=self.amsgrad,
         )
+
+
+@dataclass
+class AdamW(Adam):
+
+    def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
+        param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)
+        return torch.optim.AdamW(
+            param_groups,
+            lr=self.lr.as_float(),
+            betas=(self.beta1, self.beta2),
+            eps=self.eps,
+            weight_decay=self.weight_decay,
+            amsgrad=self.amsgrad,
+        )

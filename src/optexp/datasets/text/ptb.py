@@ -58,7 +58,9 @@ def ptb_loader(
         train_iter = PennTreebank(root=save_path.parent, split="valid")
         val_iter = PennTreebank(root=save_path.parent, split="test")
     else:
-        train_iter, val_iter, _ = PennTreebank(root=save_path.parent)
+        train_iter, val_iter = PennTreebank(
+            root=save_path.parent, split=("train", "valid")  # type: ignore[arg-type]
+        )
 
     train_data = tokenize_and_numify(train_iter, tokenizer, vocab).to(device)
     val_data = tokenize_and_numify(val_iter, tokenizer, vocab).to(device)

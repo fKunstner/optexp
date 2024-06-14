@@ -4,11 +4,13 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from optexp import config
 from optexp.config import get_logger
 from optexp.datasets import Dataset
+from optexp.datasets.dataset import TrVa
 
 
 @dataclass(frozen=True)
@@ -20,9 +22,12 @@ class ImageNet(Dataset):
     num_workers: int = 8
     shuffle: bool = True
 
-    def load(self):
-        get_logger().info("Loading dataset: " + self.name)
-
+    def load(
+        self,
+        b: int,
+        tr_va: TrVa,
+        on_gpu: bool = False,
+    ) -> DataLoader:
         dataset_dir = config.get_dataset_directory() / Path("ImageNet")
         traindir = os.path.join(dataset_dir, "train")
         valdir = os.path.join(dataset_dir, "val")
@@ -75,25 +80,27 @@ class ImageNet(Dataset):
             num_workers=self.num_workers,
             pin_memory=True,
         )
-        targets = torch.tensor(train_dataset.targets)
-        output_shape = np.array([targets.max().item() + 1])
-        features, _ = next(iter(train_loader))
-        input_shape = np.array(list(features[0].shape))
-        return (
-            train_loader,
-            val_loader,
-            input_shape,
-            output_shape,
-            torch.bincount(targets),
-        )
+        # targets = torch.tensor(train_dataset.targets)
+        # output_shape = np.array([targets.max().item() + 1])
+        # features, _ = next(iter(train_loader))
+        # input_shape = np.array(list(features[0].shape))
+        # return (
+        #     train_loader,
+        #     val_loader,
+        #     input_shape,
+        #     output_shape,
+        #     torch.bincount(targets),
+        # )
+
+        if tr_va == "tr":
+            return train_loader
+        return val_loader
 
     def download(self):
         pass
 
 
-def load_imagenet(
-    save_path, batch_size, shuffle, num_workers, normalize, flatten, device, mode=None
-):
+def load_imagenet(save_path, batch_size, shuffle, num_workers, normalize):
 
     dataset_dir = str(save_path) + "/ImageNet"
 

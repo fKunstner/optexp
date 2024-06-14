@@ -12,7 +12,7 @@ from optexp.datasets.text.utils import prepare_data_loader, tokenize_and_numify
 
 def download_file(url: str, fname: str, chunk_size=1024):
     """Helper function to download a file from a given url."""
-    resp = requests.get(url, stream=True)
+    resp = requests.get(url, stream=True, timeout=30)
     with open(fname, "wb") as file:
         for data in resp.iter_content(chunk_size=chunk_size):
             file.write(data)
@@ -24,6 +24,7 @@ def download_tiny_stories(save_path: Path):
     os.makedirs(data_dir, exist_ok=True)
 
     # download the TinyStories dataset, unless it's already downloaded
+    # pylint: disable=line-too-long
     train_file_url = "https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-train.txt"
     val_file_url = "https://huggingface.co/datasets/roneneldan/TinyStories/resolve/main/TinyStoriesV2-GPT4-valid.txt"
 
@@ -55,9 +56,7 @@ def load_tiny_stories(
     train_data = tokenize_and_numify(train_iter, tokenizer, vocab).to(device)
     val_data = tokenize_and_numify(val_iter, tokenizer, vocab).to(device)
 
-    return prepare_data_loader(
-        train_data, val_data, batch_size, vocab, bptt, merge=None
-    )
+    return prepare_data_loader(train_data, val_data, batch_size, vocab, bptt)
 
 
 class TinyStories(IterableDataset):
@@ -70,3 +69,6 @@ class TinyStories(IterableDataset):
             for line in f:
                 text = line.strip("\n")
                 yield text
+
+    def __item__(self, idx):
+        raise NotImplementedError("Operation not supported on large text datasets.")

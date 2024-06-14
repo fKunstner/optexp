@@ -52,7 +52,7 @@ def wt103_loader(
     mixed_batch_size=False,
     eval_batch_size=0,
 ):
-    train_iter = WikiText103(root=save_path.parent, split="train")
+    train_iter = WikiText103(root=str(save_path.parent), split="train")
 
     if tokenizer is None:
         tokenizer = get_tokenizer("basic_english")
@@ -70,7 +70,9 @@ def wt103_loader(
         with open(vocab_path, "wb") as f:
             pickle.dump(vocab, f)
 
-    train_iter, val_iter, _ = WikiText103(root=save_path.parent)
+    train_iter, val_iter = WikiText103(
+        root=str(save_path.parent), split=("train", "valid")  # type: ignore[arg-type]
+    )
 
     train_path = save_path / "WikiText103" / "train.pt"
     val_path = save_path / "WikiText103" / "val.pt"
@@ -88,11 +90,9 @@ def wt103_loader(
         val_data = tokenize_and_numify(val_iter, tokenizer, vocab=vocab)
         torch.save(val_data, val_path)
         val_data = val_data.to(device)
+
     if mixed_batch_size:
         return prepare_mixed_size_data_loader(
-            train_data, val_data, batch_size, eval_batch_size, vocab, bptt, merge=None
+            train_data, val_data, batch_size, eval_batch_size, vocab, bptt
         )
-    else:
-        return prepare_data_loader(
-            train_data, val_data, batch_size, vocab, bptt, merge=None
-        )
+    return prepare_data_loader(train_data, val_data, batch_size, vocab, bptt)

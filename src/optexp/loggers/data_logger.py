@@ -111,7 +111,7 @@ class DataLogger:
         get_logger().info(f"Saving experiments configs to {filepath_json}")
 
         json_data = json.dumps(self.config_dict, indent=4)
-        with open(filepath_json, "w") as outfile:
+        with open(filepath_json, "w", encoding="utf-8") as outfile:
             outfile.write(json_data)
 
         get_logger().info(f"Saving experiments results to {filepath_csv}")
@@ -130,29 +130,19 @@ class DataLogger:
             get_logger().info("Finishing Wandb run")
             wandb.finish(exit_code=exit_code)
 
+            sync_command = (
+                f"wandb sync "
+                f"--id {self.run.id} "
+                f"-p {config.get_wandb_project()} "
+                f"-e {config.get_wandb_entity()} "
+                f"{Path(self.run.dir).parent}"
+            )
             if config.get_wandb_mode() == "offline" and self.wandb_autosync:
                 get_logger().info(f"Uploading wandb run in {Path(self.run.dir).parent}")
-                command = (
-                    f"wandb sync "
-                    f"--id {self.run.id} "
-                    f"-p {config.get_wandb_project()} "
-                    f"-e {config.get_wandb_entity()} "
-                    f"{Path(self.run.dir).parent}"
-                )
-                get_logger().info(f"    {command}")
-
-                subprocess.run(
-                    command,
-                    shell=True,
-                )
+                get_logger().info(f"    {sync_command}")
+                subprocess.run(sync_command, shell=True, check=False)
             else:
-                command = (
-                    f"wandb sync "
-                    f"--id {self.run.id} "
-                    f"-p {config.get_wandb_project()} "
-                    f"-e {config.get_wandb_entity()} "
-                    f"{Path(self.run.dir).parent}"
-                )
-                get_logger().info(f"Not Running:    {command}")
+                get_logger().info("Not uploading run to wandb. To sync manually, run")
+                get_logger().info(f"    {sync_command}")
 
         config.remove_loghandler(handler=self.handler)

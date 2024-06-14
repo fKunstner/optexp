@@ -1,11 +1,12 @@
 import math
 from dataclasses import dataclass
+from functools import partial
 from typing import Any, Dict, List, Literal, Tuple
 
 import torch
 
 from optexp import config
-from optexp.config import get_device, get_logger
+from optexp.config import get_device
 from optexp.datasets import Dataset
 from optexp.models import Model
 from optexp.problems.exceptions import DivergingException
@@ -29,8 +30,6 @@ class Problem:
 
     def init_problem(self) -> None:
         """Loads the dataset and the PyTorch model onto device."""
-        get_logger().info("Loading problem: " + self.__class__.__name__)
-
         self.train_loader = self.dataset.load(b=self.batch_size, tr_va="tr")
         self.val_loader = self.dataset.load(b=self.batch_size, tr_va="va")
         self.input_shape = self.dataset.input_shape(self.batch_size)
@@ -70,7 +69,7 @@ class Problem:
                 y_pred = self.torch_model(features)
                 for module in self.get_criterions():
                     outputs = module(y_pred, labels)
-                    if type(outputs) is not tuple:
+                    if not isinstance(outputs, tuple):
                         value = outputs.detach()
 
                         if math.isnan(value) or math.isinf(value):
@@ -139,30 +138,37 @@ class Problem:
         train_loss = 0.0
         num_samples = 0
         mini_batch_losses = []
+
+        def compute_loss(model, features, labels):
+            y_pred = model(features)
+            out = self.criterion(y_pred, labels)
+            if isinstance(out, tuple):
+                loss, weight = out
+                loss = loss / weight
+            else:
+                loss = out
+            if math.isnan(loss) or math.isinf(loss):
+                raise DivergingException("Live training loss is NAN or INF.")
+            return loss
+
         for _, (features, labels) in enumerate(self.train_loader):
             features = features.to(config.get_device())
             labels = labels.to(config.get_device())
-
-            def closure():
-                y_pred = self.torch_model(features)
-                out = self.criterion(y_pred, labels)
-
-                if type(out) is tuple:
-                    loss, weight = out
-                    loss = loss / weight
-                else:
-                    loss = out
-
-                if math.isnan(loss) or math.isinf(loss):
-                    raise DivergingException("Live training loss is NAN or INF.")
-
-                return loss
-
             optimizer.zero_grad()
-
-            loss = closure()
+            loss = compute_loss(self.torch_model, features, labels)
             loss.backward()
-            optimizer.step(closure=closure if needs_closure else None)
+
+            closure = (
+                partial(
+                    compute_loss,
+                    model=self.torch_model,
+                    features=features,
+                    labels=labels,
+                )
+                if needs_closure
+                else None
+            )
+            optimizer.step(closure=closure)
 
             mini_batch_losses.append(loss.item())
             train_loss += loss.item() * len(features)

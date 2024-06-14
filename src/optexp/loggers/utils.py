@@ -9,10 +9,8 @@ def pprint_dict(adict):
         if isinstance(v, float):
             if "Accuracy" in k or "acc" in k:
                 return f"{k}={100*v:.1f}"
-            else:
-                return f"{k}={v:.2e}"
-        else:
-            return f"{k}={v}"
+            return f"{k}={v:.2e}"
+        return f"{k}={v}"
 
     def filter_metric(k):
         x = "PerSequenceLength" not in k

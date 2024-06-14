@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from torchtext.data import get_tokenizer
 from torchtext.datasets import WikiText2
@@ -21,7 +20,6 @@ def load_wt2(
     batch_size: str,
     bptt: int,
     device: str,
-    merge: Optional[int] = None,
 ):
     return wt2_loader(
         save_path=save_path,
@@ -29,7 +27,6 @@ def load_wt2(
         bptt=bptt,
         device=device,
         tiny=False,
-        merge=merge,
     )
 
 
@@ -40,9 +37,8 @@ def wt2_loader(
     device,
     tiny=False,
     tokenizer=None,
-    merge: Optional[int] = None,
 ):
-    train_iter = WikiText2(root=save_path.parent, split="train")
+    train_iter = WikiText2(root=str(save_path.parent), split="train")
 
     if tokenizer is None:
         tokenizer = get_tokenizer("basic_english")
@@ -51,10 +47,13 @@ def wt2_loader(
     vocab.set_default_index(vocab["<unk>"])
 
     if tiny:
-        train_iter = WikiText2(root=save_path.parent, split="valid")
-        val_iter = WikiText2(root=save_path.parent, split="test")
+        train_iter = WikiText2(root=str(save_path.parent), split="valid")
+        val_iter = WikiText2(root=str(save_path.parent), split="test")
     else:
-        train_iter, val_iter, _ = WikiText2(root=save_path.parent)
+
+        train_iter, val_iter, _ = WikiText2(
+            root=str(save_path.parent), split=("train", "valid")  # type: ignore[arg-type]
+        )
 
     cutoff = 1.1 / 3.0 if tiny else None
 
@@ -65,6 +64,4 @@ def wt2_loader(
         device
     )
 
-    return prepare_data_loader(
-        train_data, val_data, batch_size, vocab, bptt, merge=merge
-    )
+    return prepare_data_loader(train_data, val_data, batch_size, vocab, bptt)

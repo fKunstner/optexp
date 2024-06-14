@@ -94,7 +94,7 @@ def get_wandb_entity() -> str:
 def get_wandb_mode() -> str:
     mode = os.environ.get(ENV_VAR_WANDB_MODE, "offline")
 
-    if mode != "online" and mode != "offline":
+    if mode not in ["online", "offline"]:
         raise ValueError(
             f"Invalid wandb mode set in environment variable {ENV_VAR_WANDB_MODE}."
             f"Expected 'online' or 'offline'. Got {mode}."

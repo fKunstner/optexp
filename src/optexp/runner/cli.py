@@ -129,27 +129,19 @@ def exp_runner_cli(
 
     if args.single is not None:
         idx = int(args.single)
-        if idx < 0 or idx >= len(experiments):
-            raise ValueError(
-                f"Given index {idx} out of bounds for {len(experiments)} experiments"
-            )
+        validate_index(experiments, idx)
         experiments[args.single].run_experiment()
         return
 
     if args.split_index:
-        get_logger().info(f"Preparing to run {len(experiments)} experiments")
         run_split(experiments, split_index=args.split_index, split=args.split_num)
         return
 
     if args.local or args.slurm:
-        get_logger().info(f"Preparing to run {len(experiments)} experiments")
         if args.local:
             run_locally(experiments, force_rerun=args.force_rerun)
         elif args.slurm:
-            if slurm_config is None:
-                raise ValueError(
-                    "Must provide a SlurmConfig if running on slurm. Got None."
-                )
+            slurm_config = validate_slurm_config(slurm_config)
             run_slurm(
                 experiments,
                 slurm_config,
@@ -159,11 +151,7 @@ def exp_runner_cli(
         return
 
     if args.slurm_split:
-        get_logger().info(f"Preparing to run {len(experiments)} experiments")
-        if slurm_config is None:
-            raise ValueError(
-                "Must provide a SlurmConfig if running on slurm. Got None."
-            )
+        slurm_config = validate_slurm_config(slurm_config)
         run_slurm(
             experiments,
             slurm_config,
@@ -172,13 +160,9 @@ def exp_runner_cli(
             python_file=python_file,
         )
         return
-    if args.test:
-        get_logger().info("Preparing to run first experiments in group")
 
-        if slurm_config is None:
-            raise ValueError(
-                "Must provide a SlurmConfig if running on slurm. Got None."
-            )
+    if args.test:
+        slurm_config = validate_slurm_config(slurm_config)
         run_slurm(
             [experiments[0]],
             slurm_config,
@@ -188,18 +172,27 @@ def exp_runner_cli(
         return
 
     if args.download:
-        get_logger().info(
-            f"Preparing to download data from {len(experiments)} experiments"
-        )
         download_data(experiments)
         return
 
     if args.clear_download:
-        get_logger().info(f"Clearing cache for {len(experiments)} experiments")
         clear_downloaded_data(experiments)
         return
 
     parser.print_help()
+
+
+def validate_index(experiments, idx):
+    if not 0 <= idx < len(experiments):
+        raise ValueError(
+            f"Given index {idx} out of bounds for {len(experiments)} experiments"
+        )
+
+
+def validate_slurm_config(slurm_config) -> SlurmConfig:
+    if slurm_config is None:
+        raise ValueError("Must provide a SlurmConfig if running on slurm. Got None.")
+    return slurm_config
 
 
 def report(experiments: List[Experiment], by: Optional[str]) -> None:
@@ -246,6 +239,7 @@ def remove_experiments_that_are_already_saved(
 
 def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
     """Run experiments locally."""
+    get_logger().info(f"Preparing to run {len(experiments)} experiments")
     if not force_rerun:
         original_n_exps = len(experiments)
         experiments = remove_experiments_that_are_already_saved(experiments)
@@ -253,7 +247,7 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
             f"New experiments to run: {len(experiments)}/{original_n_exps}"
         )
 
-    datasets = set([exp.problem.dataset for exp in experiments])
+    datasets = set(exp.problem.dataset for exp in experiments)
 
     for dataset in datasets:
         if dataset.should_download():
@@ -264,6 +258,7 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
 
 
 def run_split(experiments: List[Experiment], split_index: int, split: int):
+    get_logger().info(f"Preparing to run {len(experiments)} experiments")
     exps_to_run = remove_experiments_that_are_already_saved(experiments)
 
     groups_exps_ind = [
@@ -285,7 +280,9 @@ def run_slurm(
     python_file: Optional[Path] = None,
 ) -> None:
     """Run experiments on Slurm."""
-    print("Preparing experiments to run on Slurm")
+    get_logger().info(
+        f"Preparing experiments to run {len(experiments)} experiments on Slurm"
+    )
     if python_file is None:
         path_to_python_script = Path(sys.argv[0]).resolve()
     else:
@@ -316,10 +313,10 @@ def run_slurm(
     group = experiments[0].group
     tmp_filename = f"tmp_{group}.sh"
     print("  Saving sbatch file in {tmp_filename}")
-    with open(tmp_filename, "w+") as file:
+    with open(tmp_filename, "w+", encoding="utf-8") as file:
         file.writelines(contents)
 
-    datasets = set([exp.problem.dataset for exp in experiments])
+    datasets = set(exp.problem.dataset for exp in experiments)
 
     for dataset in datasets:
         if dataset.should_download():
@@ -331,6 +328,8 @@ def run_slurm(
 
 def download_data(experiments: List[Experiment]) -> None:
     """Download data from experiments into wandb cache."""
+
+    get_logger().info(f"Preparing to download data from {len(experiments)} experiments")
 
     if len(experiments) == 0:
         return
@@ -348,7 +347,7 @@ def download_data(experiments: List[Experiment]) -> None:
     for i, exp in enumerate(experiments):
         if exp.exp_id() not in successful_run_ids:
             get_logger().info(
-                f"The following experiments: {str(exp)} (idx {i}) was NOT SUCCESSFULL. NO DATA TO DOWNLOAD."
+                f"The experiments {str(exp)} (idx {i}) was NOT SUCCESSFULL. NO DATA TO DOWNLOAD."
             )
 
     runs_to_dl_ids = [exp.exp_id() for exp in experiments]
@@ -365,6 +364,8 @@ def download_data(experiments: List[Experiment]) -> None:
 
 def clear_downloaded_data(experiments: List[Experiment]) -> None:
     """Download data from experiments into wandb cache."""
+
+    get_logger().info(f"Clearing cache for {len(experiments)} experiments")
 
     if len(experiments) == 0:
         return

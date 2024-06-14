@@ -5,7 +5,7 @@ import numpy as np
 
 from optexp.config import get_logger
 from optexp.experiments.experiment import Experiment
-from optexp.optimizers import SGD, Adam, LearningRate, Optimizer
+from optexp.optimizers import LearningRate, Optimizer
 
 
 def _check_parameters_logspace(end, start, density):

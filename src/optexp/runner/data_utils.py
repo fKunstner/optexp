@@ -11,26 +11,17 @@ def should_convert_column_to_numpy(series: pd.Series):
 
     def is_list_of_elements_mostly_floats(entry):
         def list_elem_is_float_or_str_nan(list_element):
-            return (
-                isinstance(list_element, float)
-                or isinstance(list_element, int)
-                or (isinstance(list_element, str) and list_element == "NaN")
+            return isinstance(list_element, (float, int)) or (
+                isinstance(list_element, str) and list_element == "NaN"
             )
 
-        if isinstance(entry, list):
-            if all([list_elem_is_float_or_str_nan(elem) for elem in entry]):
-                return True
-        return False
+        return isinstance(entry, list) and all(
+            list_elem_is_float_or_str_nan(elem) for elem in entry
+        )
 
-    if len(series) > 1:
-        val = series[1]
-    else:
-        val = series[0]
+    val = series[1] if len(series) > 1 else series[0]
 
-    if is_string_repr_of_array(val) or is_list_of_elements_mostly_floats(val):
-        return True
-    else:
-        return False
+    return is_string_repr_of_array(val) or is_list_of_elements_mostly_floats(val)
 
 
 def column_to_numpy(x):
@@ -47,11 +38,10 @@ def column_to_numpy(x):
 
     if x is None:
         return np.nan
-    if type(x) is float or type(x) is int or type(x) is np.ndarray:
+    if isinstance(x, (float, int, np.ndarray)):
         return x
-    elif type(x) is str:
+    if isinstance(x, str):
         return convert_str_to_numpy(x)
-    elif isinstance(x, list):
+    if isinstance(x, list):
         return convert_list_to_numpy(x)
-    else:
-        raise ValueError(f"Cannot convert row, unknown type {type(x)}")
+    raise ValueError(f"Cannot convert row, unknown type {type(x)}")

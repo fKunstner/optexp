@@ -5,7 +5,7 @@ from typing import Literal
 import torch
 from torch.utils.data import DataLoader
 
-TR_VA = Literal["tr", "va"]
+TrVa = Literal["tr", "va"]
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,7 @@ class Dataset:
     def load(
         self,
         b: int,
-        tr_va: TR_VA,
+        tr_va: TrVa,
         on_gpu: bool = False,
     ) -> DataLoader:
         raise NotImplementedError()

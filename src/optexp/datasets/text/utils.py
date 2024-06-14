@@ -32,7 +32,7 @@ def prepare_loader(train_data, val_data, batch_size, vocab, bptt, merge):
     return loaders, input_shape, output_shape, class_freqs
 
 
-def prepare_data_loader(train_data, val_data, batch_size, vocab, bptt, merge):
+def prepare_data_loader(train_data, val_data, batch_size, vocab, bptt):
     class_freqs = torch.bincount(train_data)
     train_dataset = TextData(train_data, bptt)
     val_dataset = TextData(val_data, bptt)
@@ -62,7 +62,7 @@ def prepare_data_loader(train_data, val_data, batch_size, vocab, bptt, merge):
 
 
 def prepare_mixed_size_data_loader(
-    train_data, val_data, train_batch_size, eval_batch_size, vocab, bptt, merge
+    train_data, val_data, train_batch_size, eval_batch_size, vocab, bptt
 ):
     class_freqs = torch.bincount(train_data)
     train_dataset = TextData(train_data, bptt)
@@ -146,6 +146,7 @@ class BatchIterator:
         self.data = data
         self.tgt_len = bptt
         self.merge = merge
+        self.i = 0
 
     def __iter__(self):
         self.i = 0
@@ -158,8 +159,7 @@ class BatchIterator:
             if len(data) == 0:
                 raise StopIteration
             return data, targets
-        else:
-            raise StopIteration
+        raise StopIteration
 
     def get_batch(self, i: int):
         seq_len = min(self.tgt_len, len(self.data) - 1 - i)

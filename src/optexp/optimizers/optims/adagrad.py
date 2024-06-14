@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import torch
 
-from optexp.optimizers import LearningRate
+from optexp.optimizers.hyperparameter import LearningRate
 from optexp.optimizers.optimizer import Optimizer
 from optexp.optimizers.weight_decay_strategy import DecayEverything, WeightDecayStrategy
 

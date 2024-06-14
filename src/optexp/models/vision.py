@@ -10,9 +10,9 @@ from optexp.models.model import Model
 class LeNet5(Model):
     def load_model(self, input_shape=(1,), output_shape=(10,)):
 
-        class model(torch.nn.Module):
+        class LeNet5Module(torch.nn.Module):
             def __init__(self):
-                super(model, self).__init__()
+                super().__init__()
                 self.conv1 = torch.nn.Conv2d(input_shape[0], 6, 5)
                 self.conv2 = torch.nn.Conv2d(6, 16, 5)
                 self.fc1 = torch.nn.Linear(16 * 5 * 5, 120)
@@ -24,7 +24,7 @@ class LeNet5(Model):
                     pad = torchvision.transforms.Pad(2, fill=0, padding_mode="constant")
                     x = pad(x)
                 else:
-                    if not (x.shape[-2:] == (32, 32)):
+                    if not x.shape[-2:] == (32, 32):
                         raise ValueError(
                             f"Input shape must be 28x28 or 32x32. Got {x.shape}"
                         )
@@ -38,12 +38,12 @@ class LeNet5(Model):
 
                 return output
 
-        return model()
+        return LeNet5Module()
 
 
 class ResNet(Model):
     size: Literal[18, 34, 50, 101, 152]
 
     def load_model(self, input_shape, output_shape):
-        resnetX = getattr(torchvision.models, f"resnet{self.size}")
-        return resnetX(num_classes=output_shape[0])
+        resnet_x = getattr(torchvision.models, f"resnet{self.size}")
+        return resnet_x(num_classes=output_shape[0])
