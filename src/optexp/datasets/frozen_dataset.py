@@ -21,7 +21,7 @@ class FrozenDataset(Dataset):
 
     def load(
         self,
-    ) -> Tuple[DataLoader, DataLoader, np.ndarray, np.ndarray, torch.Tensor]:
+    ) -> Tuple[DataLoader, DataLoader, torch.Size, torch.Size, torch.Tensor]:
         get_logger().info("Loading dataset: " + self.name)
 
         loaders, input_shape, output_shape, class_freqs = get_frozen_dataset(

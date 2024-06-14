@@ -108,14 +108,6 @@ class LightningExperiment(Experiment):
                 )
             )
 
-            if self.problem.is_mixed_batch:
-                self.problem.eval_train_loader, self.problem.eval_val_loader = (
-                    self.fabric.setup_dataloaders(
-                        self.problem.eval_train_loader,
-                        self.problem.eval_val_loader,
-                        move_to_device=True,
-                    )
-                )
             metrics_and_counts_eval_train = self.problem.eval_raw(val=False)
             metrics_and_counts_eval_val = self.problem.eval_raw(val=True)
 

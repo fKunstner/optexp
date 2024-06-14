@@ -26,9 +26,6 @@ from optexp.datasets.loaders.mnist_loader import (
 )
 from optexp.datasets.loaders.imagenet_loader import (
     load_imagenet,
-    load_imbalanced_imagenet,
-    load_10_big_class_imagenet,
-    load_1_major_class_imagenet,
     load_small_imagenet,
     load_decaying_imagenet,
     load_heavy_tailed_imagenet,

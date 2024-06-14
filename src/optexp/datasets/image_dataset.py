@@ -25,7 +25,7 @@ class ImageDataset(Dataset):
 
     def load(
         self,
-    ) -> Tuple[DataLoader, DataLoader, np.ndarray, np.ndarray, torch.Tensor]:
+    ) -> Tuple[DataLoader, DataLoader, torch.Size, torch.Size, torch.Tensor]:
         get_logger().info("Loading dataset: " + self.name)
 
         loaders, input_shape, output_shape, class_freqs = get_image_dataset(
@@ -54,7 +54,7 @@ class MNIST(ImageDataset):
 
     def load(
         self,
-    ) -> Tuple[DataLoader, DataLoader, np.ndarray, np.ndarray, torch.Tensor]:
+    ) -> Tuple[DataLoader, DataLoader, torch.Size, torch.Size, torch.Tensor]:
         train_set = TorchMNIST(
             str(config.get_dataset_directory()),
             download=False,
@@ -76,8 +76,8 @@ class MNIST(ImageDataset):
         return (
             tr_ld,
             va_ld,
-            np.array([1]),
-            np.array([10]),
+            torch.Size([1]),
+            torch.Size([10]),
             torch.bincount(train_set.targets),
         )
 
@@ -97,35 +97,7 @@ class HeavyTailedImageNet(ImageDataset):
 
 
 @dataclass(frozen=True)
-class ImbalancedImageNet(ImageDataset):
-    batch_size: int
-    name: str = field(default="ImbalancedImageNet", init=False)
-    flatten: bool = False
-
-
-@dataclass(frozen=True)
-class TenBigClassImageNet(ImageDataset):
-    batch_size: int
-    name: str = field(default="TenBigClassImageNet", init=False)
-    flatten: bool = False
-
-
-@dataclass(frozen=True)
-class OneMajorClassImageNet(ImageDataset):
-    batch_size: int
-    name: str = field(default="OneMajorClassImageNet", init=False)
-    flatten: bool = False
-
-
-@dataclass(frozen=True)
 class SmallImageNet(ImageDataset):
     batch_size: int
     name: str = field(default="SmallImageNet", init=False)
-    flatten: bool = False
-
-
-@dataclass(frozen=True)
-class DecayingImageNet(ImageDataset):
-    batch_size: int
-    name: str = field(default="DecayingImageNet", init=False)
     flatten: bool = False

@@ -7,7 +7,7 @@ import torch
 
 from optexp import config
 from optexp.config import get_device, get_logger
-from optexp.datasets import Dataset, MixedBatchSizeDataset
+from optexp.datasets import Dataset
 from optexp.models import Model
 from optexp.problems.exceptions import DivergingException
 
@@ -28,26 +28,13 @@ class Problem(ABC):
         """Loads the dataset and the PyTorch model onto device."""
         get_logger().info("Loading problem: " + self.__class__.__name__)
 
-        if isinstance(self.dataset, MixedBatchSizeDataset):
-            self.is_mixed_batch = True
-            (
-                self.train_loader,
-                self.val_loader,
-                self.eval_train_loader,
-                self.eval_val_loader,
-                self.input_shape,
-                self.output_shape,
-                self.class_freqs,
-            ) = self.dataset.load()
-        else:
-            self.is_mixed_batch = False
-            (
-                self.train_loader,
-                self.val_loader,
-                self.input_shape,
-                self.output_shape,
-                self.class_freqs,
-            ) = self.dataset.load()
+        (
+            self.train_loader,
+            self.val_loader,
+            self.input_shape,
+            self.output_shape,
+            self.class_freqs,
+        ) = self.dataset.load()
         self.torch_model = self.model.load_model(
             self.input_shape, self.output_shape
         ).to(get_device())
@@ -70,11 +57,10 @@ class Problem(ABC):
             return d
 
         if val:
-            loader = self.eval_val_loader if self.is_mixed_batch else self.val_loader
+            loader = self.val_loader
         else:
-            loader = (
-                self.eval_train_loader if self.is_mixed_batch else self.train_loader
-            )
+            loader = self.train_loader
+
         with torch.no_grad():
             for _, (features, labels) in enumerate(loader):
                 features = features.to(config.get_device())

@@ -281,8 +281,8 @@ def prepare_loader(train_data, val_data, batch_size, vocab, bptt, merge):
     val_data = batchify(val_data, batch_size)
     train_loader = BatchIterator(train_data, bptt, merge)
     val_loader = BatchIterator(val_data, bptt, merge)
-    input_shape = np.array([len(vocab)])
-    output_shape = np.array([len(vocab) // merge]) if merge else input_shape
+    input_shape = (len(vocab),)
+    output_shape = (len(vocab) // merge,) if merge else input_shape
     loaders = {"train_loader": train_loader, "val_loader": val_loader}
     return loaders, input_shape, output_shape, class_freqs
 
