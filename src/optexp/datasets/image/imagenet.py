@@ -1,10 +1,12 @@
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 import torch
 from torchvision import datasets, transforms
 
+from optexp import config
 from optexp.config import get_logger
 from optexp.datasets import Dataset
 

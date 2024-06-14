@@ -24,6 +24,8 @@ class Problem(ABC):
     model: Model
     dataset: Dataset
     batch_size: int
+    lossfunc: torch.nn.Module
+    metrics: List[torch.nn.Module]
 
     def init_problem(self) -> None:
         """Loads the dataset and the PyTorch model onto device."""
@@ -138,7 +140,6 @@ class Problem(ABC):
         train_loss = 0.0
         num_samples = 0
         mini_batch_losses = []
-        grad_norms: Dict[str, List] = {}
         for _, (features, labels) in enumerate(self.train_loader):
             features = features.to(config.get_device())
             labels = labels.to(config.get_device())
@@ -164,74 +165,15 @@ class Problem(ABC):
             loss.backward()
             optimizer.step(closure=closure if needs_closure else None)
 
-            self._grad_norms(grad_norms_dict=grad_norms)
             mini_batch_losses.append(loss.item())
             train_loss += loss.item() * len(features)
             num_samples += len(features)
 
-        param_norms = self._param_norms()
         metrics = {
             "live_train_loss": train_loss / num_samples,
             "mini_batch_losses": mini_batch_losses,
         }
-
-        metrics.update(param_norms)
-        metrics.update(grad_norms)
         return metrics
-
-    def _grad_norms(self, grad_norms_dict: dict) -> None:
-        """Computes the norm of the gradient. Intended to be called every mini-
-        batch. Norms of gradients are computed per trainable layer. Also an
-        overall norm is computed by concatenating the gradient of all of the
-        trainable layers into one vector and computing the norm of that vector.
-
-        Args:
-            grad_norms_dict (dict): Keys correspond to the layers (and the overall gradient norm) and
-            the values are lists. The lists contain the values of gradients upto the current mini-batch.
-            When this function is called, it computes the gradients for each layer and appends the value
-            to the corresponding list.
-        """
-        v = torch.zeros((1,), device=get_device())
-
-        with torch.no_grad():
-            for name, param in self.torch_model.named_parameters():
-                if param.requires_grad:
-                    if param.grad is None:
-                        raise ValueError(f"Param {name} has no gradient")
-                    layer_grad_norm = torch.linalg.norm(param.grad)
-
-                    if f"grad_{name}_norm" not in grad_norms_dict:
-                        grad_norms_dict[f"grad_{name}_norm"] = []
-
-                    grad_norms_dict[f"grad_{name}_norm"].append(layer_grad_norm.item())
-                    v = torch.cat((v, param.grad.view(-1)))
-            overall_grad_norm = torch.linalg.norm(v)
-
-            if "overall_grad_norm" not in grad_norms_dict:
-                grad_norms_dict["overall_grad_norm"] = []
-
-            grad_norms_dict["overall_grad_norm"].append(overall_grad_norm.item())
-
-    def _param_norms(self) -> dict:
-        """Computes the norm of the parameters. Intended to be called at the
-        end of every epoch. Norms of parameters are computed per  layer. Also
-        an overall norm is computed by concatenating all of the layers into one
-        vector and computing the norm of that vector.
-
-        Returns:
-            A dictionary where keys are string that correspond to the
-            layers of the model (and the overall norm) and the values are the norms.
-        """
-        param_norm_dict = {}
-        v = torch.zeros((1,), device=get_device())
-        with torch.no_grad():
-            for name, param in self.torch_model.named_parameters():
-                layer_norm = torch.linalg.norm(param)
-                param_norm_dict[f"{name}_norm"] = layer_norm.item()
-                v = torch.cat((v, param.view(-1)))
-        overall_norm = torch.linalg.norm(v)
-        param_norm_dict["params_norm"] = overall_norm.item()
-        return param_norm_dict
 
     @abstractmethod
     def init_loss(self) -> torch.nn.Module:
