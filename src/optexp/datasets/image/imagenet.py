@@ -9,11 +9,7 @@ from torchvision import datasets, transforms
 
 from optexp import config
 from optexp.config import get_logger
-from optexp.datasets.dataset import (
-    ClassificationDataset,
-    DatasetNotDownloadableError,
-    TrVa,
-)
+from optexp.datasets.dataset import DatasetNotDownloadableError, HasClassCounts, TrVa
 
 
 class ImagenetNotDownloadableError(DatasetNotDownloadableError):
@@ -30,7 +26,7 @@ class ImagenetNotDownloadableError(DatasetNotDownloadableError):
 
 
 @dataclass(frozen=True)
-class ImageNet(ClassificationDataset):
+class ImageNet(HasClassCounts):
 
     def get_dataloader(self, b: int, tr_va: TrVa, on_gpu: bool = False) -> DataLoader:
         raise NotImplementedError()
@@ -41,7 +37,7 @@ class ImageNet(ClassificationDataset):
     def output_shape(self, batch_size) -> torch.Size:
         return torch.Size([1000])
 
-    def should_download(self):
+    def can_download(self):
         return True
 
     def is_downloaded(self):
@@ -50,7 +46,7 @@ class ImageNet(ClassificationDataset):
     def download(self):
         raise ImagenetNotDownloadableError()
 
-    def should_move_to_local(self):
+    def can_move_to_local(self):
         raise NotImplementedError()
 
     def move_to_local(self):

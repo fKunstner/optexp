@@ -111,6 +111,7 @@ class DataLogger:
         get_logger().info(f"Saving experiments configs to {filepath_json}")
 
         json_data = json.dumps(self.config_dict, indent=4)
+
         with open(filepath_json, "w", encoding="utf-8") as outfile:
             outfile.write(json_data)
 

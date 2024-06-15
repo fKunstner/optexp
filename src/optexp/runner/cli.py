@@ -10,6 +10,7 @@ from tqdm import tqdm
 from optexp import config
 from optexp.config import get_logger
 from optexp.experiments.experiment import Experiment
+from optexp.experiments.lightning_experiment import run_experiment
 from optexp.runner.slurm.sbatch_writers import (
     make_jobarray_file_contents,
     make_jobarray_file_contents_split,
@@ -130,7 +131,7 @@ def exp_runner_cli(
     if args.single is not None:
         idx = int(args.single)
         validate_index(experiments, idx)
-        experiments[args.single].run_experiment()
+        run_experiment(experiments[args.single])
         return
 
     if args.split_index:
@@ -250,11 +251,11 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
     datasets = set(exp.problem.dataset for exp in experiments)
 
     for dataset in datasets:
-        if dataset.should_download():
+        if dataset.can_download():
             dataset.download()
 
     for exp in tqdm(experiments):
-        exp.run_experiment()
+        run_experiment(exp)
 
 
 def run_split(experiments: List[Experiment], split_index: int, split: int):
@@ -269,7 +270,7 @@ def run_split(experiments: List[Experiment], split_index: int, split: int):
 
     for exp in exps_split:
         if exp in exps_to_run:
-            exp.run_experiment()
+            run_experiment(exp)
 
 
 def run_slurm(
@@ -319,7 +320,7 @@ def run_slurm(
     datasets = set(exp.problem.dataset for exp in experiments)
 
     for dataset in datasets:
-        if dataset.should_download():
+        if dataset.can_download():
             dataset.download()
 
     print("  Sending experiments to Slurm - executing sbatch file")

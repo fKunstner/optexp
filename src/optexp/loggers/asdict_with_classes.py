@@ -77,6 +77,8 @@ def _asdict_inner(obj, dict_factory):
         return str(obj)
     if isinstance(obj, Fraction):
         return str(obj)
+    if isinstance(obj, type):
+        return str(obj.__name__)
     return copy.deepcopy(obj)
 
 

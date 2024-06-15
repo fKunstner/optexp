@@ -1,21 +1,15 @@
 import hashlib
 import os
-import random
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
-import numpy as np
 import pandas as pd
-import torch
 
 from optexp import config
-from optexp.config import get_logger
-from optexp.loggers import DataLogger
-from optexp.loggers.asdict_with_classes import asdict_with_class
 from optexp.optimizers import Optimizer
-from optexp.problems import DivergingException, Problem
+from optexp.problems import Problem
 
 
 @dataclass
@@ -35,111 +29,25 @@ class Experiment:
     group: str
     seed: int
     epochs: int
+    steps: int = 1
+    nodes: int = 1
+    devices: int = -1
+    strategy: str = "auto"
+    eval_every: int = 1
+    gradient_acc_steps: int = 1
+    wandb_autosync: bool = True
 
-    @staticmethod
-    def generate_experiments_from_opts_and_seeds(
-        opts_and_seeds: List[Tuple[List[Optimizer], List[int]]],
-        problem: Problem,
-        epochs: int,
-        group: str,
-    ):
-        all_exps = []
-        for opts, seeds in opts_and_seeds:
-            all_exps += Experiment.generate_all(opts, [problem], seeds, [epochs], group)
-        return all_exps
+    def __post_init__(self):
+        if self.epochs is not None and self.epochs != 0:
+            raise ValueError("Experiment setup with epochs, but only supports steps")
 
-    @staticmethod
-    def generate_all(
-        opts: List[Optimizer],
-        probs: List[Problem],
-        seeds: List[int],
-        epochs: List[int],
-        group: str,
-    ):
-        return [
-            Experiment(optim=opt, problem=prob, group=group, seed=seed, epochs=epoch)
-            for opt in opts
-            for prob in probs
-            for seed in seeds
-            for epoch in epochs
-        ]
+    def exp_id(self) -> str:
+        """Return a unique identifier for this experiment.
 
-    def run_experiment(self) -> None:
-        """Performs a run of the experiments. Generates the run-id, applies the seed and
-        creates the data logger. Initializes the problem and optimizer and optimizes the
-        problem given the optimizer for the defined amount of epochs. Logs the loss
-        function values/metrics returned during the eval and training. Catches any
-        exception raised during this process and logs it before exiting.
-
-        Raises:
-            BaseException: Raised when user Ctrl+C when experiments is running.
+        Not a unique identifier for the current run of the experiments. Is unique for
+        the definition of the experiments, combining the problem, optimizer, and seed.
         """
-        run_id = time.strftime("%Y-%m-%d--%H-%M-%S")
-
-        self._apply_seed()
-
-        data_logger = DataLogger(
-            config_dict=asdict_with_class(self),
-            group=self.group,
-            run_id=run_id,
-            exp_id=self.exp_id(),
-            save_directory=self.save_directory(),
-        )
-
-        get_logger().info("=" * 80)
-        get_logger().info(f"Initializing  experiments: {self}")
-        get_logger().info("=" * 80)
-
-        try:
-            self.problem.init_problem()
-            opt = self.optim.load(self.problem.torch_model)
-
-            metrics_eval_val = self.problem.eval(val=True)
-            metrics_eval_train = self.problem.eval(val=False)
-
-            data_logger.log_data(metrics_eval_val)
-            data_logger.log_data(metrics_eval_train)
-            data_logger.log_data({"epoch": 0})
-            data_logger.commit()
-
-            for e in range(1, self.epochs + 1):
-                metrics_training = self.problem.one_epoch(opt)
-                metrics_eval_train = self.problem.eval(val=False)
-                metrics_eval_val = self.problem.eval(val=True)
-
-                data_logger.log_data({"epoch": e})
-                data_logger.log_data(metrics_training)
-                data_logger.log_data(metrics_eval_train)
-                data_logger.log_data(metrics_eval_val)
-
-                data_logger.commit()
-        except DivergingException as e:
-            get_logger().warning("TERMINATING EARLY. Diverging.")
-            get_logger().warning(e, exc_info=True)
-            data_logger.save(exit_code=0)
-            return
-        except Exception as e:
-            get_logger().error("TERMINATING. Encountered error")
-            get_logger().error(e, exc_info=True)
-            data_logger.save(exit_code=1)
-            return
-        except BaseException as e:
-            get_logger().error("TERMINATING. System exit")
-            get_logger().error(e, exc_info=True)
-            data_logger.save(exit_code=1)
-            raise e
-        get_logger().info("Experiment finished.")
-        data_logger.save(exit_code=0)
-
-    def _apply_seed(self) -> None:
-        """Apply the seed to all random number generators.
-
-        To be called before the experiments is run.
-        """
-        np.random.seed(self.seed)
-        random.seed(self.seed)
-        torch.manual_seed(self.seed)
-        torch.cuda.manual_seed_all(self.seed)
+        return hashlib.sha1(str.encode(str(self))).hexdigest()
 
     def save_directory(self) -> Path:
         """Return the directory where the experiments results are saved."""
@@ -151,15 +59,6 @@ class Experiment:
         )
         save_dir = base / exp_dir / self.exp_id()
         return save_dir
-
-    def exp_id(self) -> str:
-        """Return a unique identifier for this experiments.
-
-        Not a unique identifier for the current run of the experiments. Should be unique
-        for the definition of the experiments, combining the problem, optimizer, and
-        seed.
-        """
-        return hashlib.sha1(str.encode(str(self))).hexdigest()
 
     def load_data(self):
         """Tries to load any data for the experiments.

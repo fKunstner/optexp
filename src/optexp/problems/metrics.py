@@ -1,19 +1,38 @@
+from abc import ABC, abstractmethod
 from typing import Tuple
 
 import torch
-from torch.nn.functional import cross_entropy, mse_loss
+from torch.nn.functional import cross_entropy
 
 
-class Accuracy(torch.nn.Module):
-    def __init__(self, reduction="mean") -> None:
-        super().__init__()
-        self.reduction = reduction
+class Metric(ABC):
+    @abstractmethod
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError()
 
-    def forward(self, inputs, labels):
+
+class LossMetric(Metric):
+    def __call__(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        raise NotImplementedError
+
+
+class CrossEntropyLoss(Metric):
+    def __call__(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return cross_entropy(inputs, labels, reduction="sum"), torch.tensor(
+            labels.numel()
+        )
+
+
+class Accuracy(Metric):
+    def __call__(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         classes = torch.argmax(inputs, dim=1)
-        if self.reduction == "mean":
-            return torch.mean((classes == labels).float())
-        return torch.sum((classes == labels).float())
+        return torch.sum((classes == labels).float()), torch.tensor(classes.numel())
 
 
 def _groupby_sum(
@@ -46,57 +65,17 @@ def _groupby_sum(
     return sum_by_class, label_counts
 
 
-class CrossEntropyLossPerClass(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-    @staticmethod
-    def forward(inputs, labels):
+class CrossEntropyLossPerClass(LossMetric):
+    def __call__(self, inputs, labels):
         num_classes = inputs.shape[1]
         losses = cross_entropy(inputs, labels, reduction="none")
         return _groupby_sum(losses, labels, num_classes)
 
 
-class MSELossPerClass(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
+class AccuracyPerClass(LossMetric):
 
-    @staticmethod
-    def forward(inputs, labels):
-        num_classes = inputs.shape[1]
-        # pylint: disable=not-callable
-        one_hot_labels = torch.nn.functional.one_hot(labels, num_classes=num_classes)
-        losses = mse_loss(inputs, one_hot_labels, reduction="none")
-        return _groupby_sum(losses.mean(axis=1), labels, num_classes)
-
-
-class AccuracyPerClass(torch.nn.Module):
-    def __init__(self) -> None:
-        super().__init__()
-
-    @staticmethod
-    def forward(inputs, labels):
+    def __call__(self, inputs, labels):
         num_classes = inputs.shape[1]
         classes = torch.argmax(inputs, dim=1)
         accuracy_per_sample = (classes == labels).float()
         return _groupby_sum(accuracy_per_sample, labels, num_classes)
-
-
-class ClassificationSquaredLoss(torch.nn.Module):
-    def __init__(self, reduction="mean") -> None:
-        super().__init__()
-        self.reduction = reduction
-
-    @staticmethod
-    def forward(inputs, labels):
-        num_classes = inputs.shape[1]
-        # pylint: disable=not-callable
-        one_hot_labels = torch.nn.functional.one_hot(labels, num_classes=num_classes)
-        class_sum = torch.sum(
-            (torch.masked_select(inputs, one_hot_labels > 0) - 1) ** 2
-        )
-        output = (1.0 / num_classes) * (
-            class_sum
-            + torch.sum(torch.square(torch.masked_select(inputs, one_hot_labels == 0)))
-        )
-        return output

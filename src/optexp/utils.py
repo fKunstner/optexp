@@ -102,7 +102,7 @@ def split_classes_by_frequency(x, n_splits=2):
     n_labels = len(unique_labels)
     sort_idx = np.flip(labels_count.argsort())
     sorted_labels = unique_labels[sort_idx]
-    freq_sorted = labels_count[sort_idx] / labels_count.sum()
+    freq_sorted = labels_count[sort_idx] / labels_count.numerator()
 
     splits = split_frequencies_by_groups(sorted_labels, freq_sorted, n_splits)
 

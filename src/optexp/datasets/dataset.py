@@ -1,8 +1,9 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Optional
 
 import torch
+from torch.types import Device
 
 TrVa = Literal["tr", "va"]
 
@@ -25,39 +26,40 @@ class Dataset:
     def output_shape(self, batch_size) -> torch.Size:
         raise NotImplementedError()
 
+
+class HasClassCounts:
+
     @abstractmethod
-    def should_download(self):
+    def class_counts(self, tr_va: TrVa) -> torch.Tensor:
         raise NotImplementedError()
 
-    @abstractmethod
-    def is_downloaded(self):
-        raise NotImplementedError()
 
+class MovableToLocalMixin:
     @abstractmethod
-    def download(self):
-        raise NotImplementedError()
-
-    @abstractmethod
-    def should_move_to_local(self):
-        """Whether the dataset should be moved to the local machine when running on a
-        cluster."""
-
+    def is_on_local(self) -> bool:
         raise NotImplementedError()
 
     @abstractmethod
     def move_to_local(self):
         raise NotImplementedError()
 
+
+class Downloadble:
+
     @abstractmethod
-    def is_on_local(self):
+    def is_downloaded(self) -> bool:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def download(self):
         raise NotImplementedError()
 
 
-@dataclass(frozen=True)
-class ClassificationDataset(Dataset):
-
+class AvailableAsTensor:
     @abstractmethod
-    def class_counts(self, tr_va: TrVa) -> torch.Tensor:
+    def get_tensor_dataloader(
+        self, b: int, tr_va: TrVa, to_device: Optional[Device] = None
+    ) -> torch.utils.data.DataLoader:
         raise NotImplementedError()
 
 
