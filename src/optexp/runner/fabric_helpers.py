@@ -21,3 +21,7 @@ def gather_dict(fabric, val: Dict[str, Tensor]) -> Dict[str, Tensor]:
 
 def gather_bool(fabric, exceptions: Dict[str, bool]) -> Dict[str, Tensor]:
     return fabric.all_gather(exceptions)  # type: ignore[arg-type]
+
+
+def tensor_any(param: Tensor):
+    return any(param) if len(param.shape) > 0 else bool(param)

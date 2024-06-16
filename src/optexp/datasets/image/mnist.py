@@ -10,7 +10,7 @@ from optexp import config
 from optexp.datasets.dataset import (
     AvailableAsTensor,
     Dataset,
-    Downloadble,
+    Downloadable,
     HasClassCounts,
     TrVa,
 )
@@ -19,7 +19,7 @@ MEAN, STD = 0.1307, 0.3081
 
 
 @dataclass(frozen=True)
-class MNIST(Dataset, HasClassCounts, Downloadble, AvailableAsTensor):
+class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
 
     def class_counts(self, tr_va: TrVa) -> torch.Tensor:
         return torch.bincount(self._get_dataset(tr_va).targets)
@@ -60,11 +60,12 @@ class MNIST(Dataset, HasClassCounts, Downloadble, AvailableAsTensor):
 
     def _get_tensor_dataset(self, tr_va: TrVa, to_device: Optional[Device] = None):
         dataset = self._get_dataset(tr_va)
-        X, y = dataset.data, dataset.targets
-        X = torchvision.transforms.Normalize(mean=MEAN, std=STD)(X / 255.0)
+        data, targets = dataset.data, dataset.targets
+        data = torchvision.transforms.Normalize(mean=MEAN, std=STD)(data / 255.0)
+        data = data.unsqueeze(1)
         if to_device is not None:
-            X, y = X.to(to_device), y.to(to_device)
-        return TensorDataset(X, y)
+            data, targets = data.to(to_device), targets.to(to_device)
+        return TensorDataset(data, targets)
 
     def get_dataloader(
         self,

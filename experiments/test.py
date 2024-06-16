@@ -2,14 +2,14 @@ from fractions import Fraction
 
 import torch
 
+from optexp.cli import exp_runner_cli
 from optexp.datasets.image import MNIST
 from optexp.experiments.experiment import Experiment
 from optexp.models.vision import LeNet5
 from optexp.optimizers import SGD, LearningRate
 from optexp.problems import Problem
 from optexp.problems.metrics import Accuracy, CrossEntropyLoss
-from optexp.runner.cli import exp_runner_cli
-from optexp.runner.slurm.slurm_config import SlurmConfig
+from optexp.slurm.slurm_config import SlurmConfig
 
 dataset = MNIST()
 model = LeNet5()

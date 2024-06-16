@@ -44,7 +44,7 @@ class MovableToLocalMixin:
         raise NotImplementedError()
 
 
-class Downloadble:
+class Downloadable:
 
     @abstractmethod
     def is_downloaded(self) -> bool:

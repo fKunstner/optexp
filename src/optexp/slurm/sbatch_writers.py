@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import List
 
 from optexp import config
-from optexp.runner.slurm.slurm_config import SlurmConfig
+from optexp.slurm.slurm_config import SlurmConfig
 
 
 def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
