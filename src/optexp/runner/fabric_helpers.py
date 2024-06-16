@@ -1,6 +1,9 @@
-from typing import Dict
+from typing import Any, Dict
 
 from torch import Tensor
+
+from optexp.config import get_logger
+from optexp.loggers import DataLogger
 
 
 def reduce(fabric, val: float, reduce_op="sum") -> Tensor:
@@ -25,3 +28,20 @@ def gather_bool(fabric, exceptions: Dict[str, bool]) -> Dict[str, Tensor]:
 
 def tensor_any(param: Tensor):
     return any(param) if len(param.shape) > 0 else bool(param)
+
+
+def info_r0(fabric, message: str) -> None:
+    if fabric.global_rank == 0:
+        get_logger().info(message)
+
+
+def synchronised_log(
+    fabric,
+    data_logger: DataLogger | None,
+    *dictionaries_to_log: Dict[str, Any],
+) -> None:
+    if fabric.global_rank == 0 and data_logger is not None:
+        for dict_to_log in dictionaries_to_log:
+            data_logger.log_data(dict_to_log)
+        data_logger.commit()
+    fabric.barrier()
