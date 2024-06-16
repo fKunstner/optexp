@@ -1,12 +1,15 @@
 import math
 import pprint
 import random
+import textwrap
 import time
+import traceback
 from typing import (
     Any,
     Callable,
     Dict,
     Iterable,
+    List,
     Literal,
     Optional,
     Tuple,
@@ -59,10 +62,10 @@ def manage_exceptions(
 ):
 
     fabric = ptl.Fabric(
-        accelerator="cpu",  # "get_device(),
-        devices=2,  # exp.devices,
-        num_nodes=1,  # exp.nodes,
-        strategy="auto",  # exp.strategy,
+        accelerator=get_device(),
+        devices=exp.devices,
+        num_nodes=exp.nodes,
+        strategy=exp.strategy,
     )
     fabric.launch()
 
@@ -113,19 +116,6 @@ def manage_exceptions(
 
 def run(fabric, exp, data_logger):
 
-    if fabric.global_rank == 0:
-        get_logger().info("=" * 80)
-        get_logger().info(
-            "Initializing  experiments: \n"
-            f"{pprint.pformat(asdict_with_class(exp),indent=4)}"
-        )
-        get_logger().info("=" * 80)
-
-    _apply_seed(exp)
-
-    if fabric.global_rank == 0:
-        get_logger().info("Loading dataset...")
-
     def get_dataloaders():
         b = exp.problem.batch_size
         return (
@@ -135,20 +125,8 @@ def run(fabric, exp, data_logger):
             exp.problem.dataset.get_tensor_dataloader(tr_va="va", b=b),
         )
 
-    input_shape, output_shape, tr_loader, va_loader = synchronized_try_except(
-        fabric, get_dataloaders
-    )
-
-    if fabric.global_rank == 0:
-        get_logger().info("Loading model...")
-
     def get_model():
         return exp.problem.model.load_model(input_shape, output_shape)
-
-    model = synchronized_try_except(fabric, get_model)
-
-    if fabric.global_rank == 0:
-        get_logger().info("Loading loss function, metrics, and optimizers...")
 
     def get_loss_metrics_and_optimizer():
         return (
@@ -157,32 +135,58 @@ def run(fabric, exp, data_logger):
             exp.optim.load(model),
         )
 
-    loss_func, metrics, opt = synchronized_try_except(
-        fabric, get_loss_metrics_and_optimizer
+    def info_r0(message: str) -> None:
+        if fabric.global_rank == 0:
+            get_logger().info(message)
+
+    info_r0(
+        textwrap.dedent(
+            f"""
+            {"=" * 80}
+            Initializing experiment:
+            {pprint.pformat(asdict_with_class(exp),indent=4)}
+            {"=" * 80}
+            """
+        )
     )
 
-    if fabric.global_rank == 0:
-        get_logger().info("Fabric setup...")
+    _apply_seed(exp)
+
+    info_r0("Loading dataset...")
+    input_shape, output_shape, tr_dl, va_dl = sync_try_except(fabric, get_dataloaders)
+
+    info_r0("Loading model...")
+    model = sync_try_except(fabric, get_model)
+
+    info_r0("Loading loss function, metrics, and optimizers...")
+    loss_func, metrics, opt = sync_try_except(fabric, get_loss_metrics_and_optimizer)
+
+    info_r0("Fabric setup...")
     model, opt = fabric.setup(model, opt)
-    tr_loader, va_loader = fabric.setup_dataloaders(
-        tr_loader, va_loader, move_to_device=True
-    )
+    tr_dl, va_dl = fabric.setup_dataloaders(tr_dl, va_dl, move_to_device=True)
 
-    if fabric.global_rank == 0:
-        get_logger().info("Initial evaluation...")
+    loader = iter(tr_dl)
+
+    def get_batch():
+        nonlocal loader
+        try:
+            features, labels = next(loader)
+        except StopIteration:
+            loader = iter(tr_dl)
+            features, labels = next(loader)
+        return features, labels
+
+    info_r0("Initial evaluation...")
 
     def compute_metrics():
-        if fabric.global_rank == 0:
-            raise ValueError()
-
         return (
-            evaluate(loader=tr_loader, metrics=metrics, model=model),
-            evaluate(loader=va_loader, metrics=metrics, model=model),
+            evaluate(loader=tr_dl, metrics=metrics, model=model),
+            evaluate(loader=va_dl, metrics=metrics, model=model),
         )
 
-    metrics_tr, metrics_va = synchronized_try_except(fabric, compute_metrics)
-    reduced_metrics_tr = reduce_metrics(fabric, metrics_tr, "tr")
-    reduced_metrics_va = reduce_metrics(fabric, metrics_va, "va")
+    metrics_tr, metrics_va = sync_try_except(fabric, compute_metrics)
+    reduced_metrics_tr = reduce_and_make_dictionary(fabric, metrics_tr, "tr")
+    reduced_metrics_va = reduce_and_make_dictionary(fabric, metrics_va, "va")
 
     synchronised_log(
         fabric,
@@ -192,49 +196,40 @@ def run(fabric, exp, data_logger):
         {"step": 0},
     )
     torch.cuda.empty_cache()
-    loader = iter(tr_loader)
 
-    def get_batch():
-        nonlocal loader
-        try:
-            features, labels = next(loader)
-        except StopIteration:
-            loader = iter(tr_loader)
-            features, labels = next(loader)
-        return features, labels
+    info_r0("Starting training...")
 
-    if fabric.global_rank == 0:
-        get_logger().info("Starting training...")
+    def compute_loss():
+        features, labels = get_batch()
+        b = len(labels)
+        loss, weight = to_loss_and_weight(loss_func(model(features), labels), b)
+        loss_and_count = SumAndCounter(loss.item(), weight)
+        if math.isnan(loss) or math.isinf(loss):
+            raise DivergingException()
+        return loss, loss_and_count
+
     for t in range(1, exp.steps + 1):
         opt.zero_grad()
 
         loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
         for _ in range(exp.gradient_acc_steps):
 
-            def compute_loss():
-                features, labels = get_batch()
-                b = len(labels)
-                loss, weight = to_loss_and_weight(loss_func(model(features), labels), b)
-                loss_and_count = SumAndCounter(loss.item(), weight)
-                if math.isnan(loss) or math.isinf(loss):
-                    raise DivergingException()
-                return loss, loss_and_count
-
-            loss, new_loss_and_count = synchronized_try_except(fabric, compute_loss)
+            loss, new_loss_and_count = sync_try_except(fabric, compute_loss)
             loss_and_count += new_loss_and_count
             fabric.backward(loss)
 
         for p in model.parameters():
             if p.grad is not None:
                 p.grad /= loss_and_count.denominator
+
         train_loss = loss_and_count.reduce(fabric).cpu().item()
         opt.step()
         torch.cuda.empty_cache()
 
         if t % exp.eval_every == 0:
-            metrics_tr, metrics_va = synchronized_try_except(fabric, compute_metrics)
-            reduced_metrics_tr = reduce_metrics(fabric, metrics_tr, "tr")
-            reduced_metrics_va = reduce_metrics(fabric, metrics_va, "va")
+            metrics_tr, metrics_va = sync_try_except(fabric, compute_metrics)
+            reduced_metrics_tr = reduce_and_make_dictionary(fabric, metrics_tr, "tr")
+            reduced_metrics_va = reduce_and_make_dictionary(fabric, metrics_va, "va")
 
             synchronised_log(
                 fabric,
@@ -247,9 +242,9 @@ def run(fabric, exp, data_logger):
             torch.cuda.empty_cache()
 
 
-def reduce_metrics(
+def reduce_and_make_dictionary(
     fabric, metrics_and_counts_raw: Dict[Metric, SumAndCounter], tr_va: TrVa
-):
+) -> Dict[str, Iterable | float]:
     def reduce(x):
         v = x.reduce(fabric).cpu()
         return v.tolist() if torch.numel(v) > 1 else v.item()
@@ -334,7 +329,7 @@ class SynchronizedError(Exception):
     pass
 
 
-def synchronized_try_except(fabric: ptl.Fabric, func: Callable[[], T]) -> Optional[T]:
+def sync_try_except(fabric: ptl.Fabric, func: Callable[[], T]) -> Optional[T]:
     """Raise an exception on all ranks if any rank raises an exception.
 
     The function `func` must not use multiprocess communication (reduce, gather, ...).
@@ -344,9 +339,8 @@ def synchronized_try_except(fabric: ptl.Fabric, func: Callable[[], T]) -> Option
 
     This function re-raises the exception on all ranks, so that all ranks can handle it
     """
-    all_exceptions: Iterable[Optional[Exception]] = [
-        None for _ in range(fabric.world_size)
-    ]
+    w = fabric.world_size
+    all_exceptions: Iterable[Optional[Tuple[Exception, str]]] = [None for _ in range(w)]
     output: Optional[T] = None
 
     if fabric.world_size == 1:
@@ -356,36 +350,44 @@ def synchronized_try_except(fabric: ptl.Fabric, func: Callable[[], T]) -> Option
             raise SynchronizedDivergence from e
         except Exception as e:
             raise SynchronizedError from e
+        return output
 
+    try:
+        output = func()
+    except Exception as exception:
+        torch.distributed.all_gather_object(
+            obj=(exception, get_trace(exception)),
+            object_list=all_exceptions,
+        )
+        raise exception
     else:
-        try:
-            output = func()
-        except Exception as exception:
-            torch.distributed.all_gather_object(
-                obj=exception,
-                object_list=all_exceptions,
-            )
-            raise exception
-        else:
-            torch.distributed.all_gather_object(
-                obj=None,
-                object_list=all_exceptions,
-            )
-        finally:
-            for rank, exc in enumerate(all_exceptions):
-                if exc is not None:
-                    # if fabric.global_rank == 0:
-                    #     import pdb
-                    #
-                    #     pdb.set_trace()
-                    #
-                    # fabric.barrier()
-                    if isinstance(exc, DivergingException):
-                        raise SynchronizedDivergence(
-                            f"Diverging exception occurred on rank {rank}"
-                        ) from exc
-                    raise SynchronizedError(
-                        f"Exception occurred on rank {rank}"
+        torch.distributed.all_gather_object(
+            obj=None,
+            object_list=all_exceptions,
+        )
+    finally:
+        valid_exceptions: List[Tuple[int, Exception, str]] = []
+        for i, exp_and_trace in enumerate(all_exceptions):
+            if exp_and_trace is not None:
+                valid_exceptions.append((i, exp_and_trace[0], exp_and_trace[1]))
+
+        if len(valid_exceptions) > 0:
+            if fabric.global_rank >= 0:
+                rank, exc, trace = valid_exceptions[0]
+                exc_class = exc.__class__.__name__
+                if isinstance(exc, DivergingException):
+                    raise SynchronizedDivergence(
+                        f"Detected {exc_class} on rank {rank}.\n\n"
+                        f"Traceback for {exc_class}:\n{trace}"
                     ) from exc
+                raise SynchronizedError(
+                    f"Detected {exc_class} on rank {rank}.\n\n"
+                    f"Traceback for {exc_class}:\n{trace}"
+                ) from exc
+            raise SystemExit()
 
     return output
+
+
+def get_trace(ex: BaseException):
+    return "".join(traceback.TracebackException.from_exception(ex).format())
