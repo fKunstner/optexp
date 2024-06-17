@@ -30,7 +30,7 @@ def tensor_any(param: Tensor):
     return any(param) if len(param.shape) > 0 else bool(param)
 
 
-def info_r0(fabric, message: str) -> None:
+def loginfo_on_r0(fabric, message: str) -> None:
     if fabric.global_rank == 0:
         get_logger().info(message)
 
