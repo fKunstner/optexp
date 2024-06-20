@@ -77,6 +77,7 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
             self._get_dataset(tr_va),
             batch_size=b,
             shuffle=True,
+            drop_last=False,
             num_workers=num_workers,
             pin_memory=True,
         )
@@ -91,6 +92,7 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
             self._get_tensor_dataset(tr_va, to_device),
             batch_size=b,
             shuffle=True,
+            drop_last=False,
             num_workers=0,
             pin_memory=False,
         )

@@ -4,6 +4,7 @@ from typing import Literal, Optional
 
 import torch
 from torch.types import Device
+from torch.utils.data import DataLoader
 
 TrVa = Literal["tr", "va"]
 
@@ -15,7 +16,7 @@ class Dataset:
         self,
         b: int,
         tr_va: TrVa,
-    ) -> torch.utils.data.DataLoader:
+    ) -> DataLoader:
         raise NotImplementedError()
 
     @abstractmethod
@@ -69,3 +70,7 @@ class AvailableAsTensor:
 
 class DatasetNotDownloadableError(NotImplementedError):
     pass
+
+
+def epoch_to_steps(epochs: int, dataset: Dataset, batch_size: int) -> int:
+    return epochs * dataset.get_num_samples("tr") // batch_size

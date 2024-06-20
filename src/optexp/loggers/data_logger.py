@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import copy
-import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-import pandas as pd
 import wandb
 
 from optexp import config
 from optexp.config import get_logger
 from optexp.loggers.rate_limited_logger import RateLimitedLogger
-from optexp.loggers.utils import pprint_dict
 
 
 class DataLogger:
@@ -109,7 +105,7 @@ class DataLogger:
 
             if config.get_wandb_mode() == "offline" and self.wandb_autosync:
                 get_logger().info(f"Uploading wandb run in {Path(self.run.dir).parent}")
-                get_logger().info(f"Sync with")
+                get_logger().info("Sync with")
                 get_logger().info(f"    {self._sync_command()}")
                 subprocess.run(self._sync_command(), shell=True, check=False)
             else:

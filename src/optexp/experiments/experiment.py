@@ -3,15 +3,12 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Optional
 
 import pandas as pd
-import torch.types
-from lightning import Fabric
 
 from optexp import config
-from optexp.datasets.dataset import Dataset, TrVa
-from optexp.experiments.expconfig import ExpConfig
+from optexp.experiments.hardwareconfig import HardwareConfig
 from optexp.optimizers import Optimizer
 from optexp.problems import Problem
 
@@ -31,11 +28,11 @@ class Experiment:
     optim: Optimizer
     problem: Problem
     group: str
-    exp_config: ExpConfig
-
-    def __post_init__(self):
-        if self.epochs is not None and self.epochs != 0:
-            raise ValueError("Experiment setup with epochs, but only supports steps")
+    batch_size: int
+    eval_every: int
+    seed: int
+    steps: int
+    hw_config: HardwareConfig
 
     def exp_id(self) -> str:
         """Return a unique identifier for this experiment.
