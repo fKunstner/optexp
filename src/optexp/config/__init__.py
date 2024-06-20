@@ -2,7 +2,7 @@ import logging
 import os
 from logging import Logger
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import torch
 
@@ -115,8 +115,8 @@ def get_workspace_directory() -> Path:
     return Path(workspace)
 
 
-def get_device() -> str:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+def get_device() -> Literal["cpu", "cuda"]:
+    device: Literal["cpu", "cuda"] = "cuda" if torch.cuda.is_available() else "cpu"
     if device != "cuda":
         get_logger("GPU not available, running experiments on CPU.", logging.WARNING)
     return device

@@ -3,11 +3,15 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 import pandas as pd
+import torch.types
+from lightning import Fabric
 
 from optexp import config
+from optexp.datasets.dataset import Dataset, TrVa
+from optexp.experiments.expconfig import ExpConfig
 from optexp.optimizers import Optimizer
 from optexp.problems import Problem
 
@@ -27,15 +31,7 @@ class Experiment:
     optim: Optimizer
     problem: Problem
     group: str
-    seed: int
-    epochs: int
-    steps: int = 1
-    nodes: int = 1
-    devices: int = -1
-    strategy: str = "auto"
-    eval_every: int = 1
-    gradient_acc_steps: int = 1
-    wandb_autosync: bool = True
+    exp_config: ExpConfig
 
     def __post_init__(self):
         if self.epochs is not None and self.epochs != 0:

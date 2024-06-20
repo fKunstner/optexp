@@ -11,9 +11,10 @@ import torch
 import torch.nn
 from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
+from torch.utils.data import DataLoader
 
-from optexp.config import get_device
 from optexp.datasets.dataset import TrVa
+from optexp.experiments.expconfig import DetailedExpConfig
 from optexp.experiments.experiment import Experiment
 from optexp.loggers import DataLogger
 from optexp.loggers.asdict_with_classes import asdict_with_class
@@ -47,20 +48,21 @@ def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
 class ExperimentState:
     model: torch.nn.Module
     optimizer: torch.optim.Optimizer
-    tr_dataloader: torch.utils.data.DataLoader
-    va_dataloader: torch.utils.data.DataLoader
+    tr_tr_dataloader: DataLoader
+    tr_va_dataloader: DataLoader
+    va_va_dataloader: DataLoader
     metrics: Iterable[Metric]
     loss_func: torch.nn.Module
     _tr_dl_iter = None
 
     def get_batch(self):
         if self._tr_dl_iter is None:
-            self._tr_dl_iter = iter(self.tr_dataloader)
+            self._tr_dl_iter = iter(self.tr_tr_dataloader)
 
         try:
             features, labels = next(self._tr_dl_iter)
         except StopIteration:
-            tr_iterator = iter(self.tr_dataloader)
+            tr_iterator = iter(self.tr_tr_dataloader)
             features, labels = next(tr_iterator)
         return features, labels
 
@@ -68,10 +70,10 @@ class ExperimentState:
 def run(exp: Experiment) -> None:
 
     fabric = ptl.Fabric(
-        accelerator=get_device(),
-        devices=exp.devices,
-        num_nodes=exp.nodes,
-        strategy=exp.strategy,
+        accelerator=exp.exp_config.get_accelerator(),
+        devices=exp.exp_config.get_num_workers(),
+        num_nodes=1,
+        strategy="auto",
     )
     fabric.launch()
     # only rank 0 gets a real one
@@ -84,7 +86,7 @@ def run(exp: Experiment) -> None:
             run_id=time.strftime("%Y-%m-%d--%H-%M-%S"),
             exp_id=exp.exp_id(),
             save_directory=exp.save_directory(),
-            wandb_autosync=exp.wandb_autosync,
+            wandb_autosync=exp.exp_config.use_wandb_autosync(),
         )
     fabric.barrier()
 
@@ -92,20 +94,20 @@ def run(exp: Experiment) -> None:
     loginfo_on_r0(fabric, "Initializing experiment:")
     loginfo_on_r0(fabric, pprint.pformat(asdict_with_class(exp), indent=4))
     loginfo_on_r0(fabric, "=" * 80)
-    exp_state = initialize(exp, fabric)
+    exp_state, detailed_exp_config = initialize(exp, fabric)
 
     loginfo_on_r0(fabric, "Initial evaluation...")
     eval_and_log(fabric, exp_state, {"step": 0}, data_logger)
 
     loginfo_on_r0(fabric, "Starting training...")
 
-    for t in range(1, exp.steps + 1):
-        live_loss = training_step(fabric, exp, exp_state)
+    for t in range(1, detailed_exp_config.get_steps() + 1):
+        live_loss = training_step(fabric, exp_state, detailed_exp_config)
 
         if math.isnan(live_loss) or math.isinf(live_loss):
             break
 
-        if t % exp.eval_every == 0:
+        if t % exp.exp_config.get_eval_every() == 0:
             extra_dict = {"step": t, "live_loss": live_loss}
             eval_and_log(fabric, exp_state, extra_dict, data_logger)
 
@@ -115,17 +117,32 @@ def run(exp: Experiment) -> None:
     fabric.barrier()
 
 
-def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
+def initialize(
+    exp: Experiment, fabric: ptl.Fabric
+) -> Tuple[ExperimentState, DetailedExpConfig]:
 
-    np.random.seed(exp.seed)
-    random.seed(exp.seed)
-    torch.manual_seed(exp.seed)
-    torch.cuda.manual_seed_all(exp.seed)
+    loginfo_on_r0(fabric, "Initializing problem configuration")
+    detailled_exp_config: DetailedExpConfig = exp.exp_config.load(
+        fabric, exp.problem.dataset
+    )
+
+    seed = exp.exp_config.get_seed()
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
 
     loginfo_on_r0(fabric, "Loading dataset...")
     b = exp.problem.batch_size
-    tr_dl = exp.problem.dataset.get_dataloader(tr_va="tr", b=b)
-    va_dl = exp.problem.dataset.get_dataloader(tr_va="va", b=b)
+    tr_tr_dl = exp.problem.dataset.get_dataloader(
+        tr_va="tr", b=detailled_exp_config.get_batch_size_for_dataloader("tr")
+    )
+    tr_va_dl = exp.problem.dataset.get_dataloader(
+        tr_va="tr", b=detailled_exp_config.get_batch_size_for_dataloader("va")
+    )
+    va_va_dl = exp.problem.dataset.get_dataloader(
+        tr_va="va", b=detailled_exp_config.get_batch_size_for_dataloader("va")
+    )
 
     loginfo_on_r0(fabric, "Loading model...")
     input_shape = exp.problem.dataset.input_shape(b)
@@ -137,15 +154,21 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     metrics = [metric() for metric in exp.problem.metrics]
     opt = exp.optim.load(model)
     model, opt = fabric.setup(model, opt)
-    tr_dl, va_dl = fabric.setup_dataloaders(tr_dl, va_dl, move_to_device=True)
+    tr_tr_dl, tr_va_dl, va_va_dl = fabric.setup_dataloaders(
+        tr_tr_dl, tr_va_dl, va_va_dl, move_to_device=True
+    )
 
-    return ExperimentState(
-        model=model,
-        optimizer=opt,
-        tr_dataloader=tr_dl,
-        va_dataloader=va_dl,
-        metrics=metrics,
-        loss_func=loss_func,
+    return (
+        ExperimentState(
+            model=model,
+            optimizer=opt,
+            tr_tr_dataloader=tr_tr_dl,
+            tr_va_dataloader=tr_va_dl,
+            va_va_dataloader=va_va_dl,
+            metrics=metrics,
+            loss_func=loss_func,
+        ),
+        detailled_exp_config,
     )
 
 
@@ -157,10 +180,10 @@ def eval_and_log(
 ) -> None:
 
     metrics_tr = evaluate(
-        loader=state.tr_dataloader, metrics=state.metrics, model=state.model
+        loader=state.tr_tr_dataloader, metrics=state.metrics, model=state.model
     )
     metrics_va = evaluate(
-        loader=state.va_dataloader, metrics=state.metrics, model=state.model
+        loader=state.va_va_dataloader, metrics=state.metrics, model=state.model
     )
     reduced_metrics_tr = reduce_and_make_dictionary(fabric, metrics_tr, "tr")
     reduced_metrics_va = reduce_and_make_dictionary(fabric, metrics_va, "va")
@@ -176,7 +199,7 @@ def eval_and_log(
 
 
 def evaluate(
-    loader: torch.utils.data.DataLoader,
+    loader: DataLoader,
     metrics: Iterable[Metric],
     model: torch.nn.Module,
 ) -> Dict[Metric, SumAndCounter]:
@@ -198,11 +221,13 @@ def evaluate(
 
 
 def training_step(
-    fabric: ptl.Fabric, exp: Experiment, exp_state: ExperimentState
+    fabric: ptl.Fabric,
+    exp_state: ExperimentState,
+    detailed_exp_config: DetailedExpConfig,
 ) -> float:
     exp_state.optimizer.zero_grad()
     total_loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
-    for _ in range(exp.gradient_acc_steps):
+    for _ in range(detailed_exp_config.get_gradient_accumulation_steps()):
         features, labels = exp_state.get_batch()
         b = len(labels)
         loss, weight = to_loss_and_weight(

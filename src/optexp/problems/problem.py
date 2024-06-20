@@ -22,4 +22,3 @@ class Problem:
     batch_size: int
     lossfunc: Type[torch.nn.Module]
     metrics: List[Type[Metric]]
-    micro_batch_size: Literal["auto"] | int = "auto"

@@ -26,6 +26,10 @@ class Dataset:
     def output_shape(self, batch_size) -> torch.Size:
         raise NotImplementedError()
 
+    @abstractmethod
+    def get_num_samples(self, tr_va: TrVa) -> int:
+        raise NotImplementedError()
+
 
 class HasClassCounts:
 
