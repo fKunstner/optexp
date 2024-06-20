@@ -1,3 +1,7 @@
+# Profiling and data files
+*.prof
+*.json
+
 # data
 workspace/*
 
