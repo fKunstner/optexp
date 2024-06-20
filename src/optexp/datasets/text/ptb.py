@@ -42,7 +42,6 @@ def ptb_loader(
     batch_size,
     bptt,
     device,
-    tiny=False,
     tokenizer=None,
     merge: Optional[int] = None,
 ):
@@ -54,13 +53,9 @@ def ptb_loader(
     vocab = build_vocab_from_iterator(map(tokenizer, train_iter), specials=["<unk>"])
     vocab.set_default_index(vocab["<unk>"])
 
-    if tiny:
-        train_iter = PennTreebank(root=save_path.parent, split="valid")
-        val_iter = PennTreebank(root=save_path.parent, split="test")
-    else:
-        train_iter, val_iter = PennTreebank(
-            root=save_path.parent, split=("train", "valid")  # type: ignore[arg-type]
-        )
+    train_iter, val_iter = PennTreebank(
+        root=save_path.parent, split=("train", "valid")  # type: ignore[arg-type]
+    )
 
     train_data = tokenize_and_numify(train_iter, tokenizer, vocab).to(device)
     val_data = tokenize_and_numify(val_iter, tokenizer, vocab).to(device)

@@ -26,7 +26,6 @@ def load_wt2(
         batch_size=batch_size,
         bptt=bptt,
         device=device,
-        tiny=False,
     )
 
 
@@ -35,7 +34,6 @@ def wt2_loader(
     batch_size,
     bptt,
     device,
-    tiny=False,
     tokenizer=None,
 ):
     train_iter = WikiText2(root=str(save_path.parent), split="train")
@@ -46,22 +44,11 @@ def wt2_loader(
     vocab = build_vocab_from_iterator(map(tokenizer, train_iter), specials=["<unk>"])
     vocab.set_default_index(vocab["<unk>"])
 
-    if tiny:
-        train_iter = WikiText2(root=str(save_path.parent), split="valid")
-        val_iter = WikiText2(root=str(save_path.parent), split="test")
-    else:
-
-        train_iter, val_iter, _ = WikiText2(
-            root=str(save_path.parent), split=("train", "valid")  # type: ignore[arg-type]
-        )
-
-    cutoff = 1.1 / 3.0 if tiny else None
-
-    train_data = tokenize_and_numify(
-        train_iter, tokenizer, vocab=vocab, cutoff=cutoff
-    ).to(device)
-    val_data = tokenize_and_numify(val_iter, tokenizer, vocab=vocab, cutoff=cutoff).to(
-        device
+    train_iter, val_iter, _ = WikiText2(
+        root=str(save_path.parent), split=("train", "valid")  # type: ignore[arg-type]
     )
+
+    train_data = tokenize_and_numify(train_iter, tokenizer, vocab=vocab).to(device)
+    val_data = tokenize_and_numify(val_iter, tokenizer, vocab=vocab).to(device)
 
     return prepare_data_loader(train_data, val_data, batch_size, vocab, bptt)

@@ -37,16 +37,6 @@ def prepare_data_loader(train_data, val_data, batch_size, vocab, bptt):
     train_dataset = TextData(train_data, bptt)
     val_dataset = TextData(val_data, bptt)
 
-    def collate_fn(batch):
-        src_batch, tgt_batch = [], []
-        for sample in batch:
-            src_batch.append(sample[0])
-            tgt_batch.append(sample[1])
-
-        return torch.transpose(torch.vstack(src_batch), 0, 1), torch.transpose(
-            torch.vstack(tgt_batch), 0, 1
-        ).reshape(-1)
-
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=False, collate_fn=collate_fn
     )
@@ -61,44 +51,50 @@ def prepare_data_loader(train_data, val_data, batch_size, vocab, bptt):
     return loaders, input_shape, output_shape, class_freqs
 
 
+def collate_fn(batch):
+    src_batch, tgt_batch = [], []
+    for sample in batch:
+        src_batch.append(sample[0])
+        tgt_batch.append(sample[1])
+
+    return torch.transpose(torch.vstack(src_batch), 0, 1), torch.transpose(
+        torch.vstack(tgt_batch), 0, 1
+    ).reshape(-1)
+
+
 def prepare_mixed_size_data_loader(
     train_data, val_data, train_batch_size, eval_batch_size, vocab, bptt
 ):
     class_freqs = torch.bincount(train_data)
     train_dataset = TextData(train_data, bptt)
     val_dataset = TextData(val_data, bptt)
-
-    def collate_fn(batch):
-        src_batch, tgt_batch = [], []
-        for sample in batch:
-            src_batch.append(sample[0])
-            tgt_batch.append(sample[1])
-
-        return torch.transpose(torch.vstack(src_batch), 0, 1), torch.transpose(
-            torch.vstack(tgt_batch), 0, 1
-        ).reshape(-1)
-
-    train_loader = DataLoader(
-        train_dataset, batch_size=train_batch_size, shuffle=False, collate_fn=collate_fn
-    )
-    val_loader = DataLoader(
-        val_dataset, batch_size=train_batch_size, shuffle=False, collate_fn=collate_fn
-    )
-
-    eval_train_loader = DataLoader(
-        train_dataset, batch_size=eval_batch_size, shuffle=False, collate_fn=collate_fn
-    )
-    eval_val_loader = DataLoader(
-        val_dataset, batch_size=eval_batch_size, shuffle=False, collate_fn=collate_fn
-    )
-
     input_shape = np.array([len(vocab)])
     output_shape = input_shape
     loaders = {
-        "train_loader": train_loader,
-        "val_loader": val_loader,
-        "eval_train_loader": eval_train_loader,
-        "eval_val_loader": eval_val_loader,
+        "train_loader": DataLoader(
+            train_dataset,
+            batch_size=train_batch_size,
+            shuffle=False,
+            collate_fn=collate_fn,
+        ),
+        "val_loader": DataLoader(
+            val_dataset,
+            batch_size=train_batch_size,
+            shuffle=False,
+            collate_fn=collate_fn,
+        ),
+        "eval_train_loader": DataLoader(
+            train_dataset,
+            batch_size=eval_batch_size,
+            shuffle=False,
+            collate_fn=collate_fn,
+        ),
+        "eval_val_loader": DataLoader(
+            val_dataset,
+            batch_size=eval_batch_size,
+            shuffle=False,
+            collate_fn=collate_fn,
+        ),
     }
 
     return loaders, input_shape, output_shape, class_freqs
