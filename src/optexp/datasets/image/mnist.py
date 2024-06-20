@@ -21,6 +21,13 @@ MEAN, STD = 0.1307, 0.3081
 @dataclass(frozen=True)
 class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
 
+    def get_num_samples(self, tr_va: TrVa) -> int:
+        if tr_va == "tr":
+            return 60_000
+        if tr_va == "va":
+            return 10_000
+        raise ValueError(f"Invalid tr_va: {tr_va}")
+
     def class_counts(self, tr_va: TrVa) -> torch.Tensor:
         return torch.bincount(self._get_dataset(tr_va).targets)
 
@@ -46,7 +53,8 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
         for train in [True, False]:
             torchvision.datasets.MNIST(path, download=True, train=train)
 
-    def _get_dataset(self, tr_va: TrVa):
+    @staticmethod
+    def _get_dataset(tr_va: TrVa):
         return torchvision.datasets.MNIST(
             root=str(config.get_dataset_directory()),
             train=tr_va == "tr",
