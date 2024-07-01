@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+import torch.nn
 from torch import Tensor
 
 from optexp.config import get_logger
@@ -45,3 +46,35 @@ def synchronised_log(
             data_logger.log_data(dict_to_log)
         data_logger.commit()
     fabric.barrier()
+
+
+class EvalMode:
+    def __init__(self, model: torch.nn.Module):
+        self.model = model
+        self._original_train_mode = model.training
+
+    def __enter__(self):
+        self.model.eval()
+        return self.model
+
+    def __exit__(self, type, value, traceback):
+        if self._original_train_mode:
+            self.model.train()
+        else:
+            self.model.eval()
+
+
+class TrainMode:
+    def __init__(self, model: torch.nn.Module):
+        self.model = model
+        self._original_train_mode = model.training
+
+    def __enter__(self):
+        self.model.train()
+        return self.model
+
+    def __exit__(self, type, value, traceback):
+        if self._original_train_mode:
+            self.model.train()
+        else:
+            self.model.eval()

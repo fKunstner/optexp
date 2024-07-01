@@ -19,7 +19,12 @@ from optexp.experiments.hardwareconfig import DetailedExpConfig
 from optexp.loggers import DataLogger
 from optexp.loggers.asdict_with_classes import asdict_with_class
 from optexp.problems.metrics import Metric
-from optexp.runner.fabric_helpers import loginfo_on_r0, synchronised_log
+from optexp.runner.fabric_helpers import (
+    TrainMode,
+    loginfo_on_r0,
+    synchronised_log,
+    EvalMode,
+)
 from optexp.runner.sum_and_counter import SumAndCounter
 
 
@@ -243,7 +248,7 @@ def evaluate(
         for metric in metrics
     }
 
-    with torch.no_grad():
+    with EvalMode(model), torch.no_grad():
         for _, (features, labels) in enumerate(loader):
             y_pred = model(features)
             b = len(labels)
@@ -252,7 +257,7 @@ def evaluate(
                 loss, weight = to_loss_and_weight(metric(y_pred, labels), b)
                 running_metrics[metric] += SumAndCounter(loss.detach(), weight.detach())
 
-    return running_metrics
+        return running_metrics
 
 
 def training_step(
@@ -260,27 +265,29 @@ def training_step(
     exp_state: ExperimentState,
     detailed_exp_config: DetailedExpConfig,
 ) -> Tuple[float, ExperimentState]:
-    exp_state.optimizer.zero_grad()
-    total_loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
-    for _ in range(detailed_exp_config.get_gradient_accumulation_steps()):
-        features, labels = exp_state.get_batch()
-        b = len(labels)
-        loss, weight = to_loss_and_weight(
-            exp_state.loss_func(exp_state.model(features), labels), b
-        )
-        total_loss_and_count += SumAndCounter(loss.detach(), weight)
 
-        fabric.backward(loss)
+    with TrainMode(exp_state.model):
+        exp_state.optimizer.zero_grad()
+        total_loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
+        for _ in range(detailed_exp_config.get_gradient_accumulation_steps()):
+            features, labels = exp_state.get_batch()
+            b = len(labels)
+            loss, weight = to_loss_and_weight(
+                exp_state.loss_func(exp_state.model(features), labels), b
+            )
+            total_loss_and_count += SumAndCounter(loss.detach(), weight)
 
-    for p in exp_state.model.parameters():
-        if p.grad is not None:
-            p.grad /= total_loss_and_count.denominator
+            fabric.backward(loss)
 
-    train_loss = total_loss_and_count.reduce(fabric).cpu().item()
-    exp_state.optimizer.step()
-    torch.cuda.empty_cache()
+        for p in exp_state.model.parameters():
+            if p.grad is not None:
+                p.grad /= total_loss_and_count.denominator
 
-    return train_loss, exp_state
+        train_loss = total_loss_and_count.reduce(fabric).cpu().item()
+        exp_state.optimizer.step()
+        torch.cuda.empty_cache()
+
+        return train_loss, exp_state
 
 
 def reduce_and_make_dictionary(
