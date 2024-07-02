@@ -9,8 +9,11 @@ class Component:
 
     def loggable_dict(self) -> dict:
         def _loggable_dict(
-            obj,
-        ) -> Union[dict, list, bool, type, set, tuple, str]:
+            obj: Union[
+                Component, dict, list, bool, int, float, type, set, tuple, type, str
+            ],
+        ) -> Union[dict, list, bool, int, float, type, set, tuple, type, str]:
+
             if isinstance(obj, dict):
                 if not all(isinstance(k, str) for k in obj.keys()):
                     raise ValueError(
@@ -43,4 +46,4 @@ class Component:
                 )
             )
 
-        return _loggable_dict(self)
+        return _loggable_dict(self)  # type: ignore
