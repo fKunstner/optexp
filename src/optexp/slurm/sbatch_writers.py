@@ -1,6 +1,5 @@
 """Module to integrate with Slurm."""
 
-import math
 import textwrap
 from pathlib import Path
 from typing import List
