@@ -57,7 +57,7 @@ class EvalMode:
         self.model.eval()
         return self.model
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         if self._original_train_mode:
             self.model.train()
         else:
@@ -73,7 +73,7 @@ class TrainMode:
         self.model.train()
         return self.model
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         if self._original_train_mode:
             self.model.train()
         else:
