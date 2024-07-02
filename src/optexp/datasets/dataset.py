@@ -6,11 +6,13 @@ import torch
 from torch.types import Device
 from torch.utils.data import DataLoader
 
+from optexp.experiments.component import Component
+
 TrVa = Literal["tr", "va"]
 
 
 @dataclass(frozen=True)
-class Dataset:
+class Dataset(Component):
     @abstractmethod
     def get_dataloader(
         self,

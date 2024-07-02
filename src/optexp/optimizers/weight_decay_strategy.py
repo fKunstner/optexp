@@ -3,9 +3,11 @@ from typing import Dict, Iterable, List, Union
 
 from torch.nn import Module, Parameter
 
+from optexp.experiments.component import Component
 
-@dataclass
-class WeightDecayStrategy:
+
+@dataclass(frozen=True)
+class WeightDecayStrategy(Component):
 
     def make_param_groups(
         self, model: Module, weight_decay: float

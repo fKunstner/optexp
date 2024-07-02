@@ -1,9 +1,11 @@
 from dataclasses import dataclass
 from fractions import Fraction
 
+from optexp.experiments.component import Component
+
 
 @dataclass(frozen=True)
-class Hyperparameter:
+class Hyperparameter(Component):
     """Representation of a hyperparameter in scientific notation, base^exponent."""
 
     exponent: Fraction

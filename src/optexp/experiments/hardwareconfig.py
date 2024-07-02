@@ -1,11 +1,14 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Literal, Optional
 
 from optexp import config
+from optexp.experiments.component import Component
 from optexp.problems import Problem
 
 
-class HardwareConfig(ABC):
+@dataclass(frozen=True)
+class HardwareConfig(Component, ABC):
 
     @abstractmethod
     def load(self, problem: Problem) -> "DetailedExpConfig":
@@ -24,21 +27,14 @@ class HardwareConfig(ABC):
         raise NotImplementedError
 
 
+@dataclass(frozen=True)
 class RawHardwareConfig(HardwareConfig):
 
-    def __init__(
-        self,
-        num_workers: int,
-        micro_batch_size: int,
-        eval_micro_batch_size: Optional[int] = None,
-        device: Literal["cpu", "cuda", "auto"] = "auto",
-        wandb_autosync: bool = False,
-    ):
-        self.micro_batch_size = micro_batch_size
-        self.num_workers = num_workers
-        self.eval_micro_batch_size = eval_micro_batch_size
-        self.device = device
-        self.wandb_autosync = wandb_autosync
+    num_workers: int
+    micro_batch_size: int
+    eval_micro_batch_size: Optional[int] = None
+    device: Literal["cpu", "cuda", "auto"] = "auto"
+    wandb_autosync: bool = False
 
     def load(self, problem: Problem) -> "RawDetailedExpConfig":
         return RawDetailedExpConfig(self, problem)

@@ -3,9 +3,11 @@ from dataclasses import dataclass
 
 import torch
 
+from optexp.experiments.component import Component
 
-@dataclass()
-class Model(ABC):
+
+@dataclass(frozen=True)
+class Model(Component, ABC):
 
     @abstractmethod
     def load_model(

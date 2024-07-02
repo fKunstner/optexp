@@ -4,12 +4,13 @@ from typing import List, Type
 import torch
 
 from optexp.datasets import Dataset
+from optexp.experiments.component import Component
 from optexp.models import Model
 from optexp.problems.metrics import Metric
 
 
-@dataclass
-class Problem:
+@dataclass(frozen=True)
+class Problem(Component):
     """Wrapper for a model and dataset defining a problem to optimize.
 
     Attributes:

@@ -4,8 +4,10 @@ from typing import Tuple
 import torch
 from torch.nn.functional import cross_entropy
 
+from optexp.experiments.component import Component
 
-class Metric(ABC):
+
+class Metric(Component, ABC):
     @abstractmethod
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()

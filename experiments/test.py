@@ -1,3 +1,4 @@
+import pprint
 from fractions import Fraction
 
 import torch
@@ -22,7 +23,7 @@ steps = 1  # epoch_to_steps(epochs=100, dataset=dataset, batch_size=100)
 
 experiments = [
     Experiment(
-        optim=SGD(lr=LearningRate(Fraction(1, 2))),
+        optim=SGD(lr=10**0.5),
         problem=Problem(
             dataset=dataset,
             model=LeNet5(),
@@ -47,4 +48,14 @@ experiments = [
 
 SLURM_CONFIG = SlurmConfig(hours=10, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
 if __name__ == "__main__":
-    exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)
+    # exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)
+    # print(experiments[0])
+    # print(experiments[0].__dict__)
+    exp = experiments[0]
+    print(pprint.pprint(experiments[0].loggable_dict()))
+    print(repr(experiments[0]))
+    print(experiments[0]._repr())
+    print(experiments[0]._repr())
+    # import pdb
+    #
+    # pdb.set_trace()

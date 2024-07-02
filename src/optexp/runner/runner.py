@@ -17,13 +17,12 @@ from optexp.datasets.dataset import TrVa
 from optexp.experiments.experiment import Experiment
 from optexp.experiments.hardwareconfig import DetailedExpConfig
 from optexp.loggers import DataLogger
-from optexp.loggers.asdict_with_classes import asdict_with_class
 from optexp.problems.metrics import Metric
 from optexp.runner.fabric_helpers import (
+    EvalMode,
     TrainMode,
     loginfo_on_r0,
     synchronised_log,
-    EvalMode,
 )
 from optexp.runner.sum_and_counter import SumAndCounter
 
@@ -112,7 +111,7 @@ def run(exp: Experiment) -> None:
     data_logger: Optional[DataLogger] = None
     if fabric.global_rank == 0:
         data_logger = DataLogger(
-            config_dict=asdict_with_class(exp),
+            config_dict=exp.loggable_dict(),
             group=exp.group,
             run_id=time.strftime("%Y-%m-%d--%H-%M-%S"),
             exp_id=exp.exp_id(),
@@ -123,7 +122,7 @@ def run(exp: Experiment) -> None:
 
     loginfo_on_r0(fabric, "=" * 80)
     loginfo_on_r0(fabric, "Initializing experiment:")
-    loginfo_on_r0(fabric, pprint.pformat(asdict_with_class(exp), indent=4))
+    loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
     loginfo_on_r0(fabric, "=" * 80)
     exp_state, detailed_exp_config = initialize(exp, fabric)
 

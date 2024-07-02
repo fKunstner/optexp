@@ -3,9 +3,11 @@ from dataclasses import dataclass
 
 import torch
 
+from optexp.experiments.component import Component
 
-@dataclass
-class Optimizer(ABC):
+
+@dataclass(frozen=True)
+class Optimizer(Component, ABC):
 
     @abstractmethod
     def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:

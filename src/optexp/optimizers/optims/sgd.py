@@ -2,15 +2,14 @@ from dataclasses import dataclass
 
 import torch
 
-from optexp.optimizers.hyperparameter import LearningRate
 from optexp.optimizers.optimizer import Optimizer
 from optexp.optimizers.weight_decay_strategy import DecayEverything, WeightDecayStrategy
 
 
-@dataclass
+@dataclass(frozen=True)
 class SGD(Optimizer):
 
-    lr: LearningRate
+    lr: float
     momentum: float = 0
     dampening: float = 0
     weight_decay: float = 0
@@ -23,7 +22,7 @@ class SGD(Optimizer):
 
         return torch.optim.SGD(
             param_groups,
-            lr=self.lr.as_float(),
+            lr=self.lr,
             momentum=self.momentum,
             dampening=self.dampening,
             weight_decay=self.weight_decay,

@@ -8,22 +8,15 @@ from typing import Optional
 import pandas as pd
 
 from optexp import config
+from optexp.experiments.component import Component
 from optexp.experiments.hardwareconfig import HardwareConfig
 from optexp.optimizers import Optimizer
 from optexp.problems import Problem
 
 
-@dataclass
-class Experiment:
-    """Represents an experiments where a problem is optimized given an optimizer.
-
-    Attributes:
-        optim: The optimizer to use for optimizing the model defined in the problem.
-        problem: The problem to optimize.
-        group: The group of experiments this experiments belongs to.
-        seed: The seed to use.
-        epochs: The number of epochs the problem is optimized.
-    """
+@dataclass(frozen=True)
+class Experiment(Component):
+    """Represents an experiments where a problem is optimized given an optimizer."""
 
     optim: Optimizer
     problem: Problem
@@ -40,7 +33,7 @@ class Experiment:
         Not a unique identifier for the current run of the experiments. Is unique for
         the definition of the experiments, combining the problem, optimizer, and seed.
         """
-        return hashlib.sha1(str.encode(str(self))).hexdigest()
+        return hashlib.sha1(str.encode(repr(self))).hexdigest()
 
     def save_directory(self) -> Path:
         """Return the directory where the experiments results are saved."""
