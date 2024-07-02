@@ -18,12 +18,57 @@ from optexp.results.wandb import (
     get_wandb_runs_for_group,
 )
 from optexp.runner.runner import run_experiment
-from optexp.slurm.sbatch_writers import (
-    make_jobarray_file_contents,
-    make_jobarray_file_contents_split,
-)
+from optexp.slurm.sbatch_writers import make_jobarray_file_contents
 from optexp.slurm.slurm_config import SlurmConfig
 from optexp.utils import remove_duplicate_exps
+
+
+def run_handler(
+    args,
+    experiments: List[Experiment],
+    slurm_config: Optional[SlurmConfig] = None,
+    python_file: Optional[Path] = None,
+):
+    if args.test or args.single is not None:
+        idx = 0 if args.test else int(args.single)
+        validate_index(experiments, idx)
+        experiments = [experiments[idx]]
+
+    if args.local:
+        run_locally(experiments, force_rerun=args.force_rerun)
+        return
+
+    if args.slurm:
+        slurm_config = validate_slurm_config(slurm_config)
+        run_slurm(
+            experiments,
+            slurm_config,
+            force_rerun=args.force_rerun,
+            python_file=python_file,
+        )
+        return
+
+
+def download_handler(
+    args,
+    experiments: List[Experiment],
+    slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+    python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+):
+    if args.clear_download:
+        clear_downloaded_data(experiments)
+        return
+
+    download_data(experiments)
+
+
+def check_handler(
+    args,  # pylint: disable=unused-argument
+    experiments: List[Experiment],
+    slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+    python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+):
+    report(experiments, None)
 
 
 def exp_runner_cli(
@@ -40,147 +85,71 @@ def exp_runner_cli(
             Defaults to the file that called this function, sys.argv[0]
     """
     experiments = remove_duplicate_exps(experiments)
+
     parser = argparse.ArgumentParser()
-    action_group = parser.add_mutually_exclusive_group()
-    action_group.add_argument(
-        "--report",
-        metavar="KEY",
-        nargs="?",
-        default=False,
-        const=True,
-        type=str,
-        help="Generates a report on what experiments have been run/are stored on wandb."
-        + "If a key is provided, the report will be grouped by that key.",
-    )
-    action_group.add_argument(
+    subparsers = parser.add_subparsers(required=True)
+
+    run_parser = subparsers.add_parser("run", help="Run the experiments")
+    run_command = run_parser.add_mutually_exclusive_group()
+    run_command.add_argument(
         "--local",
-        "--run-local",
         action="store_true",
         help="Run experiments locally.",
         default=False,
     )
-    action_group.add_argument(
+    run_command.add_argument(
         "--slurm",
-        "--run-slurm",
         action="store_true",
-        help="Run experiments on Slurm.",
+        help="Run experiments locally.",
         default=False,
     )
-    action_group.add_argument(
-        "--slurm_split",
-        type=int,
-        action="store",
-        help="Run all experiments on same machine on Slurm.",
-        default=None,
-    )
-    action_group.add_argument(
+    run_modifier = run_parser.add_mutually_exclusive_group()
+    run_modifier.add_argument(
         "--single",
-        "--run-single-locally",
         action="store",
         type=int,
         help="Run a single experiments locally, by index.",
         default=None,
     )
-    action_group.add_argument(
-        "--split_index",
-        action="store",
-        type=int,
-        help="Run all experiments locally.",
-        default=None,
-    )
-    parser.add_argument(
-        "--split_num",
-        action="store",
-        type=int,
-        help="Run all experiments locally.",
-        default=None,
-    )
-    action_group.add_argument(
+    run_modifier.add_argument(
         "--test",
-        "--run-single-slurm",
         action="store_true",
-        help="Run the first experiments in list as a test on slurm.",
+        type=bool,
+        help="Run the first experiment. Alias for --single 0.",
         default=False,
     )
-    action_group.add_argument(
-        "--download",
-        action="store_true",
-        help="download data from wandb from successfull experiments",
-        default=False,
-    )
-    action_group.add_argument(
-        "--clear-download",
-        action="store_true",
-        help="Clear cache of downloaded data from wandb",
-        default=False,
-    )
-    parser.add_argument(
+    run_parser.add_argument(
         "-f",
         "--force-rerun",
         action="store_true",
         help="Force rerun of experiments that are already saved.",
         default=False,
     )
+    run_parser.set_defaults(func=run_handler)
+
+    check_parser = subparsers.add_parser(
+        "check", help="Check the status of the experiments"
+    )
+    check_parser.set_defaults(func=check_handler)
+
+    download_parser = subparsers.add_parser(
+        "download", help="Download results from the experiments"
+    )
+    download_parser.add_argument(
+        "--clear",
+        action="store_true",
+        help="Clear cache of downloaded data from wandb",
+        default=False,
+    )
+    download_parser.set_defaults(func=download_handler)
 
     args = parser.parse_args()
-
-    if args.report:
-        report_by_key = args.report if isinstance(args.report, str) else None
-        report(experiments, report_by_key)
-        return
-
-    if args.single is not None:
-        idx = int(args.single)
-        validate_index(experiments, idx)
-        run_experiment(experiments[args.single])
-        return
-
-    if args.split_index:
-        run_split(experiments, split_index=args.split_index, split=args.split_num)
-        return
-
-    if args.local or args.slurm:
-        if args.local:
-            run_locally(experiments, force_rerun=args.force_rerun)
-        elif args.slurm:
-            slurm_config = validate_slurm_config(slurm_config)
-            run_slurm(
-                experiments,
-                slurm_config,
-                force_rerun=args.force_rerun,
-                python_file=python_file,
-            )
-        return
-
-    if args.slurm_split:
-        slurm_config = validate_slurm_config(slurm_config)
-        run_slurm(
-            experiments,
-            slurm_config,
-            force_rerun=args.force_rerun,
-            split=args.slurm_split,
-            python_file=python_file,
-        )
-        return
-
-    if args.test:
-        slurm_config = validate_slurm_config(slurm_config)
-        run_slurm(
-            [experiments[0]],
-            slurm_config,
-            force_rerun=args.force_rerun,
-            python_file=python_file,
-        )
-        return
-
-    if args.download:
-        download_data(experiments)
-        return
-
-    if args.clear_download:
-        clear_downloaded_data(experiments)
-        return
-
+    args.func(
+        args,
+        experiments=experiments,
+        slurm_config=slurm_config,
+        python_file=python_file,
+    )
     parser.print_help()
 
 
@@ -259,26 +228,10 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
         run_experiment(exp)
 
 
-def run_split(experiments: List[Experiment], split_index: int, split: int):
-    get_logger().info(f"Preparing to run {len(experiments)} experiments")
-    exps_to_run = remove_experiments_that_are_already_saved(experiments)
-
-    groups_exps_ind = [
-        experiments[n : n + split] for n in range(0, len(experiments), split)
-    ]
-
-    exps_split = groups_exps_ind[split_index]
-
-    for exp in exps_split:
-        if exp in exps_to_run:
-            run_experiment(exp)
-
-
 def run_slurm(
     experiments: List[Experiment],
     slurm_config: SlurmConfig,
     force_rerun: bool,
-    split: Optional[int] = None,
     python_file: Optional[Path] = None,
 ) -> None:
     """Run experiments on Slurm."""
@@ -298,19 +251,11 @@ def run_slurm(
     else:
         should_run = [True for _ in experiments]
 
-    if not split:
-        contents = make_jobarray_file_contents(
-            experiment_file=path_to_python_script,
-            should_run=should_run,
-            slurm_config=slurm_config,
-        )
-    else:
-        contents = make_jobarray_file_contents_split(
-            experiment_file=path_to_python_script,
-            num_exps=len(experiments),
-            slurm_config=slurm_config,
-            split=split,
-        )
+    contents = make_jobarray_file_contents(
+        experiment_file=path_to_python_script,
+        should_run=should_run,
+        slurm_config=slurm_config,
+    )
 
     group = experiments[0].group
     tmp_filename = f"tmp_{group}.sh"
@@ -349,7 +294,7 @@ def download_data(experiments: List[Experiment]) -> None:
     for i, exp in enumerate(experiments):
         if exp.exp_id() not in successful_run_ids:
             get_logger().info(
-                f"The experiments {str(exp)} (idx {i}) was NOT SUCCESSFULL. NO DATA TO DOWNLOAD."
+                f"The experiments {str(exp)} (idx {i}) was NOT SUCCESSFULL. Not data to download."
             )
 
     runs_to_dl_ids = [exp.exp_id() for exp in experiments]

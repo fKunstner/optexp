@@ -18,6 +18,7 @@ from optexp.problems import Problem
 class Experiment(Component):
     """Represents an experiments where a problem is optimized given an optimizer."""
 
+    # pylint: disable=too-many-instance-attributes
     optim: Optimizer
     problem: Problem
     group: str

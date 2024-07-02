@@ -1,7 +1,6 @@
-import pprint
-
 import torch
 
+from optexp.cli import exp_runner_cli
 from optexp.datasets.image import MNIST
 from optexp.experiments.experiment import Experiment
 from optexp.experiments.hardwareconfig import RawHardwareConfig
@@ -45,14 +44,4 @@ experiments = [
 
 SLURM_CONFIG = SlurmConfig(hours=10, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
 if __name__ == "__main__":
-    # exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)
-    # print(experiments[0])
-    # print(experiments[0].__dict__)
-    exp = experiments[0]
-    print(pprint.pprint(experiments[0].loggable_dict()))
-    print(repr(experiments[0]))
-    print(experiments[0]._repr())
-    print(experiments[0]._repr())
-    # import pdb
-    #
-    # pdb.set_trace()
+    exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)

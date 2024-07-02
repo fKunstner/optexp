@@ -65,27 +65,6 @@ def make_jobarray_content(
     return "".join(commands_for_each_experiment)
 
 
-def make_jobarray_content_split(
-    run_exp_by_idx_command: str, num_splits: int, split: int
-):
-    """Creates the content of a jobarray sbatch file for Slurm."""
-
-    commands_for_each_experiment = []
-    for i in range(num_splits):
-        commands_for_each_experiment.append(
-            textwrap.dedent(
-                f"""
-                if [ $SLURM_ARRAY_TASK_ID -eq {i} ]
-                then
-                    {run_exp_by_idx_command} --split_index {i} --split_num  {split}
-                fi
-                """
-            )
-        )
-
-    return "".join(commands_for_each_experiment)
-
-
 def make_jobarray_file_contents(
     experiment_file: Path,
     should_run: List[bool],
@@ -98,33 +77,6 @@ def make_jobarray_file_contents(
     body = make_jobarray_content(
         run_exp_by_idx_command=f"python {experiment_file} --single",
         should_run=should_run,
-    )
-
-    footer = textwrap.dedent(
-        """
-        exit
-        """
-    )
-
-    return header + body + footer
-
-
-def make_jobarray_file_contents_split(
-    experiment_file: Path,
-    num_exps: int,
-    slurm_config: SlurmConfig,
-    split: int,
-):
-    """Creates a jobarray sbatch file for Slurm."""
-
-    num_splits = math.ceil(num_exps / split)
-
-    header = make_sbatch_header(slurm_config=slurm_config, n_jobs=num_splits)
-
-    body = make_jobarray_content_split(
-        run_exp_by_idx_command=f"python {experiment_file}",
-        num_splits=num_splits,
-        split=split,
     )
 
     footer = textwrap.dedent(
