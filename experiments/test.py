@@ -1,15 +1,12 @@
 import pprint
-from fractions import Fraction
 
 import torch
 
-from optexp.cli import exp_runner_cli
-from optexp.datasets.dataset import epoch_to_steps
 from optexp.datasets.image import MNIST
 from optexp.experiments.experiment import Experiment
 from optexp.experiments.hardwareconfig import RawHardwareConfig
 from optexp.models.vision import LeNet5
-from optexp.optimizers import SGD, LearningRate
+from optexp.optimizers import SGD
 from optexp.problems import Problem
 from optexp.problems.metrics import Accuracy, CrossEntropyLoss
 from optexp.slurm.slurm_config import SlurmConfig

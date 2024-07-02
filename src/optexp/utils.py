@@ -5,7 +5,7 @@ import numpy as np
 
 from optexp.config import get_logger
 from optexp.experiments.experiment import Experiment
-from optexp.optimizers import LearningRate, Optimizer
+from optexp.optimizers import Optimizer
 
 
 def _check_parameters_logspace(end, start, density):
@@ -32,13 +32,8 @@ def nice_logspace(start, end, base, density):
     return np.logspace(start, end, base=base, num=(end - start) * (2**density) + 1)
 
 
-def lr_grid(start, end, density=0, base=10):
-    """Returns the values of the nice_logspace function as LearningRates."""
-    return nice_learning_rates(start, end, base, density)
-
-
-def nice_learning_rates(start, end, base, density):
-    """Returns the values of the nice_logspace function as LearningRates."""
+def logspace(start, end, density=0, base=10):
+    """Logarithmic grid."""
     _check_parameters_logspace(end, start, density)
 
     num = (end - start) * (2**density)
@@ -58,9 +53,9 @@ def merge_grids(*grids):
 
 
 def starting_grid_for(
-    optimizers: List[Callable[[LearningRate], Optimizer]], start: int, end: int
+    optimizers: List[Callable[[float], Optimizer]], start: int, end: int
 ):
-    lrs = lr_grid(start=start, end=end, base=10, density=0)
+    lrs = logspace(start=start, end=end, base=10, density=0)
     return [opt(lr) for opt in optimizers for lr in lrs]
 
 
