@@ -45,9 +45,7 @@ def nice_learning_rates(start, end, base, density):
     den = 2**density
 
     exponents = [Fraction(i + den * start, den) for i in range(0, num + 1)]
-    learning_rates = [
-        LearningRate(exponent=exponent, base=base) for exponent in exponents
-    ]
+    learning_rates = [float(base**exponent) for exponent in exponents]
     return learning_rates
 
 
