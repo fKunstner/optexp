@@ -1,15 +1,14 @@
-from dataclasses import dataclass
 from typing import List, Type
 
 import torch
 
-from optexp.components.component import Component
+from optexp.components.component import Component, dataclass_component
 from optexp.components.datasets import Dataset
 from optexp.components.metrics.metric import Metric
 from optexp.components.models.model import Model
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class Problem(Component):
     """Wrapper for a model and dataset defining a problem to optimize.
 

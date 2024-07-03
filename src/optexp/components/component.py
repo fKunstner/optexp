@@ -1,9 +1,12 @@
 import textwrap
 from dataclasses import dataclass, fields
+from functools import partial
 from typing import Union
 
+dataclass_component = partial(dataclass, frozen=True, repr=False)
 
-@dataclass(frozen=True)
+
+@dataclass(frozen=True, repr=False)
 class Component:
     """Base class for all components in the experiments."""
 

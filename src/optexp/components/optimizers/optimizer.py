@@ -1,14 +1,13 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Dict, Iterable, List, Union
 
 import torch
 from torch.nn import Module, Parameter
 
-from optexp.components.component import Component
+from optexp.components.component import Component, dataclass_component
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class Optimizer(Component, ABC):
 
     @abstractmethod
@@ -16,7 +15,7 @@ class Optimizer(Component, ABC):
         pass
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class WeightDecayStrategy(Component):
 
     def make_param_groups(

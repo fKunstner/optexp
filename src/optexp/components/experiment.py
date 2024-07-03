@@ -1,20 +1,19 @@
 import hashlib
 import os
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 
 from optexp import config
-from optexp.components.component import Component
+from optexp.components.component import Component, dataclass_component
 from optexp.components.hardwareconfigs.hardwareconfig import HardwareConfig
 from optexp.components.optimizers.optimizer import Optimizer
 from optexp.components.problem import Problem
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class Experiment(Component):
     """Represents an experiments where a problem is optimized given an optimizer."""
 

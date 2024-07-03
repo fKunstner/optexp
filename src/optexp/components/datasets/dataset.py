@@ -1,17 +1,16 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Literal, Optional
 
 import torch
 from torch.types import Device
 from torch.utils.data import DataLoader
 
-from optexp.components.component import Component
+from optexp.components.component import Component, dataclass_component
 
 TrVa = Literal["tr", "va"]
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class Dataset(ABC, Component):
     @abstractmethod
     def get_dataloader(

@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 
 import torch
 
-from optexp.components.component import Component
+from optexp.components.component import Component, dataclass_component
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class Model(Component, ABC):
 
     @abstractmethod

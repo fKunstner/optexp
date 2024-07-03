@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Literal
 
-from optexp.components.component import Component
+from optexp.components.component import Component, dataclass_component
 from optexp.components.problem import Problem
 
 
@@ -21,7 +20,7 @@ class DetailedExpConfig(ABC):
         raise NotImplementedError
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class HardwareConfig(Component, ABC):
 
     @abstractmethod

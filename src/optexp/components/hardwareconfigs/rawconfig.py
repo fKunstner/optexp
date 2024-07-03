@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 from typing import Literal, Optional
 
 from optexp import config
+from optexp.components.component import dataclass_component
 from optexp.components.hardwareconfigs.hardwareconfig import (
     DetailedExpConfig,
     HardwareConfig,
@@ -9,7 +9,7 @@ from optexp.components.hardwareconfigs.hardwareconfig import (
 from optexp.components.problem import Problem
 
 
-@dataclass(frozen=True)
+@dataclass_component()
 class RawHardwareConfig(HardwareConfig):
 
     num_workers: int
