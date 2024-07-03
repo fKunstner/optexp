@@ -1,13 +1,13 @@
 import torch
 
 from optexp.cli import exp_runner_cli
-from optexp.datasets.image import MNIST
-from optexp.experiments.experiment import Experiment
-from optexp.experiments.hardwareconfig import RawHardwareConfig
-from optexp.models.vision import LeNet5
-from optexp.optimizers import SGD
+from optexp.components.experiment import Experiment
+from optexp.components.hardwareconfigs.hardwareconfig import RawHardwareConfig
+from optexp.components.metrics.metrics import Accuracy, CrossEntropyLoss
+from optexp.components.models import LeNet5
+from optexp.components.optimizers import SGD
+from optexp.implementations.datasets import MNIST
 from optexp.problems import Problem
-from optexp.problems.metrics import Accuracy, CrossEntropyLoss
 from optexp.slurm.slurm_config import SlurmConfig
 
 problem = EPOCHS = 1

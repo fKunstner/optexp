@@ -3,9 +3,9 @@ from typing import Callable, List
 
 import numpy as np
 
+from optexp.components.experiment import Experiment
+from optexp.components.optimizers.optimizer import Optimizer
 from optexp.config import get_logger
-from optexp.experiments.experiment import Experiment
-from optexp.optimizers import Optimizer
 
 
 def _check_parameters_logspace(end, start, density):

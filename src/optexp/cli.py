@@ -8,9 +8,9 @@ from typing import List, Optional
 from tqdm import tqdm
 
 from optexp import config
+from optexp.components.datasets.dataset import Downloadable
+from optexp.components.experiment import Experiment
 from optexp.config import get_logger
-from optexp.datasets.dataset import Downloadable
-from optexp.experiments.experiment import Experiment
 from optexp.results.wandb import (
     download_run_data,
     download_summary,
