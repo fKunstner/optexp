@@ -11,5 +11,5 @@ jobs:
         python-version: "3.10"
     - run: pip install --upgrade pip
     - run: pip install mypy==1.5.1
-    - run: yes | mypy --install-types --config-file pyproject.toml src || true
-    - run: mypy --config-file pyproject.toml --ignore-missing-imports src  
+    - run: yes | mypy --install-types --config-file pyproject.toml optexp || true
+    - run: mypy --config-file pyproject.toml --ignore-missing-imports optexp
