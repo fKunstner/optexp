@@ -7,19 +7,19 @@ from typing import List, Optional
 
 from tqdm import tqdm
 
-from optexp import config
-from optexp.components.dataset import Downloadable
-from optexp.components.experiment import Experiment
+import optexp.config
 from optexp.config import get_logger
-from optexp.results.wandb import (
+from optexp.data.wandb import (
     download_run_data,
     download_summary,
     get_successful_ids_and_runs,
     get_wandb_runs_for_group,
 )
+from optexp.datasets.dataset import Downloadable
+from optexp.experiment import Experiment
 from optexp.runner.runner import run_experiment
-from optexp.slurm.sbatch_writers import make_jobarray_file_contents
-from optexp.slurm.slurm_config import SlurmConfig
+from optexp.runner.slurm.sbatch_writers import make_jobarray_file_contents
+from optexp.runner.slurm.slurm_config import SlurmConfig
 from optexp.utils import remove_duplicate_exps
 
 
@@ -287,8 +287,8 @@ def download_data(experiments: List[Experiment]) -> None:
     if not all(exp.group == group for exp in experiments):
         raise ValueError("All experiments must have the same group.")
 
-    if not os.path.exists(config.get_wandb_cache_directory() / group):
-        os.makedirs(config.get_wandb_cache_directory() / group)
+    if not os.path.exists(optexp.config.get_wandb_cache_directory() / group):
+        os.makedirs(optexp.config.get_wandb_cache_directory() / group)
 
     successful_run_ids, successful_runs = get_successful_ids_and_runs(group)
 
@@ -323,7 +323,7 @@ def clear_downloaded_data(experiments: List[Experiment]) -> None:
     if not all(exp.group == group for exp in experiments):
         raise ValueError("All experiments must have the same group.")
 
-    path = config.get_wandb_cache_directory() / group
+    path = optexp.config.get_wandb_cache_directory() / group
     if not os.path.exists(path):
         return
 

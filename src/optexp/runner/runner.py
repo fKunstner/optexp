@@ -12,11 +12,11 @@ from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader
 
-from optexp.components.dataset import TrVa
-from optexp.components.experiment import Experiment
-from optexp.components.hardwareconfig import HardwareConfig
-from optexp.components.metric import Metric
-from optexp.loggers import DataLogger
+from optexp.data.data_logger import DataLogger
+from optexp.datasets.dataset import TrVa
+from optexp.experiment import Experiment
+from optexp.hardwareconfigs.hardwareconfig import HardwareConfig
+from optexp.metrics.metric import Metric
 from optexp.runner.fabric_helpers import (
     EvalMode,
     TrainMode,

@@ -4,7 +4,7 @@ import torch.nn
 from torch import Tensor
 
 from optexp.config import get_logger
-from optexp.loggers import DataLogger
+from optexp.data.data_logger import DataLogger
 
 
 def reduce(fabric, val: float, reduce_op="sum") -> Tensor:
