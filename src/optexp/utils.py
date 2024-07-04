@@ -4,7 +4,7 @@ from typing import Callable, List
 import numpy as np
 
 from optexp.components.experiment import Experiment
-from optexp.components.optimizers.optimizer import Optimizer
+from optexp.components.optimizer import Optimizer
 from optexp.config import get_logger
 
 

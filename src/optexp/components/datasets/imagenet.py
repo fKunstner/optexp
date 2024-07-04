@@ -1,11 +1,12 @@
+from dataclasses import dataclass
+
 import torch
 from torch.utils.data import DataLoader
 
-from optexp.components.component import dataclass_component
-from optexp.components.datasets.dataset import Dataset, HasClassCounts, TrVa
+from optexp.components.dataset import Dataset, HasClassCounts, TrVa
 
 
-@dataclass_component()
+@dataclass(frozen=True)
 class ImageNet(Dataset, HasClassCounts):
     def input_shape(self, batch_size) -> torch.Size:
         raise NotImplementedError()

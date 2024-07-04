@@ -1,14 +1,15 @@
+from dataclasses import dataclass
 from typing import List, Type
 
 import torch
 
-from optexp.components.component import Component, dataclass_component
+from optexp.components.component import Component
 from optexp.components.datasets import Dataset
-from optexp.components.metrics.metric import Metric
-from optexp.components.models.model import Model
+from optexp.components.metric import Metric
+from optexp.components.model import Model
 
 
-@dataclass_component()
+@dataclass(frozen=True)
 class Problem(Component):
     """Wrapper for a model and dataset defining a problem to optimize.
 
@@ -25,9 +26,3 @@ class Problem(Component):
     batch_size: int
     lossfunc: Type[torch.nn.Module]
     metrics: List[Type[Metric]]
-
-    def __post_init__(self):
-        if self.dataset.get_num_samples("tr") % self.batch_size != 0:
-            raise ValueError(
-                "Batch size must divide the number of samples in the dataset."
-            )

@@ -1,7 +1,6 @@
 import math
 import pprint
 import random
-import time
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional, Tuple
 
@@ -13,10 +12,10 @@ from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader
 
-from optexp.components.datasets.dataset import TrVa
+from optexp.components.dataset import TrVa
 from optexp.components.experiment import Experiment
-from optexp.components.hardwareconfigs.hardwareconfig import DetailedExpConfig
-from optexp.components.metrics.metric import Metric
+from optexp.components.hardwareconfig import HardwareConfig
+from optexp.components.metric import Metric
 from optexp.loggers import DataLogger
 from optexp.runner.fabric_helpers import (
     EvalMode,
@@ -100,8 +99,8 @@ class ExperimentState:
 def run(exp: Experiment) -> None:
 
     fabric = ptl.Fabric(
-        accelerator=exp.hw_config.get_accelerator(),
-        devices=exp.hw_config.get_num_workers(),
+        accelerator=exp.implementation.get_accelerator(),
+        devices=exp.implementation.get_num_workers(),
         num_nodes=1,
         strategy="auto",
     )
@@ -110,28 +109,21 @@ def run(exp: Experiment) -> None:
 
     data_logger: Optional[DataLogger] = None
     if fabric.global_rank == 0:
-        data_logger = DataLogger(
-            config_dict=exp.loggable_dict(),
-            group=exp.group,
-            run_id=time.strftime("%Y-%m-%d--%H-%M-%S"),
-            exp_id=exp.exp_id(),
-            save_directory=exp.save_directory(),
-            wandb_autosync=exp.hw_config.use_wandb_autosync(),
-        )
+        data_logger = DataLogger(experiment=exp)
     fabric.barrier()
 
     loginfo_on_r0(fabric, "=" * 80)
     loginfo_on_r0(fabric, "Initializing experiment:")
     loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
     loginfo_on_r0(fabric, "=" * 80)
-    exp_state, detailed_exp_config = initialize(exp, fabric)
+    exp_state, hardware_config = initialize(exp, fabric)
 
     loginfo_on_r0(fabric, "Initial evaluation...")
     eval_and_log(fabric, exp_state, {}, data_logger)
 
     loginfo_on_r0(fabric, "Starting training...")
     for t in range(1, exp.steps + 1):
-        live_loss, exp_state = training_step(fabric, exp_state, detailed_exp_config)
+        live_loss, exp_state = training_step(fabric, exp_state, hardware_config)
 
         if math.isnan(live_loss) or math.isinf(live_loss):
             break
@@ -150,10 +142,10 @@ def run(exp: Experiment) -> None:
 
 def initialize(
     exp: Experiment, fabric: ptl.Fabric
-) -> Tuple[ExperimentState, DetailedExpConfig]:
+) -> Tuple[ExperimentState, HardwareConfig]:
 
     loginfo_on_r0(fabric, "Initializing problem configuration")
-    hw_config = exp.hw_config.load(exp.problem)
+    hw_config = exp.implementation.load(exp.problem)
 
     seed = exp.seed
     np.random.seed(seed)
@@ -262,13 +254,13 @@ def evaluate(
 def training_step(
     fabric: ptl.Fabric,
     exp_state: ExperimentState,
-    detailed_exp_config: DetailedExpConfig,
+    hardware_config: HardwareConfig,
 ) -> Tuple[float, ExperimentState]:
 
     with TrainMode(exp_state.model):
         exp_state.optimizer.zero_grad()
         total_loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
-        for _ in range(detailed_exp_config.get_gradient_accumulation_steps()):
+        for _ in range(hardware_config.get_gradient_accumulation_steps()):
             features, labels = exp_state.get_batch()
             b = len(labels)
             loss, weight = to_loss_and_weight(

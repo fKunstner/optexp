@@ -12,6 +12,7 @@ ENV_VAR_WANDB_ENABLED = "OPTEXP_WANDB_ENABLED"
 ENV_VAR_WANDB_PROJECT = "OPTEXP_WANDB_PROJECT"
 ENV_VAR_WANDB_ENTITY = "OPTEXP_WANDB_ENTITY"
 ENV_VAR_WANDB_MODE = "OPTEXP_WANDB_MODE"
+ENV_VAR_WANDB_AUTOSYNC = "OPTEXP_WANDB_AUTOSYNC"
 ENV_VAR_WANDB_API_KEY = "WANDB_API_KEY"
 ENV_VAR_SLURM_EMAIL = "OPTEXP_SLURM_NOTIFICATION_EMAIL"
 ENV_VAR_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
@@ -57,7 +58,19 @@ def get_wandb_timeout() -> int:
     return 60
 
 
-def get_wandb_status() -> bool:
+def should_wandb_autosync():
+    use_autosync = os.environ.get(ENV_VAR_WANDB_AUTOSYNC, None)
+    if use_autosync is None:
+        get_logger().warning(
+            "Wandb autosync not specified. Defaults not syncing."
+            f"To enable autosync, set the {ENV_VAR_WANDB_ENABLED} to true."
+        )
+        use_autosync = "false"
+
+    return use_autosync.lower() == "true"
+
+
+def should_use_wandb() -> bool:
     status = os.environ.get(ENV_VAR_WANDB_ENABLED, None)
     if status is None:
         raise ValueError(
@@ -118,7 +131,7 @@ def get_workspace_directory() -> Path:
 def get_device() -> Literal["cpu", "cuda"]:
     device: Literal["cpu", "cuda"] = "cuda" if torch.cuda.is_available() else "cpu"
     if device != "cuda":
-        get_logger("GPU not available, running experiments on CPU.", logging.WARNING)
+        get_logger().warning("GPU not available, running experiments on CPU.")
     return device
 
 

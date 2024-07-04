@@ -100,8 +100,13 @@ def download_summary(group=None):
     miscs = []
 
     for run in runs:
+        hist_linecount, sysmetrics = (
+            run._attrs["historyLineCount"],  # pylint: disable=protected-access
+            run._attrs["systemMetrics"],  # pylint: disable=protected-access
+        )
+
         configs.append(flatten_dict(run.config))
-        systems.append(flatten_dict(run._attrs["systemMetrics"]))
+        systems.append(flatten_dict(sysmetrics))
         miscs.append(
             {
                 "name": run.name,
@@ -109,7 +114,7 @@ def download_summary(group=None):
                 "group": run.group,
                 "state": run.state,
                 "tags": run.tags,
-                "histLineCount": run._attrs["historyLineCount"],
+                "histLineCount": hist_linecount,
             }
         )
 
@@ -122,4 +127,4 @@ def download_summary(group=None):
 
 
 def flatten_dict(x):
-    return pd.io.json._normalize.nested_to_record(x)
+    return pd.io.json._normalize.nested_to_record(x)  # pylint: disable=protected-access

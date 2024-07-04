@@ -8,7 +8,7 @@ from typing import List, Optional
 from tqdm import tqdm
 
 from optexp import config
-from optexp.components.datasets.dataset import Downloadable
+from optexp.components.dataset import Downloadable
 from optexp.components.experiment import Experiment
 from optexp.config import get_logger
 from optexp.results.wandb import (
@@ -29,6 +29,7 @@ def run_handler(
     slurm_config: Optional[SlurmConfig] = None,
     python_file: Optional[Path] = None,
 ):
+
     if args.test or args.single is not None:
         idx = 0 if args.test else int(args.single)
         validate_index(experiments, idx)
@@ -57,9 +58,10 @@ def download_handler(
 ):
     if args.clear_download:
         clear_downloaded_data(experiments)
-        return
+        return 0
 
     download_data(experiments)
+    return 0
 
 
 def check_handler(
@@ -69,6 +71,7 @@ def check_handler(
     python_file: Optional[Path] = None,  # pylint: disable=unused-argument
 ):
     report(experiments, None)
+    return 0
 
 
 def exp_runner_cli(
@@ -90,7 +93,7 @@ def exp_runner_cli(
     subparsers = parser.add_subparsers(required=True)
 
     run_parser = subparsers.add_parser("run", help="Run the experiments")
-    run_command = run_parser.add_mutually_exclusive_group()
+    run_command = run_parser.add_mutually_exclusive_group(required=True)
     run_command.add_argument(
         "--local",
         action="store_true",
@@ -100,7 +103,7 @@ def exp_runner_cli(
     run_command.add_argument(
         "--slurm",
         action="store_true",
-        help="Run experiments locally.",
+        help="Run experiments on slurm.",
         default=False,
     )
     run_modifier = run_parser.add_mutually_exclusive_group()
@@ -108,13 +111,12 @@ def exp_runner_cli(
         "--single",
         action="store",
         type=int,
-        help="Run a single experiments locally, by index.",
+        help="Run a single experiments, by index.",
         default=None,
     )
     run_modifier.add_argument(
         "--test",
         action="store_true",
-        type=bool,
         help="Run the first experiment. Alias for --single 0.",
         default=False,
     )
@@ -150,7 +152,6 @@ def exp_runner_cli(
         slurm_config=slurm_config,
         python_file=python_file,
     )
-    parser.print_help()
 
 
 def validate_index(experiments, idx):

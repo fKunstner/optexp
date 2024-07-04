@@ -40,14 +40,14 @@ disable = [
     #
     "logging-fstring-interpolation",
     #
-    "protected-access",
+    # "protected-access",
     #
-    "too-many-instance-attributes",
-    "too-many-arguments",
-    "too-many-locals",
-    "too-many-branches",
-    "too-many-statements",
-    "too-many-return-statements",
+    # "too-many-instance-attributes",
+    # "too-many-arguments",
+    # "too-many-locals",
+    # "too-many-branches",
+    # "too-many-statements",
+    # "too-many-return-statements",
     #
     # "broad-exception-caught",
     # "broad-exception-raised",

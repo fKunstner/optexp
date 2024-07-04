@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 import torch
@@ -6,8 +7,7 @@ from torch.types import Device
 from torch.utils.data import TensorDataset
 
 from optexp import config
-from optexp.components.component import dataclass_component
-from optexp.components.datasets.dataset import (
+from optexp.components.dataset import (
     AvailableAsTensor,
     Dataset,
     Downloadable,
@@ -18,7 +18,7 @@ from optexp.components.datasets.dataset import (
 MEAN, STD = 0.1307, 0.3081
 
 
-@dataclass_component()
+@dataclass(frozen=True)
 class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
 
     def get_num_samples(self, tr_va: TrVa) -> int:

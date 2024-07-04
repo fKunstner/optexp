@@ -2,26 +2,25 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import wandb
 
 from optexp import config
+from optexp.components.experiment import Experiment
 from optexp.config import get_logger
 from optexp.loggers.rate_limited_logger import RateLimitedLogger
 
 
 class DataLogger:
+
     def __init__(
         self,
-        config_dict: Dict,
-        group: str,
-        run_id: str,
-        exp_id: str,
-        save_directory: Path,
+        experiment: Experiment,
         use_wandb: Optional[bool] = None,
-        wandb_autosync: bool = True,
+        wandb_autosync: Optional[bool] = None,
     ) -> None:
         """Data logger for experiments.
 
@@ -35,6 +34,17 @@ class DataLogger:
             experiments: The experiments to log
         """
 
+        if use_wandb is None:
+            use_wandb = config.should_use_wandb()
+        if wandb_autosync is None:
+            wandb_autosync = config.should_wandb_autosync()
+
+        config_dict = experiment.loggable_dict()
+        group = experiment.group
+        exp_id = experiment.exp_id()
+        save_directory = experiment.save_directory()
+        run_id = time.strftime("%Y-%m-%d--%H-%M-%S")
+
         self.wandb_autosync = wandb_autosync
         self.console_logger = RateLimitedLogger()
 
@@ -42,7 +52,7 @@ class DataLogger:
             os.makedirs(save_directory)
 
         self.handler = config.set_logfile(save_directory / f"{run_id}.log")
-        self.use_wandb = config.get_wandb_status() if use_wandb is None else use_wandb
+        self.use_wandb = config.should_use_wandb() if use_wandb is None else use_wandb
 
         if self.use_wandb:
             get_logger().info("WandB is enabled")

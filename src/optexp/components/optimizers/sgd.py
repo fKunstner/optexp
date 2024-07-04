@@ -1,11 +1,12 @@
+from dataclasses import dataclass
+
 import torch
 
-from optexp.components.component import dataclass_component
-from optexp.components.optimizers.optimizer import Optimizer, WeightDecayStrategy
-from optexp.components.optimizers.weight_decay_strategy import DecayEverything
+from optexp.components.optimizer import Optimizer, WeightDecayStrategy
+from optexp.components.optimizers.weight_decay_strategies import DecayEverything
 
 
-@dataclass_component()
+@dataclass(frozen=True)
 class SGD(Optimizer):
 
     lr: float

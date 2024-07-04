@@ -1,19 +1,20 @@
 import hashlib
 import os
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 import pandas as pd
 
 from optexp import config
-from optexp.components.component import Component, dataclass_component
-from optexp.components.hardwareconfigs.hardwareconfig import HardwareConfig
-from optexp.components.optimizers.optimizer import Optimizer
+from optexp.components.component import Component
+from optexp.components.hardwareconfig import ImplementationDetails
+from optexp.components.optimizer import Optimizer
 from optexp.components.problem import Problem
 
 
-@dataclass_component()
+@dataclass(frozen=True)
 class Experiment(Component):
     """Represents an experiments where a problem is optimized given an optimizer."""
 
@@ -22,9 +23,9 @@ class Experiment(Component):
     problem: Problem
     group: str
     eval_every: int
-    seed: int
     steps: int
-    hw_config: HardwareConfig
+    implementation: ImplementationDetails = field(repr=False)
+    seed: int = 0
 
     def exp_id(self) -> str:
         """Return a unique identifier for this experiment.

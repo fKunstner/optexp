@@ -1,4 +1,4 @@
-from optexp.components.datasets.dataset import Dataset
-from optexp.components.datasets.image.mnist import MNIST
+from optexp.components.dataset import Dataset
+from optexp.components.datasets.mnist import MNIST
 
 __all__ = ["Dataset", "MNIST"]

@@ -3,7 +3,7 @@ from typing import Tuple
 import torch
 from torch.nn.functional import cross_entropy
 
-from optexp.components.metrics.metric import LossMetric, Metric
+from optexp.components.metric import LossMetric, Metric
 
 
 class CrossEntropyLoss(Metric):

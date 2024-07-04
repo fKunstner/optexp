@@ -1,43 +1,34 @@
 import torch
 
 from optexp.cli import exp_runner_cli
+from optexp.components.datasets import MNIST
 from optexp.components.experiment import Experiment
-from optexp.components.hardwareconfigs.hardwareconfig import RawHardwareConfig
+from optexp.components.hardwareconfigs.strict_manual import StrictManualDetails
 from optexp.components.metrics.metrics import Accuracy, CrossEntropyLoss
 from optexp.components.models import LeNet5
-from optexp.components.optimizers import SGD
-from optexp.implementations.datasets import MNIST
-from optexp.problems import Problem
+from optexp.components.optimizers.sgd import SGD
+from optexp.components.problem import Problem
 from optexp.slurm.slurm_config import SlurmConfig
-
-problem = EPOCHS = 1
-group = "testing"
-
-dataset = MNIST()
-batch_size = 1000
-steps = 1  # epoch_to_steps(epochs=100, dataset=dataset, batch_size=100)
 
 experiments = [
     Experiment(
         optim=SGD(lr=10**0.5),
         problem=Problem(
-            dataset=dataset,
+            dataset=MNIST(),
             model=LeNet5(),
             lossfunc=torch.nn.CrossEntropyLoss,
             metrics=[CrossEntropyLoss, Accuracy],
-            batch_size=batch_size,
+            batch_size=1000,
         ),
-        group=group,
+        group="testing",
         eval_every=1,
-        batch_size=batch_size,
         seed=0,
-        steps=steps,
-        hw_config=RawHardwareConfig(
+        steps=1,
+        implementation=StrictManualDetails(
             num_workers=1,
-            micro_batch_size=batch_size,
-            eval_micro_batch_size=batch_size,
+            micro_batch_size=1000,
+            eval_micro_batch_size=1000,
             device="cpu",
-            wandb_autosync=False,
         ),
     )
 ]

@@ -2,7 +2,7 @@ from typing import Dict, Iterable, List, Union
 
 from torch.nn import Module, Parameter
 
-from optexp.components.optimizers.optimizer import WeightDecayStrategy
+from optexp.components.optimizer import WeightDecayStrategy
 
 
 class DecayEverything(WeightDecayStrategy):
