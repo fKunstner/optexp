@@ -66,7 +66,9 @@ def numpyify(df: pd.DataFrame):
 
 def download_run_data(run: wandb.apis.public.Run, parquet=True):
     """Given a Wandb Run, download the full history."""
-    save_dir = optexp.config.get_wandb_cache_directory() / run.config["exp_config"]["group"]
+    save_dir = (
+        optexp.config.get_wandb_cache_directory() / run.config["exp_config"]["group"]
+    )
     if parquet:
         save_file = save_dir / f"{run.config['exp_id']}.parquet"
     else:
