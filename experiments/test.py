@@ -1,12 +1,12 @@
 import torch
 
 from optexp.cli import exp_runner_cli
-from optexp.datasets import MNIST
+from optexp.datasets.mnist import MNIST
 from optexp.experiment import Experiment
 from optexp.hardwareconfigs.strict_manual import StrictManualDetails
 from optexp.metrics.metrics import Accuracy, CrossEntropyLoss
-from optexp.models import LeNet5
-from optexp.optimizers import SGD
+from optexp.models.vision import LeNet5
+from optexp.optimizers.sgd import SGD
 from optexp.problem import Problem
 from optexp.runner.slurm.slurm_config import SlurmConfig
 
