@@ -12,9 +12,9 @@ class Adam(Optimizer):
 
     Args:
         lr (float): learning rate.
-        beta1 (float, optional): coefficient used for computing running averages of gradient.
+        beta1 (float, optional): coefficient used for computing EMA of gradient.
             Defaults to 0.9.
-        beta2 (float, optional): coefficient used for computing running averages of squared gradient.
+        beta2 (float, optional): coefficient used for computing EMA of squared gradients.
             Defaults to 0.999.
         eps (float, optional): term added to the denominator to improve numerical stability.
             Defaults to 1e-8.
@@ -56,9 +56,9 @@ class AdamW(Adam):
 
     Args:
         lr (float): learning rate.
-        beta1 (float, optional): coefficient used for computing running averages of gradient.
+        beta1 (float, optional): coefficient used for computing EMA of gradient.
             Defaults to 0.9.
-        beta2 (float, optional): coefficient used for computing running averages of squared gradient.
+        beta2 (float, optional): coefficient used for computing EMA squared gradient.
             Defaults to 0.999.
         eps (float, optional): term added to the denominator to improve numerical stability.
             Defaults to 1e-8.

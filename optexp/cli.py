@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 from shutil import rmtree
 from typing import List, Optional
@@ -8,7 +9,7 @@ from typing import List, Optional
 from tqdm import tqdm
 
 import optexp.config
-from optexp.config import get_logger, DisableWandb
+from optexp.config import DisableWandb, get_logger
 from optexp.data.wandb import (
     download_run_data,
     download_summary,
@@ -30,7 +31,7 @@ def run_handler(
     python_file: Optional[Path] = None,
 ):
 
-    with DisableWandb() if args.no_wandb else None:
+    with DisableWandb() if args.no_wandb else nullcontext():  # type: ignore
         if args.test or args.single is not None:
             idx = 0 if args.test else int(args.single)
             validate_index(experiments, idx)

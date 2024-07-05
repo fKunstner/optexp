@@ -35,7 +35,7 @@ class StrictManualConfig(HardwareConfig):
 
     Example:
 
-        1. Take optimization steps with a batch size of 100, loading 10 samples at a time::
+        1. Steps with a batch size of 100, loading 10 samples at a time::
 
             Problem(
                 batch_size=100,
@@ -46,7 +46,7 @@ class StrictManualConfig(HardwareConfig):
                 ...,
             )
 
-        2. Take optimization steps with a batch size of 100, loading 10 samples at a time with 2 GPUs::
+        2. Steps with a batch size of 100, loading 10 samples at a time with 2 GPUs::
 
             Problem(
                 batch_size=100,
@@ -58,7 +58,8 @@ class StrictManualConfig(HardwareConfig):
                 ...,
             )
 
-        3. Invalid configuration: The batch size is not a multiple of the micro batch size::
+        3. Invalid configuration:
+           The batch size is not a multiple of the micro batch size::
 
             Problem(
                 batch_size=100,
@@ -69,7 +70,8 @@ class StrictManualConfig(HardwareConfig):
                 ...,
             )
 
-        4. Invalid configuration: The batch size is not a multiple of the micro batch size * num_devices::
+        4. Invalid configuration:
+           The batch size is not a multiple of the micro batch size * num_devices::
 
             Problem(
                 batch_size=100,
