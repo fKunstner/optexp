@@ -40,7 +40,7 @@ class Experiment(Component):
     hardware_config: HardwareConfig = field(
         default=StrictManualConfig(), repr=False, hash=False
     )
-    group: Optional[str] = field(default="", repr=False, hash=False)
+    group: str = field(default="", repr=False, hash=False)
 
     def exp_id(self) -> str:
         """Return a unique identifier for this experiment.

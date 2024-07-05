@@ -124,7 +124,11 @@ class _StrictManualConfig(_HardwareConfig):
 
         effective_bs = problem.batch_size
         w = manual_details.num_devices
-        tr_mbs = manual_details.micro_batch_size
+        tr_mbs = (
+            manual_details.micro_batch_size
+            if manual_details.micro_batch_size is not None
+            else effective_bs // w
+        )
         va_mbs = (
             manual_details.eval_micro_batch_size
             if manual_details.eval_micro_batch_size is not None
