@@ -13,6 +13,8 @@ TrVa = Literal["tr", "va"]
 
 @dataclass(frozen=True)
 class Dataset(ABC, Component):
+    """Abstract base class for datasets."""
+
     @abstractmethod
     def get_dataloader(
         self,
@@ -68,7 +70,3 @@ class AvailableAsTensor:
         self, b: int, tr_va: TrVa, to_device: Optional[Device] = None
     ) -> torch.utils.data.DataLoader:
         raise NotImplementedError()
-
-
-def epoch_to_steps(epochs: int, dataset: Dataset, batch_size: int) -> int:
-    return epochs * dataset.get_num_samples("tr") // batch_size

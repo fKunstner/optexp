@@ -1,7 +1,7 @@
 import hashlib
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import Field, dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -9,6 +9,7 @@ import pandas as pd
 
 import optexp.config
 from optexp.component import Component
+from optexp.hardwareconfig import StrictManualConfig
 from optexp.hardwareconfig.hardwareconfig import HardwareConfig
 from optexp.optim.optimizer import Optimizer
 from optexp.problem import Problem
@@ -16,26 +17,30 @@ from optexp.problem import Problem
 
 @dataclass(frozen=True)
 class Experiment(Component):
-    """Wrapper around all the details to specify an experiment.
+    """Specify an experiment.
 
     Args:
-         optim (Optimizer): The optimizer to be used in the experiment.
-         problem (Problem): The problem to be solved in the experiment.
-         group (str): The group to which the experiment belongs.
-         eval_every (int): The frequency of evaluation during the experiment.
-         steps (int): The number of steps to be taken in the experiment.
-         implementation (HardwareConfig): Implementation details.
-         seed (int): The seed for the random number generator.
+         optim (Optimizer): optimizer to use.
+         problem (Problem): problem to solve.
+         eval_every (int): often to evaluate the metrics.
+         steps (int): total number of steps.
+            To convert from epochs, use :func:`optexp.utils.epochs_to_steps`.
+         seed (int, optional): seed for the random number generator.
+            Defaults to 0.
+         hardware_config (HardwareConfig, optional): implementation details.
+            Defaults to :class:`~optexp.hardwareconfig.StrictManualConfig()`.
+         group (str, optional): name for logging. Defaults to the empty string `""`.
     """
 
-    # pylint: disable=too-many-instance-attributes
     optim: Optimizer
     problem: Problem
-    group: str
     eval_every: int
     steps: int
-    implementation: HardwareConfig = field(repr=False)
     seed: int = 0
+    hardware_config: HardwareConfig = field(
+        default=StrictManualConfig(), repr=False, hash=False
+    )
+    group: Optional[str] = field(default="", repr=False, hash=False)
 
     def exp_id(self) -> str:
         """Return a unique identifier for this experiment.

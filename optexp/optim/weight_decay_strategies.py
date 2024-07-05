@@ -6,6 +6,8 @@ from optexp.optim.optimizer import WeightDecayStrategy
 
 
 class DecayEverything(WeightDecayStrategy):
+    """Applies weight decay to all parameters."""
+
     def make_param_groups(
         self, model: Module, weight_decay: float
     ) -> List[Dict[str, Union[Iterable[Parameter], float]]]:
@@ -13,6 +15,11 @@ class DecayEverything(WeightDecayStrategy):
 
 
 class NoDecayOnBias(WeightDecayStrategy):
+    """Applies weight decay to all parameters except biases.
+
+    Only applies weight decay to parameters whose name does not contain "bias".
+    """
+
     def make_param_groups(
         self, model: Module, weight_decay: float
     ) -> List[Dict[str, Union[Iterable[Parameter], float]]]:

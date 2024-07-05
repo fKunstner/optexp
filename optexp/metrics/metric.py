@@ -7,12 +7,16 @@ from optexp.component import Component
 
 
 class Metric(Component, ABC):
+    """Abstract base class for metrics."""
+
     @abstractmethod
     def __call__(self, *args, **kwargs):
         raise NotImplementedError()
 
 
-class LossMetric(Metric):
+class LossLikeMetric(Metric):
+    """Abstract base class for loss-like metrics, which take inputs and labels."""
+
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:

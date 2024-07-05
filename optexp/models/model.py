@@ -8,6 +8,7 @@ from optexp.component import Component
 
 @dataclass(frozen=True)
 class Model(Component, ABC):
+    """Abstract base class for models."""
 
     @abstractmethod
     def load_model(

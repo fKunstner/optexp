@@ -3,10 +3,11 @@ from typing import Tuple
 import torch
 from torch.nn.functional import cross_entropy
 
-from optexp.metrics.metric import LossMetric, Metric
+from optexp.metrics.metric import LossLikeMetric, Metric
 
 
 class CrossEntropyLoss(Metric):
+
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -16,6 +17,7 @@ class CrossEntropyLoss(Metric):
 
 
 class Accuracy(Metric):
+
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -53,14 +55,23 @@ def _groupby_sum(
     return sum_by_class, label_counts
 
 
-class CrossEntropyLossPerClass(LossMetric):
+class CrossEntropyLossPerClass(LossLikeMetric):
+    """Cross entropy loss per class.
+
+    Can result in large logs on problems with many classes.
+    """
+
     def __call__(self, inputs, labels):
         num_classes = inputs.shape[1]
         losses = cross_entropy(inputs, labels, reduction="none")
         return _groupby_sum(losses, labels, num_classes)
 
 
-class AccuracyPerClass(LossMetric):
+class AccuracyPerClass(LossLikeMetric):
+    """Accuracy per class.
+
+    Can result in large logs on problems with many classes.
+    """
 
     def __call__(self, inputs, labels):
         num_classes = inputs.shape[1]

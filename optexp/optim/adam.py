@@ -8,6 +8,28 @@ from optexp.optim.weight_decay_strategies import DecayEverything
 
 @dataclass(frozen=True)
 class Adam(Optimizer):
+    """Adam optimizer from [Kingma2014]_.
+
+    Args:
+        lr (float): learning rate.
+        beta1 (float, optional): coefficient used for computing running averages of gradient.
+            Defaults to 0.9.
+        beta2 (float, optional): coefficient used for computing running averages of squared gradient.
+            Defaults to 0.999.
+        eps (float, optional): term added to the denominator to improve numerical stability.
+            Defaults to 1e-8.
+        weight_decay (float, optional): weight decay (L2 penalty). Defaults to 0.01.
+        amsgrad (bool, optional): whether to use the AMSGrad variant of this algorithm.
+            Defaults to False.
+        decay_strategy (WeightDecayStrategy, optional): strategy for applying weight decay.
+            Defaults to :class:`~optexp.optim.DecayEverything()`.
+
+    .. [Kingma2014] Adam: A Method for Stochastic Optimization.
+       Diederik P. Kingma, Jimmy Ba.
+       International Conference on Learning Representations, 2015.
+       `doi.org/10.48550/arXiv.1412.6980 <https://doi.org/10.48550/arXiv.1412.6980>`_
+    """
+
     lr: float
     beta1: float = 0.9
     beta2: float = 0.999
@@ -30,6 +52,27 @@ class Adam(Optimizer):
 
 @dataclass(frozen=True)
 class AdamW(Adam):
+    """AdamW optimizer from [Loshchilov2019]_.
+
+    Args:
+        lr (float): learning rate.
+        beta1 (float, optional): coefficient used for computing running averages of gradient.
+            Defaults to 0.9.
+        beta2 (float, optional): coefficient used for computing running averages of squared gradient.
+            Defaults to 0.999.
+        eps (float, optional): term added to the denominator to improve numerical stability.
+            Defaults to 1e-8.
+        weight_decay (float, optional): weight decay (L2 penalty). Defaults to 0.01.
+        amsgrad (bool, optional): whether to use the AMSGrad variant of this algorithm.
+            Defaults to False.
+        decay_strategy (WeightDecayStrategy, optional): strategy for applying weight decay.
+            Defaults to :class:`~optexp.optim.DecayEverything()`.
+
+    .. [Loshchilov2019] Decoupled Weight Decay Regularization.
+         Ilya Loshchilov, Frank Hutter.
+         International Conference on Learning Representations, 2019.
+         `doi.org/10.48550/arXiv.1711.05101 <https://doi.org/10.48550/arXiv.1711.05101>`_
+    """
 
     def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
         param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)

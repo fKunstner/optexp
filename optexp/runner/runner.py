@@ -99,8 +99,8 @@ class ExperimentState:
 def run(exp: Experiment) -> None:
 
     fabric = ptl.Fabric(
-        accelerator=exp.implementation.get_accelerator(),
-        devices=exp.implementation.get_num_workers(),
+        accelerator=exp.hardware_config.get_accelerator(),
+        devices=exp.hardware_config.get_num_devices(),
         num_nodes=1,
         strategy="auto",
     )
@@ -145,7 +145,7 @@ def initialize(
 ) -> Tuple[ExperimentState, _HardwareConfig]:
 
     loginfo_on_r0(fabric, "Initializing problem configuration")
-    hw_config = exp.implementation.load(exp.problem)
+    hw_config = exp.hardware_config.load(exp.problem)
 
     seed = exp.seed
     np.random.seed(seed)

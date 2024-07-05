@@ -21,6 +21,17 @@ def validate_image_data(input_shape, output_shape):
 
 
 class LeNet5(Model):
+    """A basic convolutional neural network for image classification from [LeCun1998]_.
+
+    The model expects images of shape [batch, channels, 32, 32].
+    If images are 28x28, the model will pad the images to 32x32.
+
+    .. [LeCun1998] Gradient Based Learning Applied to Document Recognition.
+       Yann LeCun, Leon Bottou, Yoshua Bengio, and Patrick Haffner.
+       Proceedings of the IEEE, 86(11):2278-2324, 1998.
+       `DOI: 10.1109/5.726791 <https://doi.org/10.1109/5.726791>`_
+    """
+
     def load_model(self, input_shape, output_shape):
         validate_image_data(input_shape, output_shape)
 
@@ -59,7 +70,27 @@ class LeNet5(Model):
 
 
 class ResNet(Model):
+    """A deep convolutional neural network from [He2016]_.
+
+    The model expects images of shape [batch, channels, 224, 224].
+
+    .. [He2016] Deep Residual Learning for Image Recognition.
+        Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+        Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2016.
+        `DOI: 10.1109/CVPR.2016.90 <https://doi.org/10.1109/CVPR.2016.90>`_
+
+    Args:
+        size (int): size of the model. Must be one of [18, 34, 50, 101, 152].
+    """
+
     size: Literal[18, 34, 50, 101, 152]
+
+    def __post_init__(self):
+        if self.size not in [18, 34, 50, 101, 152]:
+            raise ValueError(
+                f"Invalid ResNet size. Got {self.size}. "
+                "Expected one of [18, 34, 50, 101, 152]."
+            )
 
     def load_model(self, input_shape, output_shape):
         validate_image_data(input_shape, output_shape)

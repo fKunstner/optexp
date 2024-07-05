@@ -41,7 +41,6 @@ class UseWandbProject:
     get_wandb_project().
     """
 
-    # class variable
     global_project: Optional[str] = None
 
     def __init__(self, project: Optional[str] = None):

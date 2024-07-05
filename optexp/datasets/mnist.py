@@ -20,6 +20,9 @@ MEAN, STD = 0.1307, 0.3081
 
 @dataclass(frozen=True)
 class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
+    """The `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset, provided through
+    `TorchVision <https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html>`_.
+    """
 
     def get_num_samples(self, tr_va: TrVa) -> int:
         if tr_va == "tr":

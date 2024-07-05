@@ -4,6 +4,7 @@ from typing import Callable, List
 import numpy as np
 
 from optexp.config import get_logger
+from optexp.datasets import Dataset
 from optexp.experiment import Experiment
 from optexp.optim.optimizer import Optimizer
 
@@ -111,3 +112,7 @@ def split_classes_by_frequency(x, n_splits=2):
 
 SEEDS_1 = [0]
 SEEDS_3 = [0, 1, 2]
+
+
+def epoch_to_steps(epochs: int, dataset: Dataset, batch_size: int) -> int:
+    return epochs * dataset.get_num_samples("tr") // batch_size
