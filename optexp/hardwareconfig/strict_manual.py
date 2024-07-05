@@ -2,21 +2,21 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 import optexp.config
-from optexp.hardwareconfigs.hardwareconfig import HardwareConfig, ImplementationDetails
-from optexp.hardwareconfigs.utils import batchsize_mismatch_message
+from optexp.hardwareconfig.hardwareconfig import HardwareConfig, _HardwareConfig
+from optexp.hardwareconfig.utils import batchsize_mismatch_message
 from optexp.problem import Problem
 
 
 @dataclass(frozen=True)
-class StrictManualDetails(ImplementationDetails):
+class StrictManualConfig(HardwareConfig):
 
     num_workers: int
     micro_batch_size: int
     eval_micro_batch_size: Optional[int] = None
     device: Literal["cpu", "cuda", "auto"] = "auto"
 
-    def load(self, problem: Problem) -> "StrictManualConfig":
-        return StrictManualConfig(self, problem)
+    def load(self, problem: Problem) -> "_StrictManualConfig":
+        return _StrictManualConfig(self, problem)
 
     def get_num_workers(self):
         return self.num_workers
@@ -29,9 +29,9 @@ class StrictManualDetails(ImplementationDetails):
         raise ValueError(f"Unknown device {self.device}")
 
 
-class StrictManualConfig(HardwareConfig):
+class _StrictManualConfig(_HardwareConfig):
 
-    def __init__(self, manual_details: "StrictManualDetails", problem: Problem):
+    def __init__(self, manual_details: "StrictManualConfig", problem: Problem):
         tr_mbs, va_mbs = self._validate_batch_sizes(manual_details, problem)
         self.tr_mbs: int = tr_mbs
         self.va_mbs: int = va_mbs
@@ -47,7 +47,7 @@ class StrictManualConfig(HardwareConfig):
         return self.acc
 
     @staticmethod
-    def _validate_batch_sizes(manual_details: "StrictManualDetails", problem: Problem):
+    def _validate_batch_sizes(manual_details: "StrictManualConfig", problem: Problem):
         n_tr = problem.dataset.get_num_samples("tr")
         n_va = problem.dataset.get_num_samples("va")
 

@@ -1,12 +1,12 @@
 import torch
 
-from optexp.cli import exp_runner_cli
+from optexp.cli import run_cli
 from optexp.datasets.mnist import MNIST
 from optexp.experiment import Experiment
-from optexp.hardwareconfigs.strict_manual import StrictManualDetails
+from optexp.hardwareconfig.strict_manual import StrictManualConfig
 from optexp.metrics.metrics import Accuracy, CrossEntropyLoss
 from optexp.models.vision import LeNet5
-from optexp.optimizers.sgd import SGD
+from optexp.optim.sgd import SGD
 from optexp.problem import Problem
 from optexp.runner.slurm.slurm_config import SlurmConfig
 
@@ -24,7 +24,7 @@ experiments = [
         eval_every=1,
         seed=0,
         steps=1,
-        implementation=StrictManualDetails(
+        implementation=StrictManualConfig(
             num_workers=1,
             micro_batch_size=1000,
             eval_micro_batch_size=1000,
@@ -35,4 +35,4 @@ experiments = [
 
 SLURM_CONFIG = SlurmConfig(hours=10, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
 if __name__ == "__main__":
-    exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)
+    run_cli(experiments, slurm_config=SLURM_CONFIG)

@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 from optexp.data.data_logger import DataLogger
 from optexp.datasets.dataset import TrVa
 from optexp.experiment import Experiment
-from optexp.hardwareconfigs.hardwareconfig import HardwareConfig
+from optexp.hardwareconfig.hardwareconfig import _HardwareConfig
 from optexp.metrics.metric import Metric
 from optexp.runner.fabric_helpers import (
     EvalMode,
@@ -142,7 +142,7 @@ def run(exp: Experiment) -> None:
 
 def initialize(
     exp: Experiment, fabric: ptl.Fabric
-) -> Tuple[ExperimentState, HardwareConfig]:
+) -> Tuple[ExperimentState, _HardwareConfig]:
 
     loginfo_on_r0(fabric, "Initializing problem configuration")
     hw_config = exp.implementation.load(exp.problem)
@@ -170,7 +170,7 @@ def initialize(
         exp.problem.dataset.output_shape(hw_config.get_micro_batchsize_for_training()),
     )
 
-    loginfo_on_r0(fabric, "Loading loss function, metrics, and optimizers...")
+    loginfo_on_r0(fabric, "Loading loss function, metrics, and optim...")
     loss_func = exp.problem.lossfunc()
     metrics = [metric() for metric in exp.problem.metrics]
     opt = exp.optim.load(model)
@@ -254,7 +254,7 @@ def evaluate(
 def training_step(
     fabric: ptl.Fabric,
     exp_state: ExperimentState,
-    hardware_config: HardwareConfig,
+    hardware_config: _HardwareConfig,
 ) -> Tuple[float, ExperimentState]:
 
     with TrainMode(exp_state.model):

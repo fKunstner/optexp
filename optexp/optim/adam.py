@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import torch
 
-from optexp.optimizers.optimizer import Optimizer, WeightDecayStrategy
-from optexp.optimizers.weight_decay_strategies import DecayEverything
+from optexp.optim.optimizer import Optimizer, WeightDecayStrategy
+from optexp.optim.weight_decay_strategies import DecayEverything
 
 
 @dataclass(frozen=True)

@@ -9,8 +9,8 @@ import pandas as pd
 
 import optexp.config
 from optexp.component import Component
-from optexp.hardwareconfigs.hardwareconfig import ImplementationDetails
-from optexp.optimizers.optimizer import Optimizer
+from optexp.hardwareconfig.hardwareconfig import HardwareConfig
+from optexp.optim.optimizer import Optimizer
 from optexp.problem import Problem
 
 
@@ -24,7 +24,7 @@ class Experiment(Component):
          group (str): The group to which the experiment belongs.
          eval_every (int): The frequency of evaluation during the experiment.
          steps (int): The number of steps to be taken in the experiment.
-         implementation (ImplementationDetails): The details of the implementation used in the experiment.
+         implementation (HardwareConfig): Implementation details.
          seed (int): The seed for the random number generator.
     """
 
@@ -34,7 +34,7 @@ class Experiment(Component):
     group: str
     eval_every: int
     steps: int
-    implementation: ImplementationDetails = field(repr=False)
+    implementation: HardwareConfig = field(repr=False)
     seed: int = 0
 
     def exp_id(self) -> str:

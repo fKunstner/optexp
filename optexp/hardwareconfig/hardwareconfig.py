@@ -7,10 +7,10 @@ from optexp.problem import Problem
 
 
 @dataclass(frozen=True)
-class ImplementationDetails(Component, ABC):
+class HardwareConfig(Component, ABC):
 
     @abstractmethod
-    def load(self, problem: Problem) -> "HardwareConfig":
+    def load(self, problem: Problem) -> "_HardwareConfig":
         raise NotImplementedError
 
     @abstractmethod
@@ -22,7 +22,7 @@ class ImplementationDetails(Component, ABC):
         raise NotImplementedError
 
 
-class HardwareConfig(ABC):
+class _HardwareConfig(ABC):
 
     @abstractmethod
     def get_micro_batchsize_for_training(self) -> int:

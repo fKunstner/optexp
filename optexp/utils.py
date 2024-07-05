@@ -5,7 +5,7 @@ import numpy as np
 
 from optexp.config import get_logger
 from optexp.experiment import Experiment
-from optexp.optimizers.optimizer import Optimizer
+from optexp.optim.optimizer import Optimizer
 
 
 def _check_parameters_logspace(end, start, density):

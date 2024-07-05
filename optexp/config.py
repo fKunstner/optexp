@@ -19,6 +19,21 @@ ENV_VAR_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
 LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
+class _CONFIG:
+    should_use_wandb = None
+
+
+class DisableWandb:
+    def __init__(self):
+        self.wandb_status = should_use_wandb()
+
+    def __enter__(self):
+        _CONFIG.should_use_wandb = False
+
+    def __exit__(self, *args, **kwargs):
+        _CONFIG.should_use_wandb = self.wandb_status
+
+
 class UseWandbProject:
     """Context manager to set the wandb project for a block of code.
 
@@ -26,6 +41,7 @@ class UseWandbProject:
     get_wandb_project().
     """
 
+    # class variable
     global_project: Optional[str] = None
 
     def __init__(self, project: Optional[str] = None):
@@ -71,6 +87,9 @@ def should_wandb_autosync():
 
 
 def should_use_wandb() -> bool:
+    if _CONFIG.should_use_wandb is not None:
+        return _CONFIG.should_use_wandb
+
     status = os.environ.get(ENV_VAR_WANDB_ENABLED, None)
     if status is None:
         raise ValueError(
@@ -81,12 +100,10 @@ def should_use_wandb() -> bool:
 
 
 def get_wandb_project() -> str:
-    project: Optional[str] = None
     if UseWandbProject.global_project is not None:
-        project = UseWandbProject.global_project
-    else:
-        project = os.environ.get(ENV_VAR_WANDB_PROJECT, None)
+        return UseWandbProject.global_project
 
+    project = os.environ.get(ENV_VAR_WANDB_PROJECT, None)
     if project is None:
         raise ValueError(
             f"WandB project not set. Define the {ENV_VAR_WANDB_PROJECT} "

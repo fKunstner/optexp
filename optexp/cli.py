@@ -8,7 +8,7 @@ from typing import List, Optional
 from tqdm import tqdm
 
 import optexp.config
-from optexp.config import get_logger
+from optexp.config import get_logger, DisableWandb
 from optexp.data.wandb import (
     download_run_data,
     download_summary,
@@ -30,24 +30,25 @@ def run_handler(
     python_file: Optional[Path] = None,
 ):
 
-    if args.test or args.single is not None:
-        idx = 0 if args.test else int(args.single)
-        validate_index(experiments, idx)
-        experiments = [experiments[idx]]
+    with DisableWandb() if args.no_wandb else None:
+        if args.test or args.single is not None:
+            idx = 0 if args.test else int(args.single)
+            validate_index(experiments, idx)
+            experiments = [experiments[idx]]
 
-    if args.local:
-        run_locally(experiments, force_rerun=args.force_rerun)
-        return
+        if args.local:
+            run_locally(experiments, force_rerun=args.force_rerun)
+            return
 
-    if args.slurm:
-        slurm_config = validate_slurm_config(slurm_config)
-        run_slurm(
-            experiments,
-            slurm_config,
-            force_rerun=args.force_rerun,
-            python_file=python_file,
-        )
-        return
+        if args.slurm:
+            slurm_config = validate_slurm_config(slurm_config)
+            run_slurm(
+                experiments,
+                slurm_config,
+                force_rerun=args.force_rerun,
+                python_file=python_file,
+            )
+            return
 
 
 def download_handler(
@@ -74,7 +75,7 @@ def check_handler(
     return 0
 
 
-def exp_runner_cli(
+def run_cli(
     experiments: List[Experiment],
     slurm_config: Optional[SlurmConfig] = None,
     python_file: Optional[Path] = None,
@@ -125,6 +126,13 @@ def exp_runner_cli(
         "--force-rerun",
         action="store_true",
         help="Force rerun of experiments that are already saved.",
+        default=False,
+    )
+    run_parser.add_argument(
+        "-n",
+        "--no-wandb",
+        action="store_true",
+        help="Disables wandb login for this run",
         default=False,
     )
     run_parser.set_defaults(func=run_handler)
