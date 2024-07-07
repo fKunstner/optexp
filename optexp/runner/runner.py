@@ -26,7 +26,7 @@ from optexp.runner.fabric_helpers import (
 from optexp.runner.sum_and_counter import SumAndCounter
 
 
-def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
+def run_experiment(exp: Experiment, run_profiler: bool = True) -> None:
     """Run the experiment.
 
     Initializes the problem and optimizer and optimizes the
@@ -39,9 +39,13 @@ def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
     """
 
     if run_profiler:
-        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
-            with record_function("main_run"):
-                run(exp)
+        with profile(
+            activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+            record_shapes=True,
+            profile_memory=True,
+            use_cuda=True,
+        ) as prof:
+            run(exp)
         prof.export_chrome_trace("trace.json")
     else:
         run(exp)
@@ -63,30 +67,34 @@ def run(exp: Experiment) -> None:
         data_logger = DataLogger(experiment=exp)
     fabric.barrier()
 
-    loginfo_on_r0(fabric, "=" * 80)
-    loginfo_on_r0(fabric, "Initializing experiment:")
-    loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
-    loginfo_on_r0(fabric, "=" * 80)
-    exp_state = initialize(exp, fabric)
-    loginfo_on_r0(fabric, f"Using device {fabric.device}")
+    with record_function("initialization"):
+        loginfo_on_r0(fabric, "=" * 80)
+        loginfo_on_r0(fabric, "Initializing experiment:")
+        loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
+        loginfo_on_r0(fabric, "=" * 80)
+        exp_state = initialize(exp, fabric)
+        loginfo_on_r0(fabric, f"Using device {fabric.device}")
 
-    loginfo_on_r0(fabric, "Initial evaluation...")
-    eval_and_log(fabric, exp_state, {}, data_logger)
+    with record_function("first eval"):
+        loginfo_on_r0(fabric, "Initial evaluation...")
+        eval_and_log(fabric, exp_state, {}, data_logger)
 
-    loginfo_on_r0(fabric, "Starting training...")
-    for t in range(1, exp.steps + 1):
-        live_loss, exp_state = training_step(fabric, exp_state)
+    with record_function("training"):
+        loginfo_on_r0(fabric, "Starting training...")
+        for t in range(1, exp.steps + 1):
+            live_loss, exp_state = training_step(fabric, exp_state)
 
-        loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}")
+            loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}")
 
-        if math.isnan(live_loss) or math.isinf(live_loss):
-            break
+            if math.isnan(live_loss) or math.isinf(live_loss):
+                break
 
-        if t % exp.eval_every == 0:
-            extra_dict = {
-                "live_loss": live_loss,
-            }
-            eval_and_log(fabric, exp_state, extra_dict, data_logger)
+            if t % exp.eval_every == 0:
+                with record_function("eval"):
+                    extra_dict = {
+                        "live_loss": live_loss,
+                    }
+                    eval_and_log(fabric, exp_state, extra_dict, data_logger)
 
     if fabric.global_rank == 0 and data_logger is not None:
         data_logger.finish(exit_code=0)

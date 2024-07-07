@@ -12,18 +12,14 @@ experiments = [
         problem=Problem(
             dataset=MNIST(),
             model=LeNet5(),
-            batch_size=1000,
+            batch_size=10000,
             lossfunc=CrossEntropyLoss,
             metrics=[metrics.Accuracy, metrics.CrossEntropyLoss],
         ),
-        optim=SGD(lr=lr),
-        steps=100,
-        eval_every=50,
-        hardware_config=StrictManualConfig(
-            device="cpu",
-        ),
+        optim=SGD(lr=0.01),
+        steps=6 * 4,
+        eval_every=6,
     )
-    for lr in logspace(-4, 0, 0)
 ]
 
 if __name__ == "__main__":
