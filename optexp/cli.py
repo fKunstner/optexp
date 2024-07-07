@@ -58,7 +58,7 @@ def download_handler(
     slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
     python_file: Optional[Path] = None,  # pylint: disable=unused-argument
 ):
-    if args.clear_download:
+    if args.clear:
         clear_downloaded_data(experiments)
         return 0
 
