@@ -32,16 +32,16 @@ def tensor_any(param: Tensor):
     return any(param) if len(param.shape) > 0 else bool(param)
 
 
-last_message_time = None
-RATE_LIMIT = 1
+class RateLimiter:
+    last_message_time: Optional[float] = None
+    RATE_LIMIT = 1
 
 
 def should_print(rate_limited: bool, last_message_timestamp: Optional[float]):
     if not rate_limited:
         return True
 
-    first_message = last_message_timestamp is None
-    if first_message:
+    if last_message_timestamp is None:
         return True
 
     time_since_last = time.time() - last_message_timestamp
@@ -52,10 +52,9 @@ def should_print(rate_limited: bool, last_message_timestamp: Optional[float]):
 
 
 def loginfo_on_r0(fabric, message: str, rate_limited: bool = False) -> None:
-    global last_message_time
     if fabric.global_rank == 0:
-        if should_print(rate_limited, last_message_time):
-            last_message_time = time.time()
+        if should_print(rate_limited, RateLimiter.last_message_time):
+            RateLimiter.last_message_time = time.time()
             get_logger().info(message)
 
 

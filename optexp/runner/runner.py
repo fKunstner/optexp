@@ -1,7 +1,6 @@
 import math
 import pprint
 import random
-from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional, Tuple
 
 import lightning as ptl
@@ -16,8 +15,8 @@ from tqdm import tqdm
 from optexp.data.data_logger import DataLogger
 from optexp.datasets.dataset import TrVa
 from optexp.experiment import Experiment
-from optexp.hardwareconfig.hardwareconfig import _HardwareConfig
 from optexp.metrics.metric import Metric
+from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.fabric_helpers import (
     EvalMode,
     TrainMode,
@@ -48,55 +47,6 @@ def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
         run(exp)
 
 
-@dataclass
-class TimeCounter:
-    epoch: int = 0
-    step: int = 0
-    step_within_epoch: int = 0
-
-    def next_iter(self):
-        self.step += 1
-        self.step_within_epoch += 1
-
-    def next_epoch(self):
-        self.epoch += 1
-        self.step_within_epoch = 0
-
-
-@dataclass
-class DataLoaders:
-    tr_tr: DataLoader
-    tr_va: DataLoader
-    va_va: DataLoader
-
-
-@dataclass
-class ExperimentState:
-    model: torch.nn.Module
-    optimizer: torch.optim.Optimizer
-    dataloaders: DataLoaders
-    metrics: Iterable[Metric]
-    loss_func: torch.nn.Module
-    _tr_dl_iter = None
-    time: TimeCounter = TimeCounter()
-
-    def get_batch(self):
-        if self._tr_dl_iter is None:
-            self._tr_dl_iter = iter(self.dataloaders.tr_tr)
-            self.time = TimeCounter()
-
-        try:
-            features, labels = next(self._tr_dl_iter)
-        except StopIteration:
-            self.time.next_epoch()
-            tr_iterator = iter(self.dataloaders.tr_tr)
-            features, labels = next(tr_iterator)
-        finally:
-            self.time.next_iter()
-
-        return features, labels
-
-
 def run(exp: Experiment) -> None:
 
     fabric = ptl.Fabric(
@@ -117,7 +67,7 @@ def run(exp: Experiment) -> None:
     loginfo_on_r0(fabric, "Initializing experiment:")
     loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
     loginfo_on_r0(fabric, "=" * 80)
-    exp_state, hardware_config = initialize(exp, fabric)
+    exp_state = initialize(exp, fabric)
     loginfo_on_r0(fabric, f"Using device {fabric.device}")
 
     loginfo_on_r0(fabric, "Initial evaluation...")
@@ -125,7 +75,7 @@ def run(exp: Experiment) -> None:
 
     loginfo_on_r0(fabric, "Starting training...")
     for t in range(1, exp.steps + 1):
-        live_loss, exp_state = training_step(fabric, exp_state, hardware_config)
+        live_loss, exp_state = training_step(fabric, exp_state)
 
         loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}", rate_limited=True)
 
@@ -144,12 +94,10 @@ def run(exp: Experiment) -> None:
     fabric.barrier()
 
 
-def initialize(
-    exp: Experiment, fabric: ptl.Fabric
-) -> Tuple[ExperimentState, _HardwareConfig]:
+def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
 
-    loginfo_on_r0(fabric, "Initializing problem configuration")
-    hw_config = exp.hardware_config.load(exp.problem)
+    loginfo_on_r0(fabric, "Initialization...")
+    bs_info = exp.hardware_config.get_batch_size_info(exp.problem)
 
     seed = exp.seed
     np.random.seed(seed)
@@ -157,42 +105,30 @@ def initialize(
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
-    loginfo_on_r0(fabric, "Loading dataset...")
-    tr_tr_dl = exp.problem.dataset.get_dataloader(
-        tr_va="tr", b=hw_config.get_micro_batchsize_for_training()
-    )
-    tr_va_dl = exp.problem.dataset.get_dataloader(
-        tr_va="tr", b=hw_config.get_micro_batchsize_for_validation()
-    )
-    va_va_dl = exp.problem.dataset.get_dataloader(
-        tr_va="va", b=hw_config.get_micro_batchsize_for_validation()
-    )
+    loginfo_on_r0(fabric, "Loading the dataset...")
+    tr_tr_dl = exp.problem.dataset.get_dataloader(tr_va="tr", b=bs_info.mbatchsize_tr)
+    tr_va_dl = exp.problem.dataset.get_dataloader(tr_va="tr", b=bs_info.mbatchsize_va)
+    va_va_dl = exp.problem.dataset.get_dataloader(tr_va="va", b=bs_info.mbatchsize_va)
 
-    loginfo_on_r0(fabric, "Loading model...")
+    loginfo_on_r0(fabric, "Loading the model...")
     model = exp.problem.model.load_model(
-        exp.problem.dataset.input_shape(hw_config.get_micro_batchsize_for_training()),
-        exp.problem.dataset.output_shape(hw_config.get_micro_batchsize_for_training()),
+        exp.problem.dataset.input_shape(bs_info.mbatchsize_tr),
+        exp.problem.dataset.output_shape(bs_info.mbatchsize_tr),
     )
 
-    loginfo_on_r0(fabric, "Loading loss function, metrics, and optim...")
-    loss_func = exp.problem.lossfunc()
-    metrics = [metric() for metric in exp.problem.metrics]
+    loginfo_on_r0(fabric, "Loading optimizer...")
     opt = exp.optim.load(model)
     model, opt = fabric.setup(model, opt)
 
-    return (
-        ExperimentState(
-            model=model,
-            optimizer=opt,
-            dataloaders=DataLoaders(
-                *fabric.setup_dataloaders(
-                    tr_tr_dl, tr_va_dl, va_va_dl, move_to_device=True
-                )
-            ),
-            metrics=metrics,
-            loss_func=loss_func,
+    return ExperimentState(
+        model=model,
+        optimizer=opt,
+        dataloaders=DataLoaders(
+            *fabric.setup_dataloaders(tr_tr_dl, tr_va_dl, va_va_dl)
         ),
-        hw_config,
+        metrics=[metric() for metric in exp.problem.metrics],
+        loss_func=exp.problem.lossfunc(),
+        batch_size_info=bs_info,
     )
 
 
@@ -204,9 +140,9 @@ def eval_and_log(
 ) -> None:
 
     time_dict = {
-        "epoch": exp_data.time.epoch,
-        "step": exp_data.time.step,
-        "step_within_epoch": exp_data.time.step_within_epoch,
+        "epoch": exp_data.iteration_counter.epoch,
+        "step": exp_data.iteration_counter.step,
+        "step_within_epoch": exp_data.iteration_counter.step_within_epoch,
     }
 
     metrics_tr = evaluate(
@@ -263,17 +199,16 @@ def evaluate(
 def training_step(
     fabric: ptl.Fabric,
     exp_state: ExperimentState,
-    hardware_config: _HardwareConfig,
 ) -> Tuple[float, ExperimentState]:
 
     with TrainMode(exp_state.model):
         exp_state.optimizer.zero_grad()
         total_loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
-        for _ in range(hardware_config.get_gradient_accumulation_steps()):
+        for _ in range(exp_state.batch_size_info.accumulation_steps):
             features, labels = exp_state.get_batch()
-            b = len(labels)
+            batch_size = len(labels)
             loss, weight = to_loss_and_weight(
-                exp_state.loss_func(exp_state.model(features), labels), b
+                exp_state.loss_func(exp_state.model(features), labels), batch_size
             )
             total_loss_and_count += SumAndCounter(loss.detach(), weight)
 
@@ -325,10 +260,3 @@ def to_loss_and_weight(
         f"Invalid parameter. Got {type(output)}."
         "Expected either Tensor or Tuple[Tensor, Tensor]"
     )
-
-
-def apply_seed(self) -> None:
-    np.random.seed(self.seed)
-    random.seed(self.seed)
-    torch.manual_seed(self.seed)
-    torch.cuda.manual_seed_all(self.seed)

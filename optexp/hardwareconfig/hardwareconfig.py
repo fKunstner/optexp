@@ -7,11 +7,18 @@ from optexp.problem import Problem
 
 
 @dataclass(frozen=True)
+class BatchSizeInfo(Component):
+    mbatchsize_tr: int
+    mbatchsize_va: int
+    accumulation_steps: int
+
+
+@dataclass(frozen=True)
 class HardwareConfig(Component, ABC):
     """Abstract base class for hardware configurations."""
 
     @abstractmethod
-    def load(self, problem: Problem) -> "_HardwareConfig":
+    def get_batch_size_info(self, problem: Problem) -> BatchSizeInfo:
         raise NotImplementedError
 
     @abstractmethod
@@ -20,20 +27,4 @@ class HardwareConfig(Component, ABC):
 
     @abstractmethod
     def get_accelerator(self) -> Literal["cpu", "cuda"]:
-        raise NotImplementedError
-
-
-class _HardwareConfig(ABC):
-    """Abstract base class for the result of hardware configurations."""
-
-    @abstractmethod
-    def get_micro_batchsize_for_training(self) -> int:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_micro_batchsize_for_validation(self) -> int:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_gradient_accumulation_steps(self) -> int:
         raise NotImplementedError

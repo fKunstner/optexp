@@ -2,12 +2,12 @@ from dataclasses import dataclass
 
 import torch
 
-from optexp.optim.optimizer import Optimizer, WeightDecayStrategy
+from optexp.optim.optimizer import Optimizer, Regularizable, WeightDecayStrategy
 from optexp.optim.weight_decay_strategies import DecayEverything
 
 
 @dataclass(frozen=True)
-class Adam(Optimizer):
+class Adam(Optimizer, Regularizable):
     """Adam optimizer from [Kingma2014]_.
 
     Args:
@@ -38,6 +38,9 @@ class Adam(Optimizer):
     amsgrad: bool = False
     decay_strategy: WeightDecayStrategy = DecayEverything()
 
+    def regularizer_loss(self, model: torch.nn.Module) -> torch.Tensor:
+        return self.decay_strategy.regularizer_loss(model, self.weight_decay)
+
     def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
         param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)
         return torch.optim.Adam(
@@ -51,7 +54,7 @@ class Adam(Optimizer):
 
 
 @dataclass(frozen=True)
-class AdamW(Adam):
+class AdamW(Adam, Regularizable):
     """AdamW optimizer from [Loshchilov2019]_.
 
     Args:
@@ -73,6 +76,9 @@ class AdamW(Adam):
          International Conference on Learning Representations, 2019.
          `doi.org/10.48550/arXiv.1711.05101 <https://doi.org/10.48550/arXiv.1711.05101>`_
     """
+
+    def regularizer_loss(self, model: torch.nn.Module) -> torch.Tensor:
+        return self.decay_strategy.regularizer_loss(model, self.weight_decay)
 
     def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
         param_groups = self.decay_strategy.make_param_groups(model, self.weight_decay)

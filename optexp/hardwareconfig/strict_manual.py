@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 import optexp.config
-from optexp.hardwareconfig.hardwareconfig import HardwareConfig, _HardwareConfig
+from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo, HardwareConfig
 from optexp.hardwareconfig.utils import batchsize_mismatch_message
 from optexp.problem import Problem
 
@@ -88,9 +88,6 @@ class StrictManualConfig(HardwareConfig):
     eval_micro_batch_size: Optional[int] = None
     device: Literal["cpu", "cuda", "auto"] = "auto"
 
-    def load(self, problem: Problem) -> "_StrictManualConfig":
-        return _StrictManualConfig(self, problem)
-
     def get_num_devices(self):
         return self.num_devices
 
@@ -101,39 +98,20 @@ class StrictManualConfig(HardwareConfig):
             return self.device  # type: ignore
         raise ValueError(f"Unknown device {self.device}")
 
-
-class _StrictManualConfig(_HardwareConfig):
-
-    def __init__(self, manual_details: "StrictManualConfig", problem: Problem):
-        tr_mbs, va_mbs = self._validate_batch_sizes(manual_details, problem)
-        self.tr_mbs: int = tr_mbs
-        self.va_mbs: int = va_mbs
-        self.acc = problem.batch_size // (tr_mbs * manual_details.num_devices)
-
-    def get_micro_batchsize_for_training(self) -> int:
-        return self.tr_mbs
-
-    def get_micro_batchsize_for_validation(self) -> int:
-        return self.va_mbs
-
-    def get_gradient_accumulation_steps(self) -> int:
-        return self.acc
-
-    @staticmethod
-    def _validate_batch_sizes(manual_details: "StrictManualConfig", problem: Problem):
+    def get_batch_size_info(self, problem: Problem) -> "BatchSizeInfo":
         n_tr = problem.dataset.get_num_samples("tr")
         n_va = problem.dataset.get_num_samples("va")
 
         effective_bs = problem.batch_size
-        w = manual_details.num_devices
+        w = self.num_devices
         tr_mbs = (
-            manual_details.micro_batch_size
-            if manual_details.micro_batch_size is not None
+            self.micro_batch_size
+            if self.micro_batch_size is not None
             else effective_bs // w
         )
         va_mbs = (
-            manual_details.eval_micro_batch_size
-            if manual_details.eval_micro_batch_size is not None
+            self.eval_micro_batch_size
+            if self.eval_micro_batch_size is not None
             else tr_mbs
         )
 
@@ -156,4 +134,8 @@ class _StrictManualConfig(_HardwareConfig):
                 f"number of validation samples: {n_va}"
             )
 
-        return tr_mbs, va_mbs
+        return BatchSizeInfo(
+            mbatchsize_tr=tr_mbs,
+            mbatchsize_va=va_mbs,
+            accumulation_steps=effective_bs // (tr_mbs * w),
+        )

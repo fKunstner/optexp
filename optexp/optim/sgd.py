@@ -2,12 +2,12 @@ from dataclasses import dataclass
 
 import torch
 
-from optexp.optim.optimizer import Optimizer, WeightDecayStrategy
+from optexp.optim.optimizer import Optimizer, Regularizable, WeightDecayStrategy
 from optexp.optim.weight_decay_strategies import DecayEverything
 
 
 @dataclass(frozen=True)
-class SGD(Optimizer):
+class SGD(Optimizer, Regularizable):
     """Stochastic Gradient Descent.
 
     Args:
@@ -39,3 +39,6 @@ class SGD(Optimizer):
             weight_decay=self.weight_decay,
             nesterov=self.nesterov,
         )
+
+    def regularizer_loss(self, model: torch.nn.Module) -> torch.Tensor:
+        return self.decay_strategy.regularizer_loss(model, self.weight_decay)

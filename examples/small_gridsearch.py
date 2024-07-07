@@ -18,7 +18,7 @@ experiments = [
         ),
         optim=SGD(lr=lr),
         steps=100,
-        eval_every=20,
+        eval_every=50,
         hardware_config=StrictManualConfig(
             device="cpu",
         ),
