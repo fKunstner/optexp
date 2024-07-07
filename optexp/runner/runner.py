@@ -14,13 +14,7 @@ from optexp.data.data_logger import DataLogger, DummyDataLogger, WandbDataLogger
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
 from optexp.runner.exp_state import DataLoaders, ExperimentState
-from optexp.runner.utils import (
-    EvalMode,
-    SumAndCounter,
-    TrainMode,
-    loginfo_on_r0,
-    synchronised_log,
-)
+from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
 
 def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
@@ -48,7 +42,7 @@ def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
         run(exp)
 
 
-def sync_should_early_stop(fabric: ptl.Fabric, live_loss: float):
+def should_early_stop(fabric: ptl.Fabric, live_loss: float):
     is_diverging = math.isnan(live_loss) or math.isinf(live_loss)
     synced_is_diverging = fabric.strategy.reduce_boolean_decision(
         is_diverging, all=False
@@ -89,7 +83,7 @@ def run(exp: Experiment) -> None:
         for t in range(1, exp.steps + 1):
             live_loss, exp_state = training_step(fabric, exp, exp_state)
 
-            if sync_should_early_stop(fabric, live_loss):
+            if should_early_stop(fabric, live_loss):
                 break
 
             if t % exp.eval_every == 0:
@@ -98,8 +92,6 @@ def run(exp: Experiment) -> None:
                     eval_and_log(fabric, exp, exp_state, extra_dict, data_logger)
 
     data_logger.finish(exit_code=0)
-
-    fabric.barrier()
 
 
 def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
@@ -174,14 +166,9 @@ def eval_and_log(
         f"va_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_va.items()
     }
 
-    synchronised_log(
-        fabric,
-        data_logger,
-        renamed_tr,
-        renamed_va,
-        time_dict,
-        extra_dict,
-    )
+    for dict_to_log in [renamed_tr, renamed_va, time_dict, extra_dict]:
+        data_logger.log_data(dict_to_log)
+    data_logger.commit()
 
 
 def evaluate(

@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 import lightning as ptl
 import torch
@@ -68,17 +68,6 @@ def loginfo_on_r0(fabric, message: str, rate_limited: bool = False) -> None:
         if should_print(rate_limited, RateLimiter.last_message_time):
             RateLimiter.last_message_time = time.time()
             get_logger().info(message)
-
-
-def synchronised_log(
-    fabric,
-    data_logger: DataLogger,
-    *dictionaries_to_log: Dict[str, Any],
-) -> None:
-    for dict_to_log in dictionaries_to_log:
-        data_logger.log_data(dict_to_log)
-    data_logger.commit()
-    fabric.barrier()
 
 
 class EvalMode:
