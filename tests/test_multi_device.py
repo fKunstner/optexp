@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import textwrap
 
 from optexp import Experiment, Problem
@@ -22,7 +23,7 @@ def make_toy_experiment(num_devices):
         group="testing",
         eval_every=10,
         seed=0,
-        steps=1,
+        steps=4,
         hardware_config=StrictManualConfig(
             device="cpu",
             num_devices=num_devices,
@@ -54,19 +55,24 @@ def create_python_run_file(experiment):
 
 def test_seed_initialization(tmp_path_factory):
 
-    exp2 = make_toy_experiment(num_devices=2)
-    exp1 = make_toy_experiment(num_devices=1)
+    experiments = [
+        make_toy_experiment(num_devices=1),
+        make_toy_experiment(num_devices=2),
+    ]
 
-    path1 = tmp_path_factory.mktemp("data") / "exp1.py"
-    path2 = tmp_path_factory.mktemp("data") / "exp2.py"
+    outputs = []
+    for i, exp in enumerate(experiments):
 
-    with open(path1, "w") as f:
-        f.write(create_python_run_file(exp1))
+        path = tmp_path_factory.mktemp("data") / f"exp{i}.py"
+        with open(path, "w") as f:
+            f.write(create_python_run_file(exp))
 
-    with open(path2, "w") as f:
-        f.write(create_python_run_file(exp2))
+        output = subprocess.check_output(["python", str(path)])
 
-    out1 = subprocess.check_output(["python", str(path1)])
-    out2 = subprocess.check_output(["python", str(path2)])
+        outpath = tmp_path_factory.mktemp("data") / f"exp{i}.out"
+        with open(outpath, "w") as f:
+            f.write(output.decode(sys.stdout.encoding))
 
-    assert out1 == out2
+        outputs.append(output)
+
+    assert outputs[0] == outputs[1]
