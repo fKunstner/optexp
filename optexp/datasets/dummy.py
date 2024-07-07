@@ -4,8 +4,7 @@ import torch
 from torch.types import Device
 from torch.utils.data import TensorDataset
 
-from optexp.datasets import Dataset
-from optexp.datasets.dataset import TrVa
+from optexp.datasets.dataset import Dataset, TrVa
 from optexp.datasets.utils import make_dataloader
 
 
