@@ -6,7 +6,7 @@ from typing import Union
 dataclass_component = partial(dataclass, frozen=True)
 
 BasicType = Union[
-    str | bool | int | float | type,
+    str | bool | int | float | type | None,
     list["BasicType"],
     tuple["BasicType", ...],
     set["BasicType"],
@@ -14,7 +14,7 @@ BasicType = Union[
 ]
 ExtendedBasicType = Union[
     "Component",
-    str | bool | int | float | type,
+    str | bool | int | float | type | None,
     list["ExtendedBasicType"],
     tuple["ExtendedBasicType", ...],
     set["ExtendedBasicType"],
@@ -49,7 +49,7 @@ class Component:
             if isinstance(obj, dict):
                 return dict((k, _loggable_dict(v)) for k, v in obj.items())
 
-            if isinstance(obj, (str, int, bool, float, type)):
+            if isinstance(obj, (str, int, bool, float, type)) or obj is None:
                 return obj
 
             raise ValueError(

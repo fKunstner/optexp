@@ -11,18 +11,18 @@ from optexp.models.model import Model
 
 @dataclass(frozen=True)
 class Problem(Component):
-    """Specifies a problem.
+    """Specify a problem.
 
     Args:
         model (Model): model to optimize.
         dataset (Dataset): dataset to fit the model to.
         batch_size (int): effective batch size.
-           To use gradient accumulation, set the `micro_batch_size`
+           To use gradient accumulation, set the ``micro_batch_size``
            in :class:`optexp.hardwareconfig.HardwareConfig`.
         lossfunc (Type[torch.nn.Module]): loss function to use for optimization,
            given as the class of a subtype of `torch.nn.Module`
-           (e.g. `torch.nn.CrossEntropyLoss`).
-        metrics (List[Metric:]): metrics to evaluate.
+           (e.g. ``torch.nn.CrossEntropyLoss``, not `torch.nn.CrossEntropyLoss`).
+        metrics (List[Metric]): metrics to evaluate.
     """
 
     model: Model

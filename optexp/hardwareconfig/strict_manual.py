@@ -71,7 +71,7 @@ class StrictManualConfig(HardwareConfig):
             )
 
         4. Invalid configuration:
-           The batch size is not a multiple of the micro batch size * num_devices::
+           The ``batch_size`` is not a multiple of the ``micro_batch_size * num_devices``::
 
             Problem(
                 batch_size=100,

@@ -76,7 +76,16 @@ def check_handler(
     return 0
 
 
-def run_cli(
+def prepare_handler(
+    args,  # pylint: disable=unused-argument
+    experiments: List[Experiment],
+    slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+    python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+):
+    prepare(experiments)
+
+
+def cli(
     experiments: List[Experiment],
     slurm_config: Optional[SlurmConfig] = None,
     python_file: Optional[Path] = None,
@@ -153,6 +162,11 @@ def run_cli(
         default=False,
     )
     download_parser.set_defaults(func=download_handler)
+
+    prepare_parser = subparsers.add_parser(
+        "prepare", help="Download results from the experiments"
+    )
+    prepare_parser.set_defaults(func=prepare_handler)
 
     args = parser.parse_args()
     args.func(
@@ -337,3 +351,14 @@ def clear_downloaded_data(experiments: List[Experiment]) -> None:
         return
 
     rmtree(path)
+
+
+def prepare(experiments):
+    unique_datasets = set(exp.problem.dataset for exp in experiments)
+    get_logger().info(f"Preparing data for {len(unique_datasets)} datasets")
+    for dataset in unique_datasets:
+        if isinstance(dataset, Downloadable) and not dataset.is_downloaded():
+            get_logger().info(f"Downloading dataset {dataset}")
+            dataset.download()
+        get_logger().info(f"Dataset {dataset} is ready")
+    get_logger().info("Done")

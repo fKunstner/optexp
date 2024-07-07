@@ -1,4 +1,5 @@
-from typing import Any, Dict
+import time
+from typing import Any, Dict, Optional
 
 import torch.nn
 from torch import Tensor
@@ -31,9 +32,31 @@ def tensor_any(param: Tensor):
     return any(param) if len(param.shape) > 0 else bool(param)
 
 
-def loginfo_on_r0(fabric, message: str) -> None:
+last_message_time = None
+RATE_LIMIT = 1
+
+
+def should_print(rate_limited: bool, last_message_timestamp: Optional[float]):
+    if not rate_limited:
+        return True
+
+    first_message = last_message_timestamp is None
+    if first_message:
+        return True
+
+    time_since_last = time.time() - last_message_timestamp
+    if time_since_last > rate_limited:
+        return True
+
+    return False
+
+
+def loginfo_on_r0(fabric, message: str, rate_limited: bool = False) -> None:
+    global last_message_time
     if fabric.global_rank == 0:
-        get_logger().info(message)
+        if should_print(rate_limited, last_message_time):
+            last_message_time = time.time()
+            get_logger().info(message)
 
 
 def synchronised_log(

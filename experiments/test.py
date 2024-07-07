@@ -1,6 +1,6 @@
 import torch
 
-from optexp.cli import run_cli
+from optexp.cli import cli
 from optexp.datasets.mnist import MNIST
 from optexp.experiment import Experiment
 from optexp.hardwareconfig.strict_manual import StrictManualConfig
@@ -35,4 +35,4 @@ experiments = [
 
 SLURM_CONFIG = SlurmConfig(hours=10, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
 if __name__ == "__main__":
-    run_cli(experiments, slurm_config=SLURM_CONFIG)
+    cli(experiments, slurm_config=SLURM_CONFIG)

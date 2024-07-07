@@ -11,6 +11,7 @@ import torch.nn
 from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from optexp.data.data_logger import DataLogger
 from optexp.datasets.dataset import TrVa
@@ -117,6 +118,7 @@ def run(exp: Experiment) -> None:
     loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
     loginfo_on_r0(fabric, "=" * 80)
     exp_state, hardware_config = initialize(exp, fabric)
+    loginfo_on_r0(fabric, f"Using device {fabric.device}")
 
     loginfo_on_r0(fabric, "Initial evaluation...")
     eval_and_log(fabric, exp_state, {}, data_logger)
@@ -124,6 +126,8 @@ def run(exp: Experiment) -> None:
     loginfo_on_r0(fabric, "Starting training...")
     for t in range(1, exp.steps + 1):
         live_loss, exp_state = training_step(fabric, exp_state, hardware_config)
+
+        loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}", rate_limited=True)
 
         if math.isnan(live_loss) or math.isinf(live_loss):
             break
@@ -206,11 +210,13 @@ def eval_and_log(
     }
 
     metrics_tr = evaluate(
+        fabric=fabric,
         loader=exp_data.dataloaders.tr_va,
         metrics=exp_data.metrics,
         model=exp_data.model,
     )
     metrics_va = evaluate(
+        fabric=fabric,
         loader=exp_data.dataloaders.va_va,
         metrics=exp_data.metrics,
         model=exp_data.model,
@@ -230,6 +236,7 @@ def eval_and_log(
 
 
 def evaluate(
+    fabric: ptl.Fabric,
     loader: DataLoader,
     metrics: Iterable[Metric],
     model: torch.nn.Module,
@@ -240,7 +247,9 @@ def evaluate(
     }
 
     with EvalMode(model), torch.no_grad():
-        for _, (features, labels) in enumerate(loader):
+        for _, (features, labels) in tqdm(
+            enumerate(loader), disable=fabric.global_rank != 0
+        ):
             y_pred = model(features)
             b = len(labels)
 
