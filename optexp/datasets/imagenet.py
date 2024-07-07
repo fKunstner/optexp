@@ -17,7 +17,7 @@ class ImageNet(Dataset, HasClassCounts):
     def output_shape(self, batch_size) -> torch.Size:
         raise NotImplementedError()
 
-    def get_dataloader(self, b: int, tr_va: TrVa) -> DataLoader:
+    def get_dataloader(self, b: int, tr_va: TrVa, num_workers: int) -> DataLoader:
         raise NotImplementedError()
 
     def class_counts(self, tr_va: TrVa) -> torch.Tensor:

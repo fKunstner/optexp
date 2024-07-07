@@ -23,13 +23,14 @@ class StrictManualConfig(HardwareConfig):
     You will get an error if the batch size does not divide the dataset size.
 
     Args:
-        num_devices (int): number of devices (eg GPUs). Defaults to 1.
-        micro_batch_size (int): mumber of samples loaded at once during training.
+        num_devices (int, optional): number of devices (eg GPUs). Defaults to 1.
+        micro_batch_size (int, optional): mumber of samples loaded at once during training.
             Needs to evenly divide the batch size.
             If not provided, the :py:class:`Problem` batch size is used.
-        eval_micro_batch_size (int): number of samples loaded at once during training.
+        eval_micro_batch_size (int, optional): number of samples loaded at once during training.
             Size of the actual minibatches that will be loaded during evaluation.
             If not provided, the `micro_batch_size` is used.
+        num_workers (int, optional): number of workers to load samples. Defaults to 0
         device (Literal["cpu" | "cuda" | "auto"]): device to use for training.
             Can be "cpu", "cuda" or "auto". Defaults to "auto", using the GPU if available.
 
@@ -86,6 +87,7 @@ class StrictManualConfig(HardwareConfig):
     num_devices: int = 1
     micro_batch_size: Optional[int] = None
     eval_micro_batch_size: Optional[int] = None
+    num_workers: int = 0
     device: Literal["cpu", "cuda", "auto"] = "auto"
 
     def get_num_devices(self):
@@ -138,4 +140,6 @@ class StrictManualConfig(HardwareConfig):
             mbatchsize_tr=tr_mbs,
             mbatchsize_va=va_mbs,
             accumulation_steps=effective_bs // (tr_mbs * w),
+            workers_tr=self.num_workers,
+            workers_va=self.num_workers,
         )

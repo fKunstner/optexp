@@ -17,7 +17,7 @@ from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
 
-def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
+def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentState:
     """Run the experiment.
 
     Initializes the problem and optimizer and optimizes the
@@ -36,10 +36,10 @@ def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
             profile_memory=True,
             use_cuda=True,
         ) as prof:
-            run(exp)
+            exp_state = run(exp)
         prof.export_chrome_trace("trace.json")
-    else:
-        run(exp)
+        return exp_state
+    return run(exp)
 
 
 def should_early_stop(fabric: ptl.Fabric, live_loss: float):
@@ -50,7 +50,7 @@ def should_early_stop(fabric: ptl.Fabric, live_loss: float):
     return synced_is_diverging
 
 
-def run(exp: Experiment) -> None:
+def run(exp: Experiment) -> ExperimentState:
 
     fabric = ptl.Fabric(
         accelerator=exp.hardware_config.get_accelerator(),
@@ -93,6 +93,8 @@ def run(exp: Experiment) -> None:
 
     data_logger.finish(exit_code=0)
 
+    return exp_state
+
 
 def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
 
@@ -106,9 +108,15 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     torch.cuda.manual_seed_all(seed)
 
     loginfo_on_r0(fabric, "Loading the dataset...")
-    tr_tr_dl = exp.problem.dataset.get_dataloader(tr_va="tr", b=bs_info.mbatchsize_tr)
-    tr_va_dl = exp.problem.dataset.get_dataloader(tr_va="tr", b=bs_info.mbatchsize_va)
-    va_va_dl = exp.problem.dataset.get_dataloader(tr_va="va", b=bs_info.mbatchsize_va)
+    tr_tr_dl = exp.problem.dataset.get_dataloader(
+        tr_va="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
+    )
+    tr_va_dl = exp.problem.dataset.get_dataloader(
+        tr_va="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+    )
+    va_va_dl = exp.problem.dataset.get_dataloader(
+        tr_va="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+    )
 
     loginfo_on_r0(fabric, "Loading the model...")
     pytorch_model = exp.problem.model.load_model(

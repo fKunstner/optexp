@@ -20,6 +20,7 @@ class Dataset(ABC, Component):
         self,
         b: int,
         tr_va: TrVa,
+        num_workers: int,
     ) -> DataLoader:
         raise NotImplementedError()
 

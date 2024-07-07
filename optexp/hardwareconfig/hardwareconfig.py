@@ -11,6 +11,8 @@ class BatchSizeInfo(Component):
     mbatchsize_tr: int
     mbatchsize_va: int
     accumulation_steps: int
+    workers_tr: int
+    workers_va: int
 
 
 @dataclass(frozen=True)
