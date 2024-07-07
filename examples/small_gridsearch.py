@@ -9,14 +9,18 @@ experiments = [
         problem=Problem(
             dataset=MNIST(),
             model=LeNet5(),
-            batch_size=10000,
+            batch_size=100,
             lossfunc=CrossEntropy(),
-            metrics=[Accuracy(), CrossEntropy()],
+            metrics=[  # Monitor both the accuracy and the loss on the training and validation sets
+                Accuracy(),
+                CrossEntropy(),
+            ],
         ),
-        optim=SGD(lr=0.01),
-        steps=6 * 4,
-        eval_every=6,
+        optim=SGD(lr=lr),
+        steps=10,  # 2 epochs
+        eval_every=5,  # Evaluate every epoch
     )
+    for lr in [0.1, 0.01, 0.001]
 ]
 
 if __name__ == "__main__":
