@@ -1,32 +1,29 @@
 import math
 import pprint
 import random
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Dict, Iterable, Tuple
 
 import lightning as ptl
 import numpy as np
 import torch
 import torch.nn
-from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
-from optexp.data.data_logger import DataLogger
-from optexp.datasets.dataset import TrVa
+from optexp.data.data_logger import DataLogger, DummyDataLogger, WandbDataLogger
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
 from optexp.runner.exp_state import DataLoaders, ExperimentState
-from optexp.runner.fabric_helpers import (
+from optexp.runner.utils import (
     EvalMode,
+    SumAndCounter,
     TrainMode,
     loginfo_on_r0,
     synchronised_log,
 )
-from optexp.runner.sum_and_counter import SumAndCounter
 
 
-def run_experiment(exp: Experiment, run_profiler: bool = True) -> None:
+def run_experiment(exp: Experiment, run_profiler: bool = False) -> None:
     """Run the experiment.
 
     Initializes the problem and optimizer and optimizes the
@@ -51,6 +48,14 @@ def run_experiment(exp: Experiment, run_profiler: bool = True) -> None:
         run(exp)
 
 
+def sync_should_early_stop(fabric: ptl.Fabric, live_loss: float):
+    is_diverging = math.isnan(live_loss) or math.isinf(live_loss)
+    synced_is_diverging = fabric.strategy.reduce_boolean_decision(
+        is_diverging, all=False
+    )
+    return synced_is_diverging
+
+
 def run(exp: Experiment) -> None:
 
     fabric = ptl.Fabric(
@@ -60,12 +65,13 @@ def run(exp: Experiment) -> None:
         strategy="auto",
     )
     fabric.launch()
-    # only rank 0 gets a real one
+    loginfo_on_r0(fabric, f"Using device {fabric.device}")
 
-    data_logger: Optional[DataLogger] = None
+    data_logger: DataLogger
     if fabric.global_rank == 0:
-        data_logger = DataLogger(experiment=exp)
-    fabric.barrier()
+        data_logger = WandbDataLogger(experiment=exp)
+    else:
+        data_logger = DummyDataLogger()
 
     with record_function("initialization"):
         loginfo_on_r0(fabric, "=" * 80)
@@ -73,31 +79,25 @@ def run(exp: Experiment) -> None:
         loginfo_on_r0(fabric, pprint.pformat(exp.loggable_dict(), indent=4))
         loginfo_on_r0(fabric, "=" * 80)
         exp_state = initialize(exp, fabric)
-        loginfo_on_r0(fabric, f"Using device {fabric.device}")
 
-    with record_function("first eval"):
+    with record_function("first evaluation"):
         loginfo_on_r0(fabric, "Initial evaluation...")
-        eval_and_log(fabric, exp_state, {}, data_logger)
+        eval_and_log(fabric, exp, exp_state, {}, data_logger)
 
     with record_function("training"):
         loginfo_on_r0(fabric, "Starting training...")
         for t in range(1, exp.steps + 1):
-            live_loss, exp_state = training_step(fabric, exp_state)
+            live_loss, exp_state = training_step(fabric, exp, exp_state)
 
-            loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}")
-
-            if math.isnan(live_loss) or math.isinf(live_loss):
+            if sync_should_early_stop(fabric, live_loss):
                 break
 
             if t % exp.eval_every == 0:
                 with record_function("eval"):
-                    extra_dict = {
-                        "live_loss": live_loss,
-                    }
-                    eval_and_log(fabric, exp_state, extra_dict, data_logger)
+                    extra_dict = {"live_loss": live_loss}
+                    eval_and_log(fabric, exp, exp_state, extra_dict, data_logger)
 
-    if fabric.global_rank == 0 and data_logger is not None:
-        data_logger.finish(exit_code=0)
+    data_logger.finish(exit_code=0)
 
     fabric.barrier()
 
@@ -119,32 +119,31 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     va_va_dl = exp.problem.dataset.get_dataloader(tr_va="va", b=bs_info.mbatchsize_va)
 
     loginfo_on_r0(fabric, "Loading the model...")
-    model = exp.problem.model.load_model(
+    pytorch_model = exp.problem.model.load_model(
         exp.problem.dataset.input_shape(bs_info.mbatchsize_tr),
         exp.problem.dataset.output_shape(bs_info.mbatchsize_tr),
     )
 
     loginfo_on_r0(fabric, "Loading optimizer...")
-    opt = exp.optim.load(model)
-    model, opt = fabric.setup(model, opt)
+    pytorch_opt = exp.optim.load(pytorch_model)
+    ptl_model, ptl_opt = fabric.setup(pytorch_model, pytorch_opt)
 
     return ExperimentState(
-        model=model,
-        optimizer=opt,
+        model=ptl_model,
+        optimizer=ptl_opt,
         dataloaders=DataLoaders(
             *fabric.setup_dataloaders(tr_tr_dl, tr_va_dl, va_va_dl)
         ),
-        metrics=[metric() for metric in exp.problem.metrics],
-        loss_func=exp.problem.lossfunc(),
         batch_size_info=bs_info,
     )
 
 
 def eval_and_log(
     fabric: ptl.Fabric,
+    exp: Experiment,
     exp_data: ExperimentState,
     extra_dict: Dict[str, Any],
-    data_logger: Optional[DataLogger] = None,
+    data_logger: DataLogger,
 ) -> None:
 
     time_dict = {
@@ -153,30 +152,36 @@ def eval_and_log(
         "step_within_epoch": exp_data.iteration_counter.step_within_epoch,
     }
 
-    metrics_tr = evaluate(
-        fabric=fabric,
-        loader=exp_data.dataloaders.tr_va,
-        metrics=exp_data.metrics,
-        model=exp_data.model,
-    )
-    metrics_va = evaluate(
-        fabric=fabric,
-        loader=exp_data.dataloaders.va_va,
-        metrics=exp_data.metrics,
-        model=exp_data.model,
-    )
-    reduced_metrics_tr = reduce_and_make_dictionary(fabric, metrics_tr, "tr")
-    reduced_metrics_va = reduce_and_make_dictionary(fabric, metrics_va, "va")
+    with record_function("eval(tr)"):
+        reduced_metrics_tr = evaluate(
+            fabric=fabric,
+            loader=exp_data.dataloaders.tr_va,
+            metrics=exp.problem.metrics,
+            model=exp_data.model,
+        )
+    with record_function("eval(va)"):
+        reduced_metrics_va = evaluate(
+            fabric=fabric,
+            loader=exp_data.dataloaders.va_va,
+            metrics=exp.problem.metrics,
+            model=exp_data.model,
+        )
+
+    renamed_tr = {
+        f"tr_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_tr.items()
+    }
+    renamed_va = {
+        f"va_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_va.items()
+    }
 
     synchronised_log(
         fabric,
         data_logger,
-        reduced_metrics_tr,
-        reduced_metrics_va,
+        renamed_tr,
+        renamed_va,
         time_dict,
         extra_dict,
     )
-    torch.cuda.empty_cache()
 
 
 def evaluate(
@@ -184,87 +189,57 @@ def evaluate(
     loader: DataLoader,
     metrics: Iterable[Metric],
     model: torch.nn.Module,
-) -> Dict[Metric, SumAndCounter]:
+) -> Dict[Metric, float | list]:
+
     running_metrics: Dict[Metric, SumAndCounter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
         for metric in metrics
     }
 
     with EvalMode(model), torch.no_grad():
-        for _, (features, labels) in tqdm(
-            enumerate(loader), disable=fabric.global_rank != 0
-        ):
+        for _, (features, labels) in enumerate(loader):
             y_pred = model(features)
-            b = len(labels)
 
             for metric in metrics:
-                loss, weight = to_loss_and_weight(metric(y_pred, labels), b)
+                loss, weight = metric(y_pred, labels)
                 running_metrics[metric] += SumAndCounter(loss.detach(), weight.detach())
 
-        return running_metrics
+        def reduce(x: SumAndCounter):
+            num, den = x.reduce(fabric)
+            v = (num / den).cpu()
+            return v.tolist() if torch.numel(v) > 1 else v.item()
+
+        reduced_results = {k: reduce(v) for k, v in running_metrics.items()}
+
+        return reduced_results
 
 
 def training_step(
     fabric: ptl.Fabric,
+    exp: Experiment,
     exp_state: ExperimentState,
 ) -> Tuple[float, ExperimentState]:
 
     with TrainMode(exp_state.model):
         exp_state.optimizer.zero_grad()
-        total_loss_and_count = SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
-        for _ in range(exp_state.batch_size_info.accumulation_steps):
-            features, labels = exp_state.get_batch()
-            batch_size = len(labels)
-            loss, weight = to_loss_and_weight(
-                exp_state.loss_func(exp_state.model(features), labels), batch_size
-            )
-            total_loss_and_count += SumAndCounter(loss.detach(), weight)
+        total_loss_and_count = SumAndCounter.zero()
 
-            fabric.backward(loss)
+        for t in range(exp_state.batch_size_info.accumulation_steps):
+            is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
+            with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
+
+                features, labels = exp_state.get_batch()
+                loss, weight = exp.problem.lossfunc(exp_state.model(features), labels)
+                total_loss_and_count += SumAndCounter(loss.detach(), weight)
+                fabric.backward(loss)
+
+        tot_loss, tot_count = total_loss_and_count.reduce(fabric)
 
         for p in exp_state.model.parameters():
             if p.grad is not None:
-                p.grad /= total_loss_and_count.denominator
+                p.grad /= tot_count
 
-        train_loss = total_loss_and_count.reduce(fabric).cpu().item()
+        train_loss = (tot_loss / tot_count).cpu().item()
         exp_state.optimizer.step()
-        torch.cuda.empty_cache()
 
         return train_loss, exp_state
-
-
-def reduce_and_make_dictionary(
-    fabric: ptl.Fabric, metrics_and_counts_raw: Dict[Metric, SumAndCounter], tr_va: TrVa
-) -> Dict[str, Iterable | float]:
-    def reduce(x):
-        v = x.reduce(fabric).cpu()
-        return v.tolist() if torch.numel(v) > 1 else v.item()
-
-    values_by_str: Dict[str, Iterable | float] = {
-        f"{tr_va}_{str(k.__class__.__name__)}": reduce(v)
-        for k, v in metrics_and_counts_raw.items()
-    }
-    return values_by_str
-
-
-def to_loss_and_weight(
-    output: Tensor | Tuple[Tensor, Tensor], default_weight: float
-) -> Tuple[Tensor, Tensor]:
-    if isinstance(output, tuple):
-        if len(output) != 2:
-            raise ValueError(
-                "Invalid parameter. Got tuple of size != 2. "
-                "Expected either Tensor or Tuple[Tensor, Tensor]"
-            )
-        loss, weight = output
-        return loss, weight
-
-    if isinstance(output, Tensor):
-        loss = output
-        loss *= default_weight
-        return loss, torch.tensor(default_weight)
-
-    raise ValueError(
-        f"Invalid parameter. Got {type(output)}."
-        "Expected either Tensor or Tuple[Tensor, Tensor]"
-    )

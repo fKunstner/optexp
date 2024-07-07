@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from typing import Iterable
 
+import lightning
 import torch.optim
 from torch.utils.data import DataLoader
 
 from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo
-from optexp.metrics import Metric
 
 
 @dataclass
@@ -32,10 +31,9 @@ class DataLoaders:
 
 @dataclass
 class ExperimentState:
-    model: torch.nn.Module
+    # pylint: disable=too-many-instance-attributes
+    model: lightning.fabric.wrappers._FabricModule  # pylint: disable=protected-access
     optimizer: torch.optim.Optimizer
-    loss_func: torch.nn.Module
-    metrics: Iterable[Metric]
     dataloaders: DataLoaders
     batch_size_info: BatchSizeInfo
     _current_training_dataloader = None

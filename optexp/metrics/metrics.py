@@ -6,8 +6,7 @@ from torch.nn.functional import cross_entropy
 from optexp.metrics.metric import LossLikeMetric, Metric
 
 
-class CrossEntropyLoss(Metric):
-
+class CrossEntropy(Metric):
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -55,7 +54,7 @@ def _groupby_sum(
     return sum_by_class, label_counts
 
 
-class CrossEntropyLossPerClass(LossLikeMetric):
+class CrossEntropyPerClass(LossLikeMetric):
     """Cross entropy loss per class.
 
     Can result in large logs on problems with many classes.

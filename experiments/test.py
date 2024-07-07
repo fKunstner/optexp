@@ -1,10 +1,8 @@
-import torch
-
 from optexp.cli import cli
 from optexp.datasets.mnist import MNIST
 from optexp.experiment import Experiment
 from optexp.hardwareconfig.strict_manual import StrictManualConfig
-from optexp.metrics.metrics import Accuracy, CrossEntropyLoss
+from optexp.metrics.metrics import Accuracy, CrossEntropy
 from optexp.models.vision import LeNet5
 from optexp.optim.sgd import SGD
 from optexp.problem import Problem
@@ -16,8 +14,8 @@ experiments = [
         problem=Problem(
             dataset=MNIST(),
             model=LeNet5(),
-            lossfunc=torch.nn.CrossEntropyLoss,
-            metrics=[CrossEntropyLoss, Accuracy],
+            lossfunc=CrossEntropy(),
+            metrics=[CrossEntropy(), Accuracy()],
             batch_size=1000,
         ),
         group="testing",

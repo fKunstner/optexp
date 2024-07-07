@@ -1,6 +1,9 @@
 import time
-from typing import Any, Dict, Optional
+from dataclasses import dataclass
+from typing import Any, Dict, Optional, Tuple
 
+import lightning as ptl
+import torch
 import torch.nn
 from torch import Tensor
 
@@ -8,28 +11,37 @@ from optexp.config import get_logger
 from optexp.data.data_logger import DataLogger
 
 
-def reduce(fabric, val: float, reduce_op="sum") -> Tensor:
-    return fabric.all_reduce(val, reduce_op=reduce_op)  # type: ignore[arg-type]
-
-
 def reduce_tensor(fabric, val: Tensor, reduce_op: str = "sum") -> Tensor:
     return fabric.all_reduce(val, reduce_op=reduce_op)  # type: ignore[arg-type]
 
 
-def gather(fabric, val: float) -> Tensor:
-    return fabric.all_gather(val)  # type: ignore[arg-type]
+@dataclass
+class SumAndCounter:
+    numerator: Tensor
+    denominator: Tensor
 
+    @staticmethod
+    def zero() -> "SumAndCounter":
+        return SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
 
-def gather_dict(fabric, val: Dict[str, Tensor]) -> Dict[str, Tensor]:
-    return fabric.all_gather(val)  # type: ignore[arg-type]
+    def __add__(self, other: "SumAndCounter") -> "SumAndCounter":
+        return SumAndCounter(
+            self.numerator + other.numerator, self.denominator + other.denominator
+        )
 
+    def reduce(self, fabric: ptl.Fabric, reduce_op="sum") -> tuple[Tensor, Tensor]:
+        numerator = reduce_tensor(fabric, self.numerator, reduce_op=reduce_op)
+        denominator = reduce_tensor(fabric, self.denominator, reduce_op=reduce_op)
+        return numerator, denominator
 
-def gather_bool(fabric, exceptions: Dict[str, bool]) -> Dict[str, Tensor]:
-    return fabric.all_gather(exceptions)  # type: ignore[arg-type]
+    def result(self) -> Tensor:
+        return self.numerator / self.denominator
 
-
-def tensor_any(param: Tensor):
-    return any(param) if len(param.shape) > 0 else bool(param)
+    @staticmethod
+    def from_output(output: Tensor | Tuple[Tensor, Tensor]):
+        if isinstance(output, tuple) and len(output) == 2:
+            return SumAndCounter(output[0], output[1])
+        return SumAndCounter(output, torch.tensor(1))
 
 
 class RateLimiter:
@@ -60,13 +72,12 @@ def loginfo_on_r0(fabric, message: str, rate_limited: bool = False) -> None:
 
 def synchronised_log(
     fabric,
-    data_logger: DataLogger | None,
+    data_logger: DataLogger,
     *dictionaries_to_log: Dict[str, Any],
 ) -> None:
-    if fabric.global_rank == 0 and data_logger is not None:
-        for dict_to_log in dictionaries_to_log:
-            data_logger.log_data(dict_to_log)
-        data_logger.commit()
+    for dict_to_log in dictionaries_to_log:
+        data_logger.log_data(dict_to_log)
+    data_logger.commit()
     fabric.barrier()
 
 

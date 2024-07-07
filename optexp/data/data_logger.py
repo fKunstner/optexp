@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import time
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
 
@@ -14,7 +15,21 @@ from optexp.data.rate_limited_logger import RateLimitedLogger
 from optexp.experiment import Experiment
 
 
-class DataLogger:
+class DataLogger(ABC):
+    @abstractmethod
+    def log_data(self, metric_dict: dict) -> None:
+        pass
+
+    @abstractmethod
+    def commit(self) -> None:
+        pass
+
+    @abstractmethod
+    def finish(self, exit_code) -> None:
+        pass
+
+
+class WandbDataLogger(DataLogger):
 
     def __init__(
         self,
@@ -130,3 +145,19 @@ class DataLogger:
 
     def _sync_command(self):
         return f"wandb sync " f"{Path(self.run.dir).parent}"
+
+
+class DummyDataLogger(DataLogger):
+    """A dummy data logger that does nothing."""
+
+    def __init__(self, experiment: Optional[Experiment] = None) -> None:
+        pass
+
+    def log_data(self, metric_dict: dict) -> None:
+        pass
+
+    def commit(self) -> None:
+        pass
+
+    def finish(self, exit_code) -> None:
+        pass

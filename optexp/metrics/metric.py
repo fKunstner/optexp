@@ -6,24 +6,6 @@ import torch
 from optexp.component import Component
 
 
-class LossFunction(Component, ABC):
-    """Abstract base class for loss functions."""
-
-    @abstractmethod
-    def __call__(self, *args, **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError()
-
-
-class SupervisedLossFunction(Component, ABC):
-    """Abstract base class for loss functions that take inputs and labels."""
-
-    @abstractmethod
-    def __call__(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError()
-
-
 class Metric(Component, ABC):
     """Abstract base class for metrics."""
 
