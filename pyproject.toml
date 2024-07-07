@@ -57,3 +57,19 @@ disable = [
     # "attribute-defined-outside-init",
     # "abstract-method",
 ]
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+    "-ra",
+    "--cov=optexp",
+    "--cov-report=html",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals"
+]
+xfail_strict = true
+filterwarnings = [
+  'ignore: pkg_resources is deprecated as an API:DeprecationWarning',
+  'ignore: Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning',
+]
