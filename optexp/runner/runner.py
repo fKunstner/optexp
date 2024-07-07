@@ -77,7 +77,7 @@ def run(exp: Experiment) -> None:
     for t in range(1, exp.steps + 1):
         live_loss, exp_state = training_step(fabric, exp_state)
 
-        loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}", rate_limited=True)
+        loginfo_on_r0(fabric, f"Step {t}: Loss {live_loss}")
 
         if math.isnan(live_loss) or math.isinf(live_loss):
             break
