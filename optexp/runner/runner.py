@@ -159,14 +159,14 @@ def eval_and_log(
             model=exp_data.model,
         )
 
-    renamed_tr = {
+    renamed_tr: Dict = {
         f"tr_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_tr.items()
     }
-    renamed_va = {
+    renamed_va: Dict = {
         f"va_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_va.items()
     }
 
-    for dict_to_log in [renamed_tr, renamed_va, time_dict, extra_dict]:
+    for dict_to_log in (renamed_tr, renamed_va, time_dict, extra_dict):
         data_logger.log_data(dict_to_log)
     data_logger.commit()
 

@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Optional, Tuple
 
 import lightning as ptl
 import torch
@@ -8,7 +8,6 @@ import torch.nn
 from torch import Tensor
 
 from optexp.config import get_logger
-from optexp.data.data_logger import DataLogger
 
 
 def reduce_tensor(fabric, val: Tensor, reduce_op: str = "sum") -> Tensor:
