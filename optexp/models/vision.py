@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 import torchvision
 
-from optexp.models.model import Model
+from optexp.models.model import Model, assert_batch_sizes_match
 
 
 def validate_image_data(input_shape, output_shape):
@@ -35,13 +35,14 @@ class LeNet5(Model):
     def load_model(self, input_shape, output_shape):
         validate_image_data(input_shape, output_shape)
 
-        _, input_channels, _, _ = input_shape
-        num_classes = output_shape[0]
+        b_in, channels, _, _ = input_shape
+        b_out, num_classes = output_shape
+        assert_batch_sizes_match(b_in, b_out)
 
         class LeNet5Module(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.conv1 = torch.nn.Conv2d(input_channels, 6, 5)
+                self.conv1 = torch.nn.Conv2d(channels, 6, 5)
                 self.conv2 = torch.nn.Conv2d(6, 16, 5)
                 self.fc1 = torch.nn.Linear(16 * 5 * 5, 120)
                 self.fc2 = torch.nn.Linear(120, 84)

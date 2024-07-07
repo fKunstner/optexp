@@ -14,6 +14,7 @@ from optexp.datasets.dataset import (
     HasClassCounts,
     TrVa,
 )
+from optexp.datasets.utils import make_dataloader
 
 MEAN, STD = 0.1307, 0.3081
 
@@ -38,7 +39,7 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
         return torch.Size([batch_size, 1, 28, 28])
 
     def output_shape(self, batch_size) -> torch.Size:
-        return torch.Size([10])
+        return torch.Size([batch_size, 10])
 
     def is_downloaded(self):
         return all(
@@ -81,31 +82,13 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
         return TensorDataset(data, targets)
 
     def get_dataloader(
-        self,
-        b: int,
-        tr_va: TrVa,
-        num_workers: int = 4,
+        self, b: int, tr_va: TrVa, num_workers: int
     ) -> torch.utils.data.DataLoader:
-        return torch.utils.data.DataLoader(
-            self._get_dataset(tr_va),
-            batch_size=b,
-            shuffle=True,
-            drop_last=False,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
+        return make_dataloader(self._get_dataset(tr_va), b, num_workers)
 
     def get_tensor_dataloader(
-        self,
-        b: int,
-        tr_va: TrVa,
-        to_device: Optional[Device] = None,
+        self, b: int, tr_va: TrVa, num_workers: int, to_device: Optional[Device] = None
     ) -> torch.utils.data.DataLoader:
-        return torch.utils.data.DataLoader(
-            self._get_tensor_dataset(tr_va, to_device),
-            batch_size=b,
-            shuffle=True,
-            drop_last=False,
-            num_workers=0,
-            pin_memory=False,
+        return make_dataloader(
+            self._get_tensor_dataset(tr_va, to_device), b, num_workers
         )

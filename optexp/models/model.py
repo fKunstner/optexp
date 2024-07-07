@@ -6,6 +6,10 @@ import torch
 from optexp.component import Component
 
 
+def assert_batch_sizes_match(b1: int, b2: int) -> None:
+    assert b1 == b2, f"Batch sizes do not match: {b1} != {b2}"
+
+
 @dataclass(frozen=True)
 class Model(Component, ABC):
     """Abstract base class for models."""

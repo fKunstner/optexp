@@ -25,11 +25,11 @@ class Dataset(ABC, Component):
         raise NotImplementedError()
 
     @abstractmethod
-    def input_shape(self, batch_size) -> torch.Size:
+    def input_shape(self, batch_size: int) -> torch.Size:
         raise NotImplementedError()
 
     @abstractmethod
-    def output_shape(self, batch_size) -> torch.Size:
+    def output_shape(self, batch_size: int) -> torch.Size:
         raise NotImplementedError()
 
     @abstractmethod
@@ -68,6 +68,6 @@ class Downloadable:
 class AvailableAsTensor:
     @abstractmethod
     def get_tensor_dataloader(
-        self, b: int, tr_va: TrVa, to_device: Optional[Device] = None
+        self, b: int, tr_va: TrVa, num_workers: int, to_device: Optional[Device] = None
     ) -> torch.utils.data.DataLoader:
         raise NotImplementedError()
