@@ -3,8 +3,7 @@ from functools import reduce
 
 import torch
 
-from optexp.models import Model
-from optexp.models.model import assert_batch_sizes_match
+from optexp.models.model import Model, assert_batch_sizes_match
 
 
 class Linear(Model):

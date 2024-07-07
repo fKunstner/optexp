@@ -13,9 +13,9 @@ def validate_image_data(input_shape, output_shape):
             "Input shape must be 4D, [batch, channels, width, height]. "
             f"Got {len(input_shape)} dimensions."
         )
-    if len(output_shape) != 1:
+    if len(output_shape) != 2:
         raise ValueError(
-            "Output shape must be 1D, [num_classes]. "
+            "Output shape must be 2D, [batch, num_classes]. "
             f"Got {len(output_shape)} dimensions."
         )
 
