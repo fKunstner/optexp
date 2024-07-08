@@ -82,25 +82,22 @@ class Component:
         def filter_hidden(f: Field):
             return True if show_hidden_repr else f.repr
 
-        class TypeCustomRepr:
-            def __init__(self, x: type):
-                self.x = x
-
-            def __repr__(self):
-                module = self.x.__module__
-                if module == "builtins":
-                    return self.x.__qualname__
-                return module + "." + self.x.__qualname__
-
-        def get_repr(obj):
+        def get_repr(obj) -> str:
             if isinstance(obj, dict):
-                return {k: get_repr(v) for k, v in obj.items()}
+                sorted_keys = sorted(obj.keys())
+                inner_repr = ", ".join(f"{k}: {get_repr(obj[k])}" for k in sorted_keys)
+                return "{" + inner_repr + "}"
             if isinstance(obj, (list, tuple, set)):
-                return type(obj)(get_repr(v) for v in obj)
-            if isinstance(obj, type):
-                return TypeCustomRepr(obj)
+                inner_repr = ", ".join(get_repr(v) for v in sorted(obj))
+                return "{" + inner_repr + "}"
+            if isinstance(obj, (list, tuple, set)):
+                inner_repr = ", ".join(get_repr(v) for v in obj)
+                if isinstance(obj, tuple):
+                    return "(" + inner_repr + ")"
+                return "[" + inner_repr + "]"
+
             if isinstance(obj, Component):
-                return obj._repr(  # pylint: disable=protected-access
+                return obj._repr(  #  pylint: disable=protected-access
                     show_defaults, show_hidden_repr
                 )
             return obj
@@ -121,3 +118,6 @@ class Component:
 
     def short_equivalent_hash(self) -> str:
         return self.equivalent_hash()[:8]
+
+    def __lt__(self, other):
+        return self.equivalent_hash() < other.equivalent_hash()

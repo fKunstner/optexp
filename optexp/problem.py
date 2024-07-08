@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Tuple
 
 from optexp.component import Component
 from optexp.datasets.dataset import Dataset
@@ -25,4 +24,4 @@ class Problem(Component):
     dataset: Dataset
     batch_size: int
     lossfunc: Metric
-    metrics: Tuple[Metric, ...]
+    metrics: set[Metric]

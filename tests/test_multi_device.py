@@ -17,7 +17,7 @@ def make_toy_experiment(num_devices):
             dataset=DummyRegression(),
             model=Linear(),
             lossfunc=CrossEntropy(),
-            metrics=[CrossEntropy(), Accuracy()],
+            metrics={CrossEntropy(), Accuracy()},
             batch_size=10,
         ),
         group="testing",

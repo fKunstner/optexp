@@ -15,7 +15,7 @@ experiments = [
             dataset=MNIST(),
             model=LeNet5(),
             lossfunc=CrossEntropy(),
-            metrics=[CrossEntropy(), Accuracy()],
+            metrics={CrossEntropy(), Accuracy()},
             batch_size=1000,
         ),
         group="testing",
