@@ -37,23 +37,22 @@ disable = [
     "missing-class-docstring",
     "missing-function-docstring",
     "too-few-public-methods",
-    #
     "logging-fstring-interpolation",
-    #
-    "protected-access",
-    #
-    "too-many-instance-attributes",
-    "too-many-arguments",
-    "too-many-locals",
-    "too-many-branches",
-    "too-many-statements",
-    "too-many-return-statements",
-    #
-    # "broad-exception-caught",
-    # "broad-exception-raised",
-    #
     # "logging-not-lazy",
-    #
-    # "attribute-defined-outside-init",
-    # "abstract-method",
+]
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+    "-ra",
+    "--cov=optexp",
+    "--cov-report=html",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals"
+]
+xfail_strict = true
+filterwarnings = [
+  'ignore: pkg_resources is deprecated as an API:DeprecationWarning',
+  'ignore: Deprecated call to `pkg_resources.declare_namespace:DeprecationWarning',
 ]

@@ -1,3 +1,5 @@
 # Requirements to generate the documentation
-sphinx==6.2.1
-sphinx-rtd-theme==1.2.1
+sphinx==7.3.7
+sphinx-rtd-theme==2.0.0
+sphinx-gallery==0.16.0
+sphinx_tabs==3.4.5

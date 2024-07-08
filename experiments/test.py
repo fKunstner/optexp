@@ -1,36 +1,36 @@
-import torch
-
-from optexp.datasets.image import MNIST
-from optexp.experiments.experiment import Experiment
+from optexp.cli import cli
+from optexp.datasets.mnist import MNIST
+from optexp.experiment import Experiment
+from optexp.hardwareconfig.strict_manual import StrictManualConfig
+from optexp.metrics.metrics import Accuracy, CrossEntropy
 from optexp.models.vision import LeNet5
-from optexp.optimizers import SGD
-from optexp.problems import Problem
-from optexp.problems.metrics import Accuracy
-from optexp.runner.cli import exp_runner_cli
+from optexp.optim.sgd import SGD
+from optexp.problem import Problem
 from optexp.runner.slurm.slurm_config import SlurmConfig
-from optexp.utils import SEEDS_1, starting_grid_for
 
-dataset = MNIST()
-model = LeNet5()
-problem = Problem(
-    model,
-    dataset,
-    batch_size=1024,
-    lossfunc=torch.nn.CrossEntropyLoss,
-    metrics=[torch.nn.CrossEntropyLoss, Accuracy],
-)
-opts_sparse = starting_grid_for([lambda lr: SGD(lr)], start=-6, end=-5)
-
-EPOCHS = 1
-group = "testing"
-
-experiments = Experiment.generate_experiments_from_opts_and_seeds(
-    opts_and_seeds=[(opts_sparse, SEEDS_1)],
-    problem=problem,
-    epochs=EPOCHS,
-    group=group,
-)
+experiments = [
+    Experiment(
+        optim=SGD(lr=10**0.5),
+        problem=Problem(
+            dataset=MNIST(),
+            model=LeNet5(),
+            lossfunc=CrossEntropy(),
+            metrics=[CrossEntropy(), Accuracy()],
+            batch_size=1000,
+        ),
+        group="testing",
+        eval_every=1,
+        seed=0,
+        steps=1,
+        hardware_config=StrictManualConfig(
+            num_devices=1,
+            micro_batch_size=1000,
+            eval_micro_batch_size=1000,
+            device="cpu",
+        ),
+    )
+]
 
 SLURM_CONFIG = SlurmConfig(hours=10, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
 if __name__ == "__main__":
-    exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)
+    cli(experiments, slurm_config=SLURM_CONFIG)
