@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
+from optexp.optim.optimizer import Regularizable
 from optexp.results.data_logger import DataLogger, DummyDataLogger
 from optexp.results.main_data_logger import MainDataLogger
 from optexp.runner.exp_state import DataLoaders, ExperimentState
@@ -144,30 +145,33 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
 def eval_and_log(
     fabric: ptl.Fabric,
     exp: Experiment,
-    exp_data: ExperimentState,
+    exp_state: ExperimentState,
     extra_dict: Dict[str, Any],
     data_logger: DataLogger,
 ) -> None:
 
     time_dict = {
-        "epoch": exp_data.iteration_counter.epoch,
-        "step": exp_data.iteration_counter.step,
-        "step_within_epoch": exp_data.iteration_counter.step_within_epoch,
+        "epoch": exp_state.iteration_counter.epoch,
+        "step": exp_state.iteration_counter.step,
+        "step_within_epoch": exp_state.iteration_counter.step_within_epoch,
     }
+
+    if isinstance(exp.optim, Regularizable):
+        extra_dict["regularization"] = exp.optim.regularizer_loss(exp_state.model)
 
     with record_function("eval(tr)"):
         reduced_metrics_tr = evaluate(
             fabric=fabric,
-            loader=exp_data.dataloaders.tr_va,
+            loader=exp_state.dataloaders.tr_va,
             metrics=exp.problem.metrics,
-            model=exp_data.model,
+            model=exp_state.model,
         )
     with record_function("eval(va)"):
         reduced_metrics_va = evaluate(
             fabric=fabric,
-            loader=exp_data.dataloaders.va_va,
+            loader=exp_state.dataloaders.va_va,
             metrics=exp.problem.metrics,
-            model=exp_data.model,
+            model=exp_state.model,
         )
 
     renamed_tr: Dict = {
