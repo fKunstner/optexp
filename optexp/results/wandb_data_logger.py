@@ -109,9 +109,17 @@ class WandbDataLogger(DataLogger):
         return f"wandb sync " f"{self._run_directory()}"
 
 
-def load_wandb_data(exp: Experiment) -> Optional[pd.DataFrame]:
+def load_wandb_results(exps: list[Experiment]) -> dict[Experiment, pd.DataFrame]:
+    missing_experiments = list(filter(lambda exp: not is_downloaded(exp), exps))
+    if len(missing_experiments) > 0:
+        download_experiments(missing_experiments)
+    return {exp: load_wandb_result(exp) for exp in exps}
+
+
+def load_wandb_result(exp: Experiment) -> Optional[pd.DataFrame]:
     """Tries to load any results for the experiments."""
     parquet_file = wandb_download_dir(exp) / WANDB_DATA_FILENAME
+
     if not parquet_file.is_file():
         optexp.config.get_logger().warning(
             f"No results found for experiment {exp.short_equivalent_hash()} "
@@ -131,6 +139,10 @@ def wandb_download_dir(exp: Experiment) -> Path:
 
 def is_downloaded(exp: Experiment) -> bool:
     return (wandb_download_dir(exp) / WANDB_DATA_FILENAME).exists()
+
+
+def download_experiment(exp: Experiment):
+    download_experiments([exp])
 
 
 def download_experiments(exps: list[Experiment]) -> None:
@@ -174,7 +186,11 @@ def download_experiments(exps: list[Experiment]) -> None:
             }
         ).to_json(wandb_download_dir(exp) / WANDB_MISC_FILENAME)
 
-        numpyfy(run.history(pandas=True, samples=10000)).to_parquet()
+        print()
+
+        numpyfy(run.history(pandas=True, samples=10000)).to_parquet(
+            wandb_download_dir(exp) / WANDB_DATA_FILENAME
+        )
 
 
 def remove_experiments_that_are_already_saved(

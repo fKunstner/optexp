@@ -75,14 +75,16 @@ def get_wandb_timeout() -> int:
 
 
 def should_wandb_autosync():
+    if get_wandb_mode() == "online":
+        return False
+
     use_autosync = os.environ.get(ENV_VAR_WANDB_AUTOSYNC, None)
     if use_autosync is None:
         get_logger().warning(
-            "Wandb autosync not specified. Defaults not syncing."
+            "Wandb autosync not specified. Defaults not syncing. "
             f"To enable autosync, set the {ENV_VAR_WANDB_ENABLED} to true."
         )
         use_autosync = "false"
-
     return use_autosync.lower() == "true"
 
 

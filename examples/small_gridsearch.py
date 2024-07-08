@@ -11,10 +11,10 @@ experiments = [
             model=LeNet5(),
             batch_size=100,
             lossfunc=CrossEntropy(),
-            metrics=[  # Monitor both the accuracy and the loss on the training and validation sets
+            metrics=(  # Monitor both the accuracy and the loss on the training and validation sets
                 Accuracy(),
                 CrossEntropy(),
-            ],
+            ),
         ),
         group="first_gridsearch",
         optim=SGD(lr=lr),
