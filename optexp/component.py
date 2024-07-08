@@ -1,3 +1,4 @@
+import hashlib
 import textwrap
 from dataclasses import Field, dataclass, fields
 from functools import partial
@@ -64,7 +65,7 @@ class Component:
 
         return _loggable_dict(self)  # type: ignore
 
-    def unique_definition(self) -> str:
+    def equivalent_definition(self) -> str:
         return self._repr(show_defaults=False, show_hidden_repr=False)
 
     def full_definition(self) -> str:
@@ -111,3 +112,12 @@ class Component:
             f"{k}={get_repr(getattr(self, k))}" for k in filtered_fields
         )
         return f"{self.__class__.__name__}({args_repr})"
+
+    def equivalent_hash(self) -> str:
+        return hashlib.sha1(
+            str.encode(self.equivalent_definition()),
+            usedforsecurity=False,
+        ).hexdigest()
+
+    def short_equivalent_hash(self) -> str:
+        return self.equivalent_hash()[:8]

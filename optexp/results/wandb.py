@@ -5,8 +5,9 @@ import pandas as pd
 import wandb
 
 import optexp.config
+from optexp import Experiment
 from optexp.config import get_logger, get_wandb_timeout
-from optexp.data.utils import column_to_numpy, should_convert_column_to_numpy
+from optexp.results.utils import column_to_numpy, should_convert_column_to_numpy
 
 
 class WandbAPI:
@@ -27,6 +28,23 @@ class WandbAPI:
     @staticmethod
     def get_path():
         return f"{optexp.config.get_wandb_entity()}/{optexp.config.get_wandb_project()}"
+
+
+def get_wandb_runs_by_hash(
+    experiments: List[Experiment],
+) -> List[wandb.apis.public.Run]:
+    """Get all the runs on wandb for a list of experiments."""
+    # https://docs.wandb.ai/guides/track/public-api-guide#querying-multiple-runs
+    return WandbAPI.get_handler().runs(
+        WandbAPI.get_path(),
+        filters={
+            "$or": [
+                {"config.short_equiv_hash": exp.short_equivalent_hash()}
+                for exp in experiments
+            ],
+        },
+        per_page=1000,
+    )
 
 
 def get_wandb_runs_for_group(group: str) -> List[wandb.apis.public.Run]:

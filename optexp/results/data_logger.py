@@ -11,8 +11,8 @@ import wandb
 
 import optexp.config
 from optexp.config import get_logger
-from optexp.data.rate_limited_logger import RateLimitedLogger
 from optexp.experiment import Experiment
+from optexp.results.rate_limited_logger import RateLimitedLogger
 
 
 class DataLogger(ABC):
@@ -25,7 +25,7 @@ class DataLogger(ABC):
         pass
 
     @abstractmethod
-    def finish(self, exit_code) -> None:
+    def finish(self, exit_code, stopped_early) -> None:
         pass
 
 
@@ -40,7 +40,7 @@ class WandbDataLogger(DataLogger):
         """Data logger for experiments.
 
         Delegates to a console logger to print progress.
-        Saves the data to a csv and experiments configuration to a json file.
+        Saves the results to a csv and experiments configuration to a json file.
         Creates the save_dir if it does not exist.
 
         Args:
@@ -56,11 +56,8 @@ class WandbDataLogger(DataLogger):
         if wandb_autosync is None:
             wandb_autosync = optexp.config.should_wandb_autosync()
 
-        config_dict = experiment.loggable_dict()
-        group = experiment.group
-        exp_id = experiment.exp_id()
-        save_directory = experiment.save_directory()
-        run_id = time.strftime("%Y-%m-%d--%H-%M-%S")
+        save_directory = experiment.local_save_directory()
+        start_time = time.strftime("%Y-%m-%d--%H-%M-%S")
 
         self.wandb_autosync = wandb_autosync
         self.console_logger = RateLimitedLogger()
@@ -68,7 +65,7 @@ class WandbDataLogger(DataLogger):
         if not os.path.exists(save_directory):
             os.makedirs(save_directory)
 
-        self.handler = optexp.config.set_logfile(save_directory / f"{run_id}.log")
+        self.handler = optexp.config.set_logfile(save_directory / f"{start_time}.log")
         self.use_wandb = (
             optexp.config.should_use_wandb() if use_wandb is None else use_wandb
         )
@@ -80,11 +77,12 @@ class WandbDataLogger(DataLogger):
                     project=optexp.config.get_wandb_project(),
                     entity=optexp.config.get_wandb_entity(),
                     config={
-                        "exp_id": exp_id,
-                        "run_id": run_id,
-                        "exp_config": config_dict,
+                        "short_equiv_hash": experiment.short_equivalent_hash(),
+                        "equiv_hash": experiment.equivalent_hash(),
+                        "start_time": start_time,
+                        "exp_config": experiment.loggable_dict(),
                     },
-                    group=group,
+                    group=experiment.group,
                     mode=optexp.config.get_wandb_mode(),
                     dir=optexp.config.get_experiment_directory(),
                 )
@@ -122,12 +120,16 @@ class WandbDataLogger(DataLogger):
         if self.use_wandb:
             wandb.log({}, commit=True)
 
-    def finish(self, exit_code) -> None:
+    def finish(self, exit_code, stopped_early=False) -> None:
         """Save the results."""
 
         if self.use_wandb:
             if self.run is None:
                 raise ValueError("Expected a WandB run but None found.")
+
+            self.run.tags += ("finished",)
+            if stopped_early:
+                self.run.tags += ("stopped_early",)
 
             get_logger().info("Finishing Wandb run")
             wandb.finish(exit_code=exit_code)
@@ -148,7 +150,7 @@ class WandbDataLogger(DataLogger):
 
 
 class DummyDataLogger(DataLogger):
-    """A dummy data logger that does nothing."""
+    """A dummy results logger that does nothing."""
 
     def __init__(self, experiment: Optional[Experiment] = None) -> None:
         pass
@@ -159,5 +161,5 @@ class DummyDataLogger(DataLogger):
     def commit(self) -> None:
         pass
 
-    def finish(self, exit_code) -> None:
+    def finish(self, exit_code, stopped_early) -> None:
         pass

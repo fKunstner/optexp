@@ -10,14 +10,14 @@ from tqdm import tqdm
 
 import optexp.config
 from optexp.config import DisableWandb, get_logger
-from optexp.data.wandb import (
+from optexp.datasets.dataset import Downloadable
+from optexp.experiment import Experiment
+from optexp.results.wandb import (
     download_run_data,
     download_summary,
     get_successful_ids_and_runs,
     get_wandb_runs_for_group,
 )
-from optexp.datasets.dataset import Downloadable
-from optexp.experiment import Experiment
 from optexp.runner.runner import run_experiment
 from optexp.runner.slurm.sbatch_writers import make_jobarray_file_contents
 from optexp.runner.slurm.slurm_config import SlurmConfig
@@ -158,7 +158,7 @@ def cli(
     download_parser.add_argument(
         "--clear",
         action="store_true",
-        help="Clear cache of downloaded data from wandb",
+        help="Clear cache of downloaded results from wandb",
         default=False,
     )
     download_parser.set_defaults(func=download_handler)
@@ -226,7 +226,9 @@ def remove_experiments_that_are_already_saved(
     successful_exp_ids = [run.config["exp_id"] for run in successful_runs]
 
     experiments_to_run = [
-        exp for exp in experiments if exp.exp_id() not in successful_exp_ids
+        exp
+        for exp in experiments
+        if exp.short_equivalent_hash() not in successful_exp_ids
     ]
 
     return experiments_to_run
@@ -298,9 +300,11 @@ def run_slurm(
 
 
 def download_data(experiments: List[Experiment]) -> None:
-    """Download data from experiments into wandb cache."""
+    """Download results from experiments into wandb cache."""
 
-    get_logger().info(f"Preparing to download data from {len(experiments)} experiments")
+    get_logger().info(
+        f"Preparing to download results from {len(experiments)} experiments"
+    )
 
     if len(experiments) == 0:
         return
@@ -316,12 +320,12 @@ def download_data(experiments: List[Experiment]) -> None:
     successful_run_ids, successful_runs = get_successful_ids_and_runs(group)
 
     for i, exp in enumerate(experiments):
-        if exp.exp_id() not in successful_run_ids:
+        if exp.short_equivalent_hash() not in successful_run_ids:
             get_logger().info(
-                f"The experiments {str(exp)} (idx {i}) was NOT SUCCESSFULL. Not data to download."
+                f"The experiment {str(exp)} (idx {i}) was NOT SUCCESSFULL. Not results to download."
             )
 
-    runs_to_dl_ids = [exp.exp_id() for exp in experiments]
+    runs_to_dl_ids = [exp.short_equivalent_hash() for exp in experiments]
     runs_to_dl = []
     for run, run_id in zip(successful_runs, successful_run_ids):
         if run_id in runs_to_dl_ids:
@@ -334,7 +338,7 @@ def download_data(experiments: List[Experiment]) -> None:
 
 
 def clear_downloaded_data(experiments: List[Experiment]) -> None:
-    """Download data from experiments into wandb cache."""
+    """Download results from experiments into wandb cache."""
 
     get_logger().info(f"Clearing cache for {len(experiments)} experiments")
 
@@ -355,7 +359,7 @@ def clear_downloaded_data(experiments: List[Experiment]) -> None:
 
 def prepare(experiments):
     unique_datasets = set(exp.problem.dataset for exp in experiments)
-    get_logger().info(f"Preparing data for {len(unique_datasets)} datasets")
+    get_logger().info(f"Preparing results for {len(unique_datasets)} datasets")
     for dataset in unique_datasets:
         if isinstance(dataset, Downloadable) and not dataset.is_downloaded():
             get_logger().info(f"Downloading dataset {dataset}")

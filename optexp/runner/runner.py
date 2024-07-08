@@ -10,9 +10,9 @@ import torch.nn
 from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader
 
-from optexp.data.data_logger import DataLogger, DummyDataLogger, WandbDataLogger
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
+from optexp.results.data_logger import DataLogger, DummyDataLogger, WandbDataLogger
 from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
@@ -78,12 +78,14 @@ def run(exp: Experiment) -> ExperimentState:
         loginfo_on_r0(fabric, "Initial evaluation...")
         eval_and_log(fabric, exp, exp_state, {}, data_logger)
 
+    is_stopping: bool = False
     with record_function("training"):
         loginfo_on_r0(fabric, "Starting training...")
         for t in range(1, exp.steps + 1):
             live_loss, exp_state = training_step(fabric, exp, exp_state)
 
-            if should_early_stop(fabric, live_loss):
+            is_stopping = should_early_stop(fabric, live_loss)
+            if is_stopping:
                 break
 
             if t % exp.eval_every == 0:
@@ -91,7 +93,7 @@ def run(exp: Experiment) -> ExperimentState:
                     extra_dict = {"live_loss": live_loss}
                     eval_and_log(fabric, exp, exp_state, extra_dict, data_logger)
 
-    data_logger.finish(exit_code=0)
+    data_logger.finish(exit_code=0, stopped_early=is_stopping)
 
     return exp_state
 
