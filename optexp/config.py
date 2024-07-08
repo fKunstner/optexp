@@ -84,7 +84,8 @@ def should_wandb_autosync():
             "Wandb autosync not specified. Defaults not syncing. "
             f"To enable autosync, set the {ENV_VAR_WANDB_ENABLED} to true."
         )
-        use_autosync = "false"
+        return False
+
     return use_autosync.lower() == "true"
 
 

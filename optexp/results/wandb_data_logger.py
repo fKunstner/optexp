@@ -186,8 +186,6 @@ def download_experiments(exps: list[Experiment]) -> None:
             }
         ).to_json(wandb_download_dir(exp) / WANDB_MISC_FILENAME)
 
-        print()
-
         numpyfy(run.history(pandas=True, samples=10000)).to_parquet(
             wandb_download_dir(exp) / WANDB_DATA_FILENAME
         )
