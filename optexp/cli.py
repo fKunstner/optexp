@@ -12,11 +12,9 @@ import optexp.config
 from optexp.config import DisableWandb, get_logger
 from optexp.datasets.dataset import Downloadable
 from optexp.experiment import Experiment
-from optexp.results.wandb import (
-    download_run_data,
-    download_summary,
-    get_successful_ids_and_runs,
-    get_wandb_runs_for_group,
+from optexp.results.wandb_data_logger import (
+    download_experiments,
+    remove_experiments_that_are_already_saved,
 )
 from optexp.runner.runner import run_experiment
 from optexp.runner.slurm.sbatch_writers import make_jobarray_file_contents
@@ -207,33 +205,6 @@ def report(experiments: List[Experiment], by: Optional[str]) -> None:
     )
 
 
-def remove_experiments_that_are_already_saved(
-    experiments: List[Experiment],
-) -> List[Experiment]:
-    """Checks a list of experiments against the experiments stored on wandb.
-
-    Returns only the experiments that are not saved and marked as successful.
-    """
-
-    if len(experiments) == 0:
-        return []
-
-    group = experiments[0].group
-    if not all(exp.group == group for exp in experiments):
-        raise ValueError("All experiments must have the same group.")
-
-    successful_runs = get_wandb_runs_for_group(group)
-    successful_exp_ids = [run.config["exp_id"] for run in successful_runs]
-
-    experiments_to_run = [
-        exp
-        for exp in experiments
-        if exp.short_equivalent_hash() not in successful_exp_ids
-    ]
-
-    return experiments_to_run
-
-
 def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
     """Run experiments locally."""
     get_logger().info(f"Preparing to run {len(experiments)} experiments")
@@ -305,36 +276,7 @@ def download_data(experiments: List[Experiment]) -> None:
     get_logger().info(
         f"Preparing to download results from {len(experiments)} experiments"
     )
-
-    if len(experiments) == 0:
-        return
-
-    group = experiments[0].group
-
-    if not all(exp.group == group for exp in experiments):
-        raise ValueError("All experiments must have the same group.")
-
-    if not os.path.exists(optexp.config.get_wandb_cache_directory() / group):
-        os.makedirs(optexp.config.get_wandb_cache_directory() / group)
-
-    successful_run_ids, successful_runs = get_successful_ids_and_runs(group)
-
-    for i, exp in enumerate(experiments):
-        if exp.short_equivalent_hash() not in successful_run_ids:
-            get_logger().info(
-                f"The experiment {str(exp)} (idx {i}) was NOT SUCCESSFULL. Not results to download."
-            )
-
-    runs_to_dl_ids = [exp.short_equivalent_hash() for exp in experiments]
-    runs_to_dl = []
-    for run, run_id in zip(successful_runs, successful_run_ids):
-        if run_id in runs_to_dl_ids:
-            runs_to_dl.append(run)
-
-    for run in tqdm(runs_to_dl):
-        download_run_data(run)
-
-    download_summary(group)
+    download_experiments(experiments)
 
 
 def clear_downloaded_data(experiments: List[Experiment]) -> None:

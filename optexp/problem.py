@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Tuple
 
 from optexp.component import Component
 from optexp.datasets.dataset import Dataset
@@ -18,11 +18,11 @@ class Problem(Component):
            To use gradient accumulation, set the ``micro_batch_size``
            in :class:`optexp.hardwareconfig.HardwareConfig`.
         lossfunc (Metric): loss function to use for optimization.
-        metrics (List[Metric]): metrics to evaluate.
+        metrics (Tuple[Metric]): metrics to evaluate.
     """
 
     model: Model
     dataset: Dataset
     batch_size: int
     lossfunc: Metric
-    metrics: List[Metric]
+    metrics: Tuple[Metric, ...]

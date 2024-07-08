@@ -2,24 +2,21 @@ import numpy as np
 import pandas as pd
 
 
-def pprint_dict(adict):
-    """Pretty printing for logging dictionaries.
-
-    Ignores keys containing lists, prints floating points in scientific notation, shows
-    accuracy in percentage.
-    """
-
-    def fmt_entry(k, v):
+def pprint_dict(metric_dict: dict[str, float | list[float]]) -> str:
+    def format_entry(k, v):
         if isinstance(v, float):
-            if "Accuracy" in k or "acc" in k:
-                return f"{k}={100*v:.1f}"
-            return f"{k}={v:.2e}"
-        return f"{k}={v}"
+            if "accuracy" in k.lower():
+                return k, f"{100*v:.1f}"
+            return k, f"{v:.2e}"
 
-    dict_str = ", ".join(
-        fmt_entry(k, v) for k, v in sorted(adict.items()) if not hasattr(v, "__len__")
-    )
-    return "{" + dict_str + "}"
+        if hasattr(v, "__len__"):
+            if len(v) > 3:
+                return k, [f"{v[0]:.2e}", "...", f"{v[-1]:.2e}"]
+            return k, [f"{x:.2e}" for x in v]
+        return k, v
+
+    formatted_entries = [format_entry(k, v) for k, v in metric_dict.items()]
+    return "{" + ", ".join(f"{k}={v}" for k, v in formatted_entries) + "}"
 
 
 def column_to_numpy(x):
@@ -52,16 +49,34 @@ def should_convert_column_to_numpy(series: pd.Series):
                 return True
         return False
 
-    def is_list_of_elements_mostly_floats(entry):
-        def list_elem_is_float_or_str_nan(list_element):
-            return isinstance(list_element, (float, int)) or (
-                isinstance(list_element, str) and list_element == "NaN"
-            )
+    def is_list_of_float_like(entry):
+        def list_elem_is_float_or_str_nan(x):
+            if isinstance(x, (float, int)):
+                return True
+            return isinstance(x, str) and x == "NaN"
 
         return isinstance(entry, list) and all(
             list_elem_is_float_or_str_nan(elem) for elem in entry
         )
 
-    val = series[1] if len(series) > 1 else series[0]
+    more_than_one_entry = len(series) > 1
+    if more_than_one_entry:
+        entry_to_check = series[1]
+    else:
+        entry_to_check = series[0]
 
-    return is_string_repr_of_array(val) or is_list_of_elements_mostly_floats(val)
+    return is_string_repr_of_array(entry_to_check) or is_list_of_float_like(
+        entry_to_check
+    )
+
+
+def numpyfy(df: pd.DataFrame) -> pd.DataFrame:
+    df.replace("Infinity", np.inf, inplace=True)
+    for key in df.columns:
+        if should_convert_column_to_numpy(df[key]):
+            df[key] = df[key].apply(column_to_numpy)
+    return df
+
+
+def flatten_dict(x):
+    return pd.io.json._normalize.nested_to_record(x)  # pylint: disable=protected-access

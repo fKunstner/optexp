@@ -12,7 +12,8 @@ from torch.utils.data import DataLoader
 
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
-from optexp.results.data_logger import DataLogger, DummyDataLogger, WandbDataLogger
+from optexp.results.data_logger import DataLogger, DummyDataLogger
+from optexp.results.main_data_logger import MainDataLogger
 from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
@@ -63,7 +64,7 @@ def run(exp: Experiment) -> ExperimentState:
 
     data_logger: DataLogger
     if fabric.global_rank == 0:
-        data_logger = WandbDataLogger(experiment=exp)
+        data_logger = MainDataLogger(experiment=exp)
     else:
         data_logger = DummyDataLogger()
 
