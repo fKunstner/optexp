@@ -8,7 +8,7 @@ from optexp.problem import Problem
 
 
 @frozen
-class BatchSizeInfo(Component):
+class BatchSizeInfo:
     mbatchsize_tr: int
     mbatchsize_va: int
     accumulation_steps: int

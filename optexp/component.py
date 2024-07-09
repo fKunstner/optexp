@@ -2,7 +2,8 @@ import hashlib
 import textwrap
 from typing import Union
 
-from attr import attrs, fields, frozen
+import attr
+from attr import fields, frozen
 
 BasicType = Union[
     str | bool | int | float | type | None,
@@ -34,7 +35,7 @@ class Component:
                         f"Dict keys must be strings to have be loggable. Got {obj.keys()}"
                     )
 
-            if isinstance(obj, Component) and attrs.has(obj.__class__):
+            if isinstance(obj, Component) and attr.has(obj.__class__):
                 loggable_dict = [
                     (attribute.name, _loggable_dict(getattr(obj, attribute.name)))
                     for attribute in fields(obj.__class__)
