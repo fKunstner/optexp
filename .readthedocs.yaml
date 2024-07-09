@@ -19,5 +19,7 @@ sphinx:
 python:
   install:
   - requirements: requirements/docs.txt
+  - requirements: requirements/pytorch_cpu.txt
+  - requirements: requirements/main.txt
   - method: pip
     path: .
