@@ -30,7 +30,7 @@ class LocalDataLogger(DataLogger):
         self._current_dict: dict[str, float | list[float]] = {}
         self._dicts: list[dict[str, float | list[float]]] = []
 
-    def log_data(self, metric_dict: dict) -> None:
+    def log(self, metric_dict: dict) -> None:
         self._current_dict.update(metric_dict)
 
     def commit(self) -> None:

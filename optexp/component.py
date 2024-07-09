@@ -1,29 +1,26 @@
 import hashlib
 import textwrap
-from dataclasses import Field, dataclass, fields
-from functools import partial
 from typing import Union
 
-dataclass_component = partial(dataclass, frozen=True)
+from attr import AttrsInstance, fields, frozen
 
 BasicType = Union[
     str | bool | int | float | type | None,
     list["BasicType"],
     tuple["BasicType", ...],
     set["BasicType"],
+    frozenset["BasicType"],
     dict[str, "BasicType"],
 ]
 ExtendedBasicType = Union[
     "Component",
     str | bool | int | float | type | None,
     list["ExtendedBasicType"],
-    tuple["ExtendedBasicType", ...],
-    set["ExtendedBasicType"],
     dict[str, "ExtendedBasicType"],
 ]
 
 
-@dataclass(frozen=True)
+@frozen
 class Component:
     """Base class for all components in the experiments."""
 
@@ -39,13 +36,14 @@ class Component:
 
             if isinstance(obj, Component):
                 loggable_dict = [
-                    (f.name, _loggable_dict(getattr(obj, f.name))) for f in fields(obj)
+                    (attribute.name, _loggable_dict(getattr(obj, attribute.name)))
+                    for attribute in fields(obj.__class__)  # type: ignore
                 ]
                 loggable_dict.append(("__class__", obj.__class__.__qualname__))
                 return dict(loggable_dict)
 
-            if isinstance(obj, (list, tuple, set)):
-                return type(obj)(_loggable_dict(v) for v in obj)  # type: ignore
+            if isinstance(obj, (list, tuple, set, frozenset)):
+                return list(_loggable_dict(v) for v in obj)  # type: ignore
 
             if isinstance(obj, dict):
                 return dict((k, _loggable_dict(v)) for k, v in obj.items())
@@ -73,24 +71,24 @@ class Component:
 
     def _repr(self, show_defaults=False, show_hidden_repr=False) -> str:
 
-        def filter_defaults(f: Field):
+        def filter_defaults(attribute):
             if show_defaults:
                 return True
-            is_default = getattr(self, f.name) == f.default
+            is_default = getattr(self, attribute.name) == attribute.default
             return not is_default
 
-        def filter_hidden(f: Field):
-            return True if show_hidden_repr else f.repr
+        def filter_hidden(attribute):
+            return True if show_hidden_repr else attribute.repr
 
         def get_repr(obj) -> str:
             if isinstance(obj, dict):
                 sorted_keys = sorted(obj.keys())
                 inner_repr = ", ".join(f"{k}: {get_repr(obj[k])}" for k in sorted_keys)
                 return "{" + inner_repr + "}"
-            if isinstance(obj, (list, tuple, set)):
+            if isinstance(obj, (set, frozenset)):
                 inner_repr = ", ".join(get_repr(v) for v in sorted(obj))
                 return "{" + inner_repr + "}"
-            if isinstance(obj, (list, tuple, set)):
+            if isinstance(obj, (list, tuple)):
                 inner_repr = ", ".join(get_repr(v) for v in obj)
                 if isinstance(obj, tuple):
                     return "(" + inner_repr + ")"
@@ -103,7 +101,9 @@ class Component:
             return obj
 
         filtered_fields = (
-            f.name for f in fields(self) if filter_defaults(f) and filter_hidden(f)
+            attribute.name
+            for attribute in fields(self.__class__)  # type: ignore
+            if filter_defaults(attribute) and filter_hidden(attribute)
         )
         args_repr = ", ".join(
             f"{k}={get_repr(getattr(self, k))}" for k in filtered_fields
@@ -120,4 +120,4 @@ class Component:
         return self.equivalent_hash()[:8]
 
     def __lt__(self, other):
-        return self.equivalent_hash() < other.equivalent_hash()
+        return self.equivalent_definition() < other.equivalent_definition()

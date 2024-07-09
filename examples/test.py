@@ -11,10 +11,10 @@ experiments = [
             model=Linear(),
             batch_size=100,
             lossfunc=CrossEntropy(),
-            metrics={  # Monitor both the accuracy and the loss on the training and validation sets
+            metrics=[
                 Accuracy(),
                 CrossEntropy(),
-            },
+            ],
         ),
         group="test",
         optim=SGD(lr=lr),

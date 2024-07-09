@@ -7,7 +7,9 @@ from optexp.datasets import DummyRegression
 from optexp.hardwareconfig import StrictManualConfig
 from optexp.metrics import Accuracy, CrossEntropy
 from optexp.models.linear import Linear
-from optexp.optim import SGD
+
+# noinspection PyUnresolvedReferences
+from optexp.optim import SGD, DecayEverything  # pylint: disable=unused-import
 
 
 def make_toy_experiment(num_devices):
@@ -17,7 +19,7 @@ def make_toy_experiment(num_devices):
             dataset=DummyRegression(),
             model=Linear(),
             lossfunc=CrossEntropy(),
-            metrics={CrossEntropy(), Accuracy()},
+            metrics=[CrossEntropy(), Accuracy()],
             batch_size=10,
         ),
         group="testing",

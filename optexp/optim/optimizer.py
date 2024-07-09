@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Dict, Iterable, List, Union
 
 import torch
+from attr import frozen
 from torch.nn import Module, Parameter
 
 from optexp.component import Component
 
 
-@dataclass(frozen=True)
+@frozen
 class Optimizer(Component, ABC):
     """Abstract base class for optimizers."""
 
@@ -25,7 +25,7 @@ class Regularizable(ABC):
         pass
 
 
-@dataclass(frozen=True)
+@frozen
 class WeightDecayStrategy(Component):
     """Abstract base class for weight decay strategies."""
 

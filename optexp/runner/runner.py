@@ -18,6 +18,8 @@ from optexp.results.main_data_logger import MainDataLogger
 from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
+MetricsDict = Dict[str, float | list[float]]
+
 
 def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentState:
     """Run the experiment.
@@ -78,7 +80,9 @@ def run(exp: Experiment) -> ExperimentState:
 
     with record_function("first evaluation"):
         loginfo_on_r0(fabric, "Initial evaluation...")
-        eval_and_log(fabric, exp, exp_state, {}, data_logger)
+        data_logger.log(regularization(exp, exp_state))
+        data_logger.log(eval_loop(fabric, exp, exp_state))
+        data_logger.commit()
 
     is_stopping: bool = False
     with record_function("training"):
@@ -86,18 +90,39 @@ def run(exp: Experiment) -> ExperimentState:
         for t in range(1, exp.steps + 1):
             live_loss, exp_state = training_step(fabric, exp, exp_state)
 
+            data_logger.log({"live_loss": live_loss})
+            data_logger.log(current_time(exp_state))
+            data_logger.log(regularization(exp, exp_state))
+
+            if t % exp.eval_every == 0:
+                with record_function("eval"):
+                    data_logger.log(eval_loop(fabric, exp, exp_state))
+
+            data_logger.commit()
+
             is_stopping = should_early_stop(fabric, live_loss)
             if is_stopping:
                 break
 
-            if t % exp.eval_every == 0:
-                with record_function("eval"):
-                    extra_dict = {"live_loss": live_loss}
-                    eval_and_log(fabric, exp, exp_state, extra_dict, data_logger)
-
     data_logger.finish(exit_code=0, stopped_early=is_stopping)
 
     return exp_state
+
+
+def current_time(exp_state):
+    return {
+        "epoch": exp_state.iteration_counter.epoch,
+        "step": exp_state.iteration_counter.step,
+        "step_within_epoch": exp_state.iteration_counter.step_within_epoch,
+    }
+
+
+def regularization(exp, exp_state):
+    if isinstance(exp.optim, Regularizable):
+        return {
+            "regularization": exp.optim.regularizer_loss(exp_state.model).cpu().item()
+        }
+    return {}
 
 
 def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
@@ -142,22 +167,11 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     )
 
 
-def eval_and_log(
+def eval_loop(
     fabric: ptl.Fabric,
     exp: Experiment,
     exp_state: ExperimentState,
-    extra_dict: Dict[str, Any],
-    data_logger: DataLogger,
-) -> None:
-
-    time_dict = {
-        "epoch": exp_state.iteration_counter.epoch,
-        "step": exp_state.iteration_counter.step,
-        "step_within_epoch": exp_state.iteration_counter.step_within_epoch,
-    }
-
-    if isinstance(exp.optim, Regularizable):
-        extra_dict["regularization"] = exp.optim.regularizer_loss(exp_state.model)
+) -> MetricsDict:
 
     with record_function("eval(tr)"):
         reduced_metrics_tr = evaluate(
@@ -166,6 +180,7 @@ def eval_and_log(
             metrics=exp.problem.metrics,
             model=exp_state.model,
         )
+
     with record_function("eval(va)"):
         reduced_metrics_va = evaluate(
             fabric=fabric,
@@ -181,9 +196,7 @@ def eval_and_log(
         f"va_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_va.items()
     }
 
-    for dict_to_log in (renamed_tr, renamed_va, time_dict, extra_dict):
-        data_logger.log_data(dict_to_log)
-    data_logger.commit()
+    return {**renamed_tr, **renamed_va}
 
 
 def evaluate(

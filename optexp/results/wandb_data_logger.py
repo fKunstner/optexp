@@ -60,7 +60,7 @@ class WandbDataLogger(DataLogger):
         get_logger().info(f"--- WANDB initialized. Wandb Run ID: {self.run.id}")
         get_logger().info(f"Sync with:\n {self._sync_command()}")
 
-    def log_data(self, metric_dict: dict) -> None:
+    def log(self, metric_dict: dict) -> None:
         """Log a dictionary of metrics.
 
         Based on the wandb log function (https://docs.wandb.ai/ref/python/log)

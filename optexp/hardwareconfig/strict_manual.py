@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 from typing import Literal, Optional
+
+from attr import frozen
 
 import optexp.config
 from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo, HardwareConfig
@@ -7,7 +8,7 @@ from optexp.hardwareconfig.utils import batchsize_mismatch_message
 from optexp.problem import Problem
 
 
-@dataclass(frozen=True)
+@frozen
 class StrictManualConfig(HardwareConfig):
     """Manual configuration for hardware settings.
 

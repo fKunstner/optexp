@@ -22,9 +22,9 @@ class MainDataLogger(DataLogger):
 
         self.sub_data_loggers.append(LocalDataLogger(experiment, start_time))
 
-    def log_data(self, metric_dict: dict[str, float | list[float]]) -> None:
+    def log(self, metric_dict: dict[str, float | list[float]]) -> None:
         for sub_data_logger in self.sub_data_loggers:
-            sub_data_logger.log_data(metric_dict)
+            sub_data_logger.log(metric_dict)
 
     def commit(self) -> None:
         for sub_data_logger in self.sub_data_loggers:

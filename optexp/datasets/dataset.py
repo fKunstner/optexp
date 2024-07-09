@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Literal, Optional
 
 import torch
+from attr import frozen
 from torch.types import Device
 from torch.utils.data import DataLoader
 
@@ -11,7 +11,7 @@ from optexp.component import Component
 TrVa = Literal["tr", "va"]
 
 
-@dataclass(frozen=True)
+@frozen
 class Dataset(ABC, Component):
     """Abstract base class for datasets."""
 

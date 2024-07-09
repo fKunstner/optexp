@@ -1,8 +1,8 @@
-from dataclasses import dataclass
 from typing import Optional
 
 import torch
 import torchvision
+from attr import frozen
 from torch.types import Device
 from torch.utils.data import TensorDataset
 
@@ -19,7 +19,7 @@ from optexp.datasets.utils import make_dataloader
 MEAN, STD = 0.1307, 0.3081
 
 
-@dataclass(frozen=True)
+@frozen
 class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
     """The `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset, provided through
     `TorchVision <https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html>`_.

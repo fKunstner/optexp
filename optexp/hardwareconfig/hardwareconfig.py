@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import Literal
+
+from attr import frozen
 
 from optexp.component import Component
 from optexp.problem import Problem
 
 
-@dataclass(frozen=True)
+@frozen
 class BatchSizeInfo(Component):
     mbatchsize_tr: int
     mbatchsize_va: int
@@ -15,7 +16,7 @@ class BatchSizeInfo(Component):
     workers_va: int
 
 
-@dataclass(frozen=True)
+@frozen
 class HardwareConfig(Component, ABC):
     """Abstract base class for hardware configurations."""
 

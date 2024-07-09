@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 
 import torch
+from attr import frozen
 
 from optexp.optim.optimizer import Optimizer, Regularizable, WeightDecayStrategy
 from optexp.optim.weight_decay_strategies import DecayEverything
 
 
-@dataclass(frozen=True)
+@frozen
 class SGD(Optimizer, Regularizable):
     """Stochastic Gradient Descent.
 

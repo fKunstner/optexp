@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from attr import field, frozen
 
 from optexp.component import Component
 from optexp.hardwareconfig import StrictManualConfig
@@ -7,7 +7,7 @@ from optexp.optim.optimizer import Optimizer
 from optexp.problem import Problem
 
 
-@dataclass(frozen=True)
+@frozen
 class Experiment(Component):
     """Specify an experiment.
 

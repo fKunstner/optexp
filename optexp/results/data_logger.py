@@ -8,7 +8,7 @@ from optexp.experiment import Experiment
 
 class DataLogger(ABC):
     @abstractmethod
-    def log_data(self, metric_dict: dict[str, float | list[float]]) -> None:
+    def log(self, metric_dict: dict[str, float | list[float]]) -> None:
         pass
 
     @abstractmethod
@@ -26,7 +26,7 @@ class DummyDataLogger(DataLogger):
     def __init__(self, experiment: Optional[Experiment] = None) -> None:
         pass
 
-    def log_data(self, metric_dict: dict) -> None:
+    def log(self, metric_dict: dict) -> None:
         pass
 
     def commit(self) -> None:
