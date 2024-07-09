@@ -264,7 +264,7 @@ def get_hash_directory(base_directory: Path, object_hash: str, unique_id: str) -
 
     hash_basedir = base_directory / object_hash
     if not hash_basedir.exists():
-        hash_basedir.mkdir()
+        hash_basedir.mkdir(parents=True)
 
     mapping_file = hash_basedir / "mapping.json"
     if not mapping_file.exists():
