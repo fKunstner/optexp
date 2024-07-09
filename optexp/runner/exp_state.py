@@ -48,8 +48,8 @@ class ExperimentState:
             features, labels = next(self._current_training_dataloader)
         except StopIteration:
             self.iteration_counter.next_epoch()
-            tr_iterator = iter(self.dataloaders.tr_tr)
-            features, labels = next(tr_iterator)
+            self._current_training_dataloader = iter(self.dataloaders.tr_tr)
+            features, labels = next(self._current_training_dataloader)
         finally:
             self.iteration_counter.next_iter()
 
