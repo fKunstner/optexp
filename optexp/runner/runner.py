@@ -67,8 +67,8 @@ class MiniBatchEvaluator:
                     self._model_out[self.data.val_mask],
                     self.data.y[self.data.val_mask],
                 )
-            raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
 
+            raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
         raise ValueError("Unknown data type.")
 
     def compute_loss(self, lossfunc, model, trva: TrVa = "tr") -> Tuple[Tensor, Tensor]:
@@ -88,6 +88,7 @@ class MiniBatchEvaluator:
                     self.data.y[self.data.val_mask],
                 )
             raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
+        raise ValueError("Unknown data type.")
 
 
 def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentState:
