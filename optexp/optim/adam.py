@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import torch
 from attr import frozen
 

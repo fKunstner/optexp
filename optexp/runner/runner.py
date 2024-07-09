@@ -1,7 +1,7 @@
 import math
 import pprint
 import random
-from typing import Any, Dict, Iterable, Tuple
+from typing import Dict, Iterable, Tuple
 
 import lightning as ptl
 import numpy as np
