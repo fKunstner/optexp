@@ -1,5 +1,5 @@
 import torch
-from attr import frozen
+from attrs import frozen
 from torch.utils.data import DataLoader
 
 from optexp.datasets.dataset import Dataset, HasClassCounts, TrVa

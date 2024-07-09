@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 import torch
-from attr import frozen
+from attrs import frozen
 
 from optexp.component import Component
 

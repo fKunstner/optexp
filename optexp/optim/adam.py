@@ -1,5 +1,5 @@
 import torch
-from attr import frozen
+from attrs import frozen
 
 from optexp.optim.optimizer import Optimizer, Regularizable, WeightDecayStrategy
 from optexp.optim.weight_decay_strategies import DecayEverything

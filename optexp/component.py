@@ -3,7 +3,7 @@ import textwrap
 from typing import Union
 
 import attr
-from attr import fields, frozen
+from attrs import fields, frozen
 
 BasicType = Union[
     str | bool | int | float | type | None,

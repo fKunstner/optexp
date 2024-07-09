@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from attr import frozen
+from attrs import frozen
 
 import optexp.config
 from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo, HardwareConfig
@@ -101,7 +101,7 @@ class StrictManualConfig(HardwareConfig):
             return self.device  # type: ignore
         raise ValueError(f"Unknown device {self.device}")
 
-    def get_batch_size_info(self, problem: Problem) -> "BatchSizeInfo":
+    def get_batch_size_info(self, problem: Problem) -> BatchSizeInfo:
         n_tr = problem.dataset.get_num_samples("tr")
         n_va = problem.dataset.get_num_samples("va")
 

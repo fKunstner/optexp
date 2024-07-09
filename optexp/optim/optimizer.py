@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Iterable, List, Union
 
 import torch
-from attr import frozen
+from attrs import frozen
 from torch.nn import Module, Parameter
 
 from optexp.component import Component

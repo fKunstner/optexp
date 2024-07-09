@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Literal, Optional
 
 import torch
-from attr import frozen
+from attrs import frozen
 from torch.types import Device
 from torch.utils.data import DataLoader
 

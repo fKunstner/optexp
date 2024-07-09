@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from attr import frozen
+from attrs import frozen
 
 from optexp.component import Component
 from optexp.problem import Problem

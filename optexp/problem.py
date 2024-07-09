@@ -1,6 +1,6 @@
 from typing import Iterable
 
-from attr import field, frozen
+from attrs import field, frozen
 
 from optexp.component import Component
 from optexp.datasets.dataset import Dataset

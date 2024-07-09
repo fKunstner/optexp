@@ -1,4 +1,4 @@
-from attr import field, frozen
+from attrs import field, frozen
 
 from optexp.component import Component
 from optexp.hardwareconfig import StrictManualConfig

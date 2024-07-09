@@ -2,7 +2,7 @@ from typing import Optional
 
 import torch
 import torchvision
-from attr import frozen
+from attrs import frozen
 from torch.types import Device
 from torch.utils.data import TensorDataset
 
