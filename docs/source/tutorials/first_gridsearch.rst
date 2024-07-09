@@ -10,7 +10,7 @@ The following code defines
 
 
 .. literalinclude:: ../../../examples/small_gridsearch.py
-   :caption: experiments.py
+   :caption: gridsearch.py
 
 To download the datasets, run the following command:
 
