@@ -19,7 +19,7 @@ class IterationCounter:
 
     def next_epoch(self):
         self.epoch += 1
-        self.step_within_epoch = 0
+        self.step_within_epoch = 1
 
 
 @dataclass
@@ -42,15 +42,15 @@ class ExperimentState:
     def get_batch(self):
         if self._current_training_dataloader is None:
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
-            self.iteration_counter = IterationCounter()
+            self.iteration_counter.next_epoch()
 
         try:
-            features, labels = next(self._current_training_dataloader)
+            data = next(self._current_training_dataloader)
         except StopIteration:
             self.iteration_counter.next_epoch()
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
-            features, labels = next(self._current_training_dataloader)
+            data = next(self._current_training_dataloader)
         finally:
             self.iteration_counter.next_iter()
 
-        return features, labels
+        return data

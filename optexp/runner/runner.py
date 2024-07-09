@@ -1,15 +1,17 @@
 import math
 import pprint
 import random
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Iterable, Literal, Tuple
 
 import lightning as ptl
 import numpy as np
 import torch
 import torch.nn
+from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
 from torch.utils.data import DataLoader
 
+from optexp.datasets.dataset import TrVa
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
 from optexp.optim.optimizer import Regularizable
@@ -19,6 +21,73 @@ from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
 MetricsDict = Dict[str, float | list[float]]
+
+
+class MiniBatchEvaluator:
+
+    def __init__(self, data):
+        self.data = data
+
+        self.data_type: Literal["tensor", "graph"]
+        if isinstance(data, tuple) and len(data) == 2:
+            self.data_type = "tensor"
+        elif all(
+            hasattr(data, name)
+            for name in ["x", "y", "edge_index", "train_mask", "val_mask"]
+        ):
+            self.data_type = "graph"
+        else:
+            raise ValueError(
+                "Unknown data type. "
+                "Expected tuple(Tensor, Tensor) for tensor data or "
+                "torch_geometric.data.Data for graph data."
+                f"Got {type(data)}."
+            )
+
+        self._model_out = None
+
+    def compute_metric(
+        self, model, metric: Metric, trva: TrVa
+    ) -> Tuple[Tensor, Tensor]:
+
+        if self.data_type == "tensor":
+            x, y = self.data
+            self._model_out = model(x)
+            return metric(self._model_out, y)
+
+        if self.data_type == "graph":
+            self._model_out = model(self.data.x, self.data.edge_index)
+            if trva == "tr":
+                return metric(
+                    self._model_out[self.data.train_mask],
+                    self.data.y[self.data.train_mask],
+                )
+            if trva == "va":
+                return metric(
+                    self._model_out[self.data.val_mask],
+                    self.data.y[self.data.val_mask],
+                )
+            raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
+
+        raise ValueError("Unknown data type.")
+
+    def compute_loss(self, lossfunc, model, trva: TrVa = "tr") -> Tuple[Tensor, Tensor]:
+        if self.data_type == "tensor":
+            x, y = self.data
+            return lossfunc(model(x), y)
+        if self.data_type == "graph":
+            self._model_out = model(self.data.x, self.data.edge_index)
+            if trva == "tr":
+                return lossfunc(
+                    self._model_out[self.data.train_mask],
+                    self.data.y[self.data.train_mask],
+                )
+            if trva == "va":
+                return lossfunc(
+                    self._model_out[self.data.val_mask],
+                    self.data.y[self.data.val_mask],
+                )
+            raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
 
 
 def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentState:
@@ -179,6 +248,7 @@ def eval_loop(
             loader=exp_state.dataloaders.tr_va,
             metrics=exp.problem.metrics,
             model=exp_state.model,
+            trva="tr",
         )
 
     with record_function("eval(va)"):
@@ -187,6 +257,7 @@ def eval_loop(
             loader=exp_state.dataloaders.va_va,
             metrics=exp.problem.metrics,
             model=exp_state.model,
+            trva="va",
         )
 
     renamed_tr: Dict = {
@@ -204,6 +275,7 @@ def evaluate(
     loader: DataLoader,
     metrics: Iterable[Metric],
     model: torch.nn.Module,
+    trva: TrVa,
 ) -> Dict[Metric, float | list]:
 
     running_metrics: Dict[Metric, SumAndCounter] = {
@@ -212,11 +284,10 @@ def evaluate(
     }
 
     with EvalMode(model), torch.no_grad():
-        for _, (features, labels) in enumerate(loader):
-            y_pred = model(features)
-
+        for _, batch in enumerate(loader):
+            with_data = MiniBatchEvaluator(batch)
             for metric in metrics:
-                loss, weight = metric(y_pred, labels)
+                loss, weight = with_data.compute_metric(model, metric, trva)
                 running_metrics[metric] += SumAndCounter(loss.detach(), weight.detach())
 
         def reduce(x: SumAndCounter):
@@ -242,9 +313,10 @@ def training_step(
         for t in range(exp_state.batch_size_info.accumulation_steps):
             is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
             with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
-
-                features, labels = exp_state.get_batch()
-                loss, weight = exp.problem.lossfunc(exp_state.model(features), labels)
+                with_batch = MiniBatchEvaluator(exp_state.get_batch())
+                loss, weight = with_batch.compute_loss(
+                    exp.problem.lossfunc, exp_state.model
+                )
                 total_loss_and_count += SumAndCounter(loss.detach(), weight)
                 fabric.backward(loss)
 
