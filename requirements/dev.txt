@@ -6,3 +6,4 @@ types-tqdm
 types-requests==2.31.0.6
 pytest
 pytest-cov
+pylint
