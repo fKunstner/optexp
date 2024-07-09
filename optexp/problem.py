@@ -8,6 +8,10 @@ from optexp.metrics.metric import Metric
 from optexp.models.model import Model
 
 
+def to_frozenset(iterable: Iterable[Metric]) -> frozenset[Metric]:
+    return frozenset(iterable)
+
+
 @frozen
 class Problem(Component):
     """Specify a problem.
@@ -26,4 +30,4 @@ class Problem(Component):
     dataset: Dataset
     batch_size: int
     lossfunc: Metric
-    metrics: Iterable[Metric] = field(converter=frozenset)
+    metrics: Iterable[Metric] = field(converter=to_frozenset)
