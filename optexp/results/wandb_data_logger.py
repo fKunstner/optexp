@@ -4,6 +4,7 @@ from typing import Optional
 
 import pandas as pd
 import wandb
+from tqdm import tqdm
 
 from optexp.config import Config, get_logger
 from optexp.experiment import Experiment
@@ -11,9 +12,9 @@ from optexp.results.data_logger import DataLogger
 from optexp.results.utils import flatten_dict, get_hash_directory, numpyfy
 from optexp.results.wandb_api import WandbAPI, get_wandb_runs
 
-WANDB_CONFIG_FILENAME = "config.json"
-WANDB_MISC_FILENAME = "misc.json"
-WANDB_DATA_FILENAME = "data.parquet"
+CONFIG_FILENAME = "config.json"
+MISC_FILENAME = "misc.json"
+DATA_FILENAME = "data.parquet"
 
 
 class WandbDataLogger(DataLogger):
@@ -115,7 +116,7 @@ def load_wandb_results(exps: list[Experiment]) -> dict[Experiment, pd.DataFrame]
 
 def load_wandb_result(exp: Experiment) -> Optional[pd.DataFrame]:
     """Tries to load any results for the experiments."""
-    parquet_file = wandb_download_dir(exp) / WANDB_DATA_FILENAME
+    parquet_file = wandb_download_dir(exp) / DATA_FILENAME
 
     if not parquet_file.is_file():
         get_logger().warning(
@@ -135,7 +136,7 @@ def wandb_download_dir(exp: Experiment) -> Path:
 
 
 def is_downloaded(exp: Experiment) -> bool:
-    return (wandb_download_dir(exp) / WANDB_DATA_FILENAME).exists()
+    return (wandb_download_dir(exp) / DATA_FILENAME).exists()
 
 
 def download_experiment(exp: Experiment):
@@ -144,7 +145,10 @@ def download_experiment(exp: Experiment):
 
 def download_experiments(exps: list[Experiment]) -> None:
     exp_to_runs = get_wandb_runs(exps)
-    for exp, runs in exp_to_runs.items():
+    for exp, runs in tqdm(exp_to_runs.items(), total=len(exp_to_runs)):
+        if is_downloaded(exp):
+            continue
+
         if len(runs) == 0:
             raise ValueError(
                 f"No finished runs found for experiment {exp.short_equivalent_hash()}"
@@ -161,18 +165,13 @@ def download_experiments(exps: list[Experiment]) -> None:
                 + f"(full experiment: {exp})."
             )
 
+        download_dir = wandb_download_dir(exp)
         run = runs[0]
-
-        save_file = wandb_download_dir(exp) / WANDB_DATA_FILENAME
-        if save_file.exists():
-            raise FileExistsError(f"File already exists: {save_file}")
-
-        pd.DataFrame.from_records(flatten_dict(run.config)).to_json(
-            wandb_download_dir(exp) / WANDB_CONFIG_FILENAME
-        )
+        config_df = pd.DataFrame.from_records(flatten_dict(run.config))
+        config_df.to_json(download_dir / CONFIG_FILENAME)
 
         linecount = run._attrs["historyLineCount"]  # pylint: disable=protected-access
-        pd.DataFrame.from_records(
+        misc_df = pd.DataFrame.from_records(
             {
                 "name": run.name,
                 "id": run.id,
@@ -181,11 +180,11 @@ def download_experiments(exps: list[Experiment]) -> None:
                 "tags": run.tags,
                 "histLineCount": linecount,
             }
-        ).to_json(wandb_download_dir(exp) / WANDB_MISC_FILENAME)
-
-        numpyfy(run.history(pandas=True, samples=10000)).to_parquet(
-            wandb_download_dir(exp) / WANDB_DATA_FILENAME
         )
+        misc_df.to_json(download_dir / MISC_FILENAME)
+
+        data_df = numpyfy(run.history(pandas=True, samples=10000))
+        data_df.to_parquet(download_dir / DATA_FILENAME)
 
 
 def remove_experiments_that_are_already_saved(
