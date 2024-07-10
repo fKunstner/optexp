@@ -20,33 +20,7 @@ NAME_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
 LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
-def get_env_var(
-    name: str, accepted: Optional[list] = None, default=None, converter=None
-):
-
-    def convert(x):
-        if converter is None:
-            return x
-        return converter(x)
-
-    if name in os.environ:
-        val = os.environ[name]
-        get_logger().debug(f"Reading environment variable {name}={val}")
-        if accepted is not None and val not in accepted:
-            raise ValueError(
-                f"Invalid value for environment variable {name}. "
-                f"Got {val}. Expected one of {accepted}."
-            )
-        return convert(os.environ[name])
-    get_logger().info(f"Environment variable {name} undefined. Defaults to {default}.")
-    return convert(default)
-
-
-console_logging_level: str = get_env_var(
-    NAME_LOGLEVEL,
-    accepted=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
-    default="DEBUG",
-)
+console_logging_level = "INFO"
 
 
 def get_logger(name: Optional[str] = None, level: Optional[str | int] = None) -> Logger:
@@ -67,6 +41,28 @@ def get_logger(name: Optional[str] = None, level: Optional[str | int] = None) ->
         logger.addHandler(sh)
         logger.setLevel(level=console_logging_level if level is None else level)
     return logger
+
+
+def get_env_var(
+    name: str, accepted: Optional[list] = None, default=None, converter=None
+):
+
+    def convert(x):
+        if converter is None:
+            return x
+        return converter(x)
+
+    if name in os.environ:
+        val = os.environ[name]
+        get_logger().debug(f"Reading environment variable {name}={val}")
+        if accepted is not None and val not in accepted:
+            raise ValueError(
+                f"Invalid value for environment variable {name}. "
+                f"Got {val}. Expected one of {accepted}."
+            )
+        return convert(os.environ[name])
+    get_logger().debug(f"Environment variable {name} undefined. Defaults to {default}.")
+    return convert(default)
 
 
 class Config:

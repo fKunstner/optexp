@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import lightning
 import torch.optim
@@ -12,6 +12,11 @@ class IterationCounter:
     epoch: int = 0
     step: int = 0
     step_within_epoch: int = 0
+
+    def start(self):
+        self.step = 1
+        self.step_within_epoch = 1
+        self.epoch = 1
 
     def next_iter(self):
         self.step += 1
@@ -37,12 +42,12 @@ class ExperimentState:
     dataloaders: DataLoaders
     batch_size_info: BatchSizeInfo
     _current_training_dataloader = None
-    iteration_counter: IterationCounter = IterationCounter()
+    iteration_counter: IterationCounter = field(default_factory=IterationCounter)
 
     def get_batch(self):
         if self._current_training_dataloader is None:
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
-            self.iteration_counter.next_epoch()
+            self.iteration_counter.start()
 
         try:
             data = next(self._current_training_dataloader)
