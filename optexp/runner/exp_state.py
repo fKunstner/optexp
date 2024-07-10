@@ -14,8 +14,8 @@ class IterationCounter:
     step_within_epoch: int = 0
 
     def start(self):
-        self.step = 1
-        self.step_within_epoch = 1
+        self.step = 0
+        self.step_within_epoch = 0
         self.epoch = 1
 
     def next_iter(self):
@@ -24,7 +24,7 @@ class IterationCounter:
 
     def next_epoch(self):
         self.epoch += 1
-        self.step_within_epoch = 1
+        self.step_within_epoch = 0
 
 
 @dataclass

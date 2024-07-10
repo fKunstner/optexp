@@ -20,7 +20,7 @@ NAME_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
 LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
-console_logging_level = "INFO"
+CONSOLE_LOGGING_LEVEL = "INFO"
 
 
 def get_logger(name: Optional[str] = None, level: Optional[str | int] = None) -> Logger:
@@ -35,11 +35,11 @@ def get_logger(name: Optional[str] = None, level: Optional[str | int] = None) ->
 
     if not any(isinstance(x, logging.StreamHandler) for x in logger.handlers):
         sh = logging.StreamHandler()
-        sh.setLevel(level=console_logging_level if level is None else level)
+        sh.setLevel(level=CONSOLE_LOGGING_LEVEL if level is None else level)
         formatter = logging.Formatter(LOG_FMT, datefmt="%Y-%m-%d %H:%M:%S")
         sh.setFormatter(formatter)
         logger.addHandler(sh)
-        logger.setLevel(level=console_logging_level if level is None else level)
+        logger.setLevel(level=CONSOLE_LOGGING_LEVEL if level is None else level)
     return logger
 
 
