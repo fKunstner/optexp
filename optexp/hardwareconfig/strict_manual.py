@@ -2,7 +2,7 @@ from typing import Literal, Optional
 
 from attrs import frozen
 
-import optexp.config
+from optexp.config import Config
 from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo, HardwareConfig
 from optexp.hardwareconfig.utils import batchsize_mismatch_message
 from optexp.problem import Problem
@@ -96,7 +96,7 @@ class StrictManualConfig(HardwareConfig):
 
     def get_accelerator(self) -> Literal["cpu", "cuda"]:
         if self.device == "auto":
-            return optexp.config.get_device()
+            return Config.get_device()
         if self.device in ["cpu", "cuda"]:
             return self.device  # type: ignore
         raise ValueError(f"Unknown device {self.device}")

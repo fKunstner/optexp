@@ -6,7 +6,7 @@ from attrs import frozen
 from torch.types import Device
 from torch.utils.data import TensorDataset
 
-import optexp.config
+from optexp.config import Config
 from optexp.datasets.dataset import (
     AvailableAsTensor,
     Dataset,
@@ -43,9 +43,7 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
 
     def is_downloaded(self):
         return all(
-            (
-                optexp.config.get_dataset_directory() / "MNISTDataset" / "raw" / file
-            ).exists()
+            (Config.get_dataset_directory() / "MNISTDataset" / "raw" / file).exists()
             for file in [
                 "train-images-idx3-ubyte",
                 "train-labels-idx1-ubyte",
@@ -55,14 +53,14 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
         )
 
     def download(self):
-        path = str(optexp.config.get_dataset_directory())
+        path = str(Config.get_dataset_directory())
         for train in [True, False]:
             torchvision.datasets.MNIST(path, download=True, train=train)
 
     @staticmethod
     def _get_dataset(tr_va: TrVa):
         return torchvision.datasets.MNIST(
-            root=str(optexp.config.get_dataset_directory()),
+            root=str(Config.get_dataset_directory()),
             train=tr_va == "tr",
             transform=torchvision.transforms.Compose(
                 [

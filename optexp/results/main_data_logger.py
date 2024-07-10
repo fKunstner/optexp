@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import time
 
-from optexp import config
-from optexp.config import get_logger
+from optexp.config import Config, get_logger
 from optexp.experiment import Experiment
 from optexp.results.data_logger import DataLogger
 from optexp.results.local_data_logger import LocalDataLogger
@@ -14,7 +13,7 @@ class MainDataLogger(DataLogger):
     def __init__(self, experiment: Experiment) -> None:
         start_time = time.strftime("%Y-%m-%d--%H-%M-%S")
         self.sub_data_loggers: list[DataLogger] = []
-        if config.should_use_wandb():
+        if Config.wandb_enabled:
             get_logger().info("WandB is enabled.")
             self.sub_data_loggers.append(WandbDataLogger(experiment, start_time))
         else:

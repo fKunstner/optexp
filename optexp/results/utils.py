@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -80,3 +83,55 @@ def numpyfy(df: pd.DataFrame) -> pd.DataFrame:
 
 def flatten_dict(x):
     return pd.io.json._normalize.nested_to_record(x)  # pylint: disable=protected-access
+
+
+def get_hash_directory(base_directory: Path, object_hash: str, unique_id: str) -> Path:
+    """Get a directory for a unique_id in a hash directory.
+
+    Behaves like a dictionary of paths, returns a unique path for unique_id,
+    but uses a hash directory structure to avoid having too many files in a single directory.
+
+    This function manages directory structures that look like as follows::
+
+        base_dir/
+        ├─ hash1/
+        │  ├─ mapping.json
+        │  ├─ 0/
+        │  ├─ 1/
+        ├─ hash2/
+        │  ├─ mapping.json
+        │  ├─ 0/
+        ├─ hash3/
+        ...
+
+    The mapping.json contains a dictionary mapping unique_id to the subdirectory.
+
+    Args:
+        base_directory (Path): the base directory containing the hash directories.
+        object_hash (str): the hash of the object that the unique_id is associated with
+        unique_id (str): the unique identifier for the object
+    """
+
+    hash_basedir = base_directory / object_hash
+    if not hash_basedir.exists():
+        hash_basedir.mkdir(parents=True)
+
+    mapping_file = hash_basedir / "mapping.json"
+    if not mapping_file.exists():
+        mapping_file.touch()
+        with mapping_file.open("w") as f:
+            json.dump({}, f)
+
+    mapping = json.loads(mapping_file.read_text())
+    if unique_id in mapping:
+        hash_dir = hash_basedir / mapping[unique_id]
+    else:
+        new_id = len(mapping)
+        mapping[unique_id] = str(new_id)
+        with mapping_file.open("w") as f:
+            json.dump(mapping, f)
+        hash_dir = hash_basedir / str(new_id)
+
+    if not hash_dir.exists():
+        hash_dir.mkdir()
+    return hash_dir

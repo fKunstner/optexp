@@ -8,11 +8,11 @@ from pathlib import Path
 import pandas as pd
 
 from optexp import config
-from optexp.config import get_logger
+from optexp.config import Config, get_logger
 from optexp.experiment import Experiment
 from optexp.results.data_logger import DataLogger
 from optexp.results.rate_limited_logger import RateLimitedLogger
-from optexp.results.utils import flatten_dict, pprint_dict
+from optexp.results.utils import flatten_dict, get_hash_directory, pprint_dict
 
 
 class LocalDataLogger(DataLogger):
@@ -64,8 +64,8 @@ def load_local_results(experiment: Experiment) -> pd.DataFrame:
 
 
 def local_save_dir(exp: Experiment) -> Path:
-    return config.get_hash_directory(
-        config.get_experiment_directory(),
+    return get_hash_directory(
+        Config.get_experiment_directory(),
         exp.equivalent_hash(),
         exp.equivalent_definition(),
     )

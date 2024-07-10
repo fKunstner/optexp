@@ -5,11 +5,10 @@ from typing import Optional
 import pandas as pd
 import wandb
 
-import optexp.config
-from optexp.config import get_logger
+from optexp.config import Config, get_logger
 from optexp.experiment import Experiment
 from optexp.results.data_logger import DataLogger
-from optexp.results.utils import flatten_dict, numpyfy
+from optexp.results.utils import flatten_dict, get_hash_directory, numpyfy
 from optexp.results.wandb_api import WandbAPI, get_wandb_runs
 
 WANDB_CONFIG_FILENAME = "config.json"
@@ -34,14 +33,12 @@ class WandbDataLogger(DataLogger):
             experiment: The experiment to log.
         """
 
-        self.wandb_autosync = optexp.config.should_wandb_autosync()
-
-        if optexp.config.get_wandb_key() is None:
+        if Config.get_wandb_key() is None:
             raise ValueError("WandB API key not set.")
 
         self.run = wandb.init(
-            project=optexp.config.get_wandb_project(),
-            entity=optexp.config.get_wandb_entity(),
+            project=Config.get_wandb_project(),
+            entity=Config.get_wandb_entity(),
             config={
                 "short_equiv_hash": experiment.short_equivalent_hash(),
                 "equiv_hash": experiment.equivalent_hash(),
@@ -50,8 +47,8 @@ class WandbDataLogger(DataLogger):
                 "exp_config": experiment.loggable_dict(),
             },
             group=experiment.group,
-            mode=optexp.config.get_wandb_mode(),
-            dir=optexp.config.get_experiment_directory(),
+            mode=Config.wandb_mode,
+            dir=Config.get_experiment_directory(),
         )
 
         if self.run is None:
@@ -92,8 +89,8 @@ class WandbDataLogger(DataLogger):
         get_logger().info("Finishing Wandb run")
         wandb.finish(exit_code=exit_code)
 
-        if optexp.config.get_wandb_mode() == "offline":
-            if self.wandb_autosync:
+        if Config.wandb_mode == "offline":
+            if Config.wandb_autosync:
                 get_logger().info(f"Uploading wandb run in {self._run_directory()}")
                 get_logger().info("Sync with")
                 get_logger().info(f"    {self._sync_command()}")
@@ -121,7 +118,7 @@ def load_wandb_result(exp: Experiment) -> Optional[pd.DataFrame]:
     parquet_file = wandb_download_dir(exp) / WANDB_DATA_FILENAME
 
     if not parquet_file.is_file():
-        optexp.config.get_logger().warning(
+        get_logger().warning(
             f"No results found for experiment {exp.short_equivalent_hash()} "
             f"in wandb download folder. Full experiment: {exp}"
         )
@@ -130,8 +127,8 @@ def load_wandb_result(exp: Experiment) -> Optional[pd.DataFrame]:
 
 
 def wandb_download_dir(exp: Experiment) -> Path:
-    return optexp.config.get_hash_directory(
-        optexp.config.get_wandb_cache_directory(),
+    return get_hash_directory(
+        Config.get_wandb_cache_directory(),
         exp.equivalent_hash(),
         exp.equivalent_definition(),
     )

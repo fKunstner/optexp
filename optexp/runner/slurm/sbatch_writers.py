@@ -4,7 +4,7 @@ import textwrap
 from pathlib import Path
 from typing import List
 
-import optexp.config
+from optexp.config import Config
 from optexp.runner.slurm.slurm_config import SlurmConfig
 
 
@@ -15,15 +15,24 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
         slurm_config: Slurm configuration to use
         n_jobs: Number of jobs to run in the batch
     """
+    if Config.slurm_email is None:
+        email_str = ""
+    else:
+        email_str = textwrap.dedent(
+            f"""
+            #SBATCH --mail-user={Config.slurm_email}
+            #SBATCH --mail-type=ALL
+            """
+        )
+
     header = textwrap.dedent(
         f"""
         #!/bin/sh
-        #SBATCH --account={optexp.config.get_slurm_account()}
+        #SBATCH --account={Config.get_slurm_account()}
         #SBATCH --mem={slurm_config.mem_str}
         #SBATCH --time={slurm_config.time_str}
         #SBATCH --cpus-per-task={slurm_config.n_cpus}
-        #SBATCH --mail-user={optexp.config.get_slurm_email()}
-        #SBATCH --mail-type=ALL
+        {email_str}
         #SBATCH --array=0-{n_jobs - 1}
         {slurm_config.gpu_str}
 

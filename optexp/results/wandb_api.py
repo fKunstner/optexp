@@ -2,8 +2,7 @@ from typing import Callable, List
 
 import wandb
 
-import optexp.config
-from optexp.config import get_logger, get_wandb_timeout
+from optexp.config import Config, get_logger
 from optexp.experiment import Experiment
 
 
@@ -19,12 +18,12 @@ class WandbAPI:
     @staticmethod
     def get_handler():
         if WandbAPI.api_handler is None:
-            WandbAPI.api_handler = wandb.Api(timeout=get_wandb_timeout())
+            WandbAPI.api_handler = wandb.Api(timeout=Config.wandb_timeout)
         return WandbAPI.api_handler
 
     @staticmethod
     def get_path():
-        return f"{optexp.config.get_wandb_entity()}/{optexp.config.get_wandb_project()}"
+        return f"{Config.get_wandb_entity()}/{Config.get_wandb_project()}"
 
 
 def get_wandb_runs_by_hash(

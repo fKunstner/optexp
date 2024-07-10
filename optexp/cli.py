@@ -1,15 +1,13 @@
 import argparse
 import os
 import sys
-from contextlib import nullcontext
 from pathlib import Path
 from shutil import rmtree
 from typing import List, Optional
 
 from tqdm import tqdm
 
-import optexp.config
-from optexp.config import DisableWandb, get_logger
+from optexp.config import Config, get_logger, use_wandb_config
 from optexp.datasets.dataset import Downloadable
 from optexp.experiment import Experiment
 from optexp.results.wandb_data_logger import (
@@ -29,7 +27,17 @@ def run_handler(
     python_file: Optional[Path] = None,
 ):
 
-    with DisableWandb() if args.no_wandb else nullcontext():  # type: ignore
+    def resolve(should_enable: Optional[bool], should_disable) -> Optional[bool]:
+        if should_enable is None and should_disable is None:
+            return None
+        if should_enable and should_disable:
+            raise ValueError("Cannot both enable and disable a flag")
+        return should_enable
+
+    with use_wandb_config(
+        enabled=(resolve(args.wandb, args.no_wandb)),
+        autosync=(resolve(args.autosync, args.no_autosync)),
+    ):
         if args.test or args.single is not None:
             idx = 0 if args.test else int(args.single)
             validate_index(experiments, idx)
@@ -136,12 +144,31 @@ def cli(
         help="Force rerun of experiments that are already saved.",
         default=False,
     )
-    run_parser.add_argument(
-        "-n",
+    wandb_modifier = run_parser.add_mutually_exclusive_group()
+    wandb_modifier.add_argument(
         "--no-wandb",
         action="store_true",
-        help="Disables wandb login for this run",
-        default=False,
+        help="Disable wandb",
+        default=None,
+    )
+    wandb_modifier.add_argument(
+        "--wandb",
+        action="store_true",
+        help="Enable wandb",
+        default=None,
+    )
+    autosync_modifier = run_parser.add_mutually_exclusive_group()
+    autosync_modifier.add_argument(
+        "--no-autosync",
+        action="store_true",
+        help="Enable wandb",
+        default=None,
+    )
+    autosync_modifier.add_argument(
+        "--autosync",
+        action="store_true",
+        help="Enables autosync",
+        default=None,
     )
     run_parser.set_defaults(func=run_handler)
 
@@ -292,7 +319,7 @@ def clear_downloaded_data(experiments: List[Experiment]) -> None:
     if not all(exp.group == group for exp in experiments):
         raise ValueError("All experiments must have the same group.")
 
-    path = optexp.config.get_wandb_cache_directory() / group
+    path = Config.get_wandb_cache_directory() / group
     if not os.path.exists(path):
         return
 
