@@ -79,27 +79,33 @@ class Component:
             return not is_default
 
         def filter_hidden(attribute):
-            return True if show_hidden_repr else attribute.repr
+            if show_hidden_repr:
+                return True
+            return attribute.repr
+
+        def inner_repr(obj: dict | set | frozenset | list | tuple) -> str:
+            if isinstance(obj, dict):
+                return ", ".join(f"{k}: {get_repr(obj[k])}" for k in sorted(obj.keys()))
+            if isinstance(obj, (set, frozenset)):
+                return ", ".join(get_repr(v) for v in sorted(obj))
+            if isinstance(obj, (list, tuple)):
+                return ", ".join(get_repr(v) for v in obj)
+            raise ValueError(f"Unexpected type {type(obj)}")
 
         def get_repr(obj) -> str:
-            if isinstance(obj, dict):
-                sorted_keys = sorted(obj.keys())
-                inner_repr = ", ".join(f"{k}: {get_repr(obj[k])}" for k in sorted_keys)
-                return "{" + inner_repr + "}"
-            if isinstance(obj, (set, frozenset)):
-                inner_repr = ", ".join(get_repr(v) for v in sorted(obj))
-                return "{" + inner_repr + "}"
-            if isinstance(obj, (list, tuple)):
-                inner_repr = ", ".join(get_repr(v) for v in obj)
-                if isinstance(obj, tuple):
-                    return "(" + inner_repr + ")"
-                return "[" + inner_repr + "]"
-
+            if isinstance(obj, (dict, set, frozenset)):
+                return "{" + inner_repr(obj) + "}"
+            if isinstance(obj, tuple):
+                return "(" + inner_repr(obj) + ")"
+            if isinstance(obj, list):
+                return "[" + inner_repr(obj) + "]"
+            if isinstance(obj, float):
+                return f"{obj:.5g}"
             if isinstance(obj, Component):
                 return obj._repr(  #  pylint: disable=protected-access
                     show_defaults, show_hidden_repr
                 )
-            return obj
+            return str(obj)
 
         filtered_fields = (
             attribute.name
