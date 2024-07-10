@@ -7,12 +7,13 @@ from typing import List, Optional
 
 from tqdm import tqdm
 
-from optexp.config import Config, get_logger, use_wandb_config
+from optexp.config import get_logger, use_wandb_config
 from optexp.datasets.dataset import Downloadable
 from optexp.experiment import Experiment
 from optexp.results.wandb_data_logger import (
     download_experiments,
     remove_experiments_that_are_already_saved,
+    wandb_download_dir,
 )
 from optexp.runner.runner import run_experiment
 from optexp.runner.slurm.sbatch_writers import make_jobarray_file_contents
@@ -308,22 +309,12 @@ def download_data(experiments: List[Experiment]) -> None:
 
 def clear_downloaded_data(experiments: List[Experiment]) -> None:
     """Download results from experiments into wandb cache."""
-
     get_logger().info(f"Clearing cache for {len(experiments)} experiments")
-
-    if len(experiments) == 0:
-        return
-
-    group = experiments[0].group
-
-    if not all(exp.group == group for exp in experiments):
-        raise ValueError("All experiments must have the same group.")
-
-    path = Config.get_wandb_cache_directory() / group
-    if not os.path.exists(path):
-        return
-
-    rmtree(path)
+    for exp in tqdm(experiments):
+        path = wandb_download_dir(exp)
+        if not os.path.exists(path):
+            return
+        rmtree(path)
 
 
 def prepare(experiments):
