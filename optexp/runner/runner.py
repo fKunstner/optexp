@@ -25,16 +25,25 @@ MetricsDict = Dict[str, float | list[float]]
 
 class MiniBatchEvaluator:
 
-    def __init__(self, data):
+    def __init__(self, data, cache_forward: bool = True):
         self.data = data
+        self.should_cache_forward = cache_forward
+        self.output_cache = None
 
-        self.data_type: Literal["tensor", "graph"]
-        if isinstance(data, tuple) and len(data) == 2:
-            self.data_type = "tensor"
-        elif all(
+        is_tensor_data = (
+            isinstance(data, tuple)
+            and len(data) == 2
+            and all(isinstance(d, torch.Tensor) for d in data)
+        )
+        is_graph_data = all(
             hasattr(data, name)
             for name in ["x", "y", "edge_index", "train_mask", "val_mask"]
-        ):
+        )
+
+        self.data_type: Literal["tensor", "graph"]
+        if is_tensor_data:
+            self.data_type = "tensor"
+        elif is_graph_data:
             self.data_type = "graph"
         else:
             raise ValueError(
@@ -44,47 +53,63 @@ class MiniBatchEvaluator:
                 f"Got {type(data)}."
             )
 
-        self._model_out = None
+    def forward(self, model):
+
+        if self.should_cache_forward and self.output_cache is not None:
+            return self.output_cache
+
+        if self.data_type == "tensor":
+            model_out = model(self.data[0])
+        elif self.data_type == "graph":
+            model_out = model(self.data.x, self.data.edge_index)
+        else:
+            raise ValueError("Unknown data type.")
+
+        if self.should_cache_forward:
+            self.output_cache = model_out
+
+        return model_out
 
     def compute_metric(
         self, model, metric: Metric, trva: TrVa
     ) -> Tuple[Tensor, Tensor]:
 
         if self.data_type == "tensor":
-            x, y = self.data
-            self._model_out = model(x)
-            return metric(self._model_out, y)
+            return metric(self.forward(model), self.data[1])
 
         if self.data_type == "graph":
-            self._model_out = model(self.data.x, self.data.edge_index)
+            model_out = self.forward(model)
             if trva == "tr":
                 return metric(
-                    self._model_out[self.data.train_mask],
+                    model_out[self.data.train_mask],
                     self.data.y[self.data.train_mask],
                 )
             if trva == "va":
                 return metric(
-                    self._model_out[self.data.val_mask],
+                    model_out[self.data.val_mask],
                     self.data.y[self.data.val_mask],
                 )
-
             raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
         raise ValueError("Unknown data type.")
 
-    def compute_loss(self, lossfunc, model, trva: TrVa = "tr") -> Tuple[Tensor, Tensor]:
+    def compute_loss(
+        self,
+        lossfunc,
+        model,
+        trva: TrVa = "tr",
+    ) -> Tuple[Tensor, Tensor]:
         if self.data_type == "tensor":
-            x, y = self.data
-            return lossfunc(model(x), y)
+            return lossfunc(self.forward(model), self.data[1])
         if self.data_type == "graph":
-            self._model_out = model(self.data.x, self.data.edge_index)
+            model_out = self.forward(model)
             if trva == "tr":
                 return lossfunc(
-                    self._model_out[self.data.train_mask],
+                    model_out[self.data.train_mask],
                     self.data.y[self.data.train_mask],
                 )
             if trva == "va":
                 return lossfunc(
-                    self._model_out[self.data.val_mask],
+                    model_out[self.data.val_mask],
                     self.data.y[self.data.val_mask],
                 )
             raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
