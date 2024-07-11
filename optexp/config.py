@@ -17,6 +17,7 @@ NAME_WANDB_AUTOSYNC = "OPTEXP_WANDB_AUTOSYNC"
 NAME_WANDB_API_KEY = "WANDB_API_KEY"
 NAME_SLURM_EMAIL = "OPTEXP_SLURM_NOTIFICATION_EMAIL"
 NAME_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
+NAME_SLURM_INSTALL_SCRIPT = "OPTEXP_SLURM_LOCAL_INSTALL_SCRIPT"
 LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
@@ -101,12 +102,15 @@ class Config:
         accepted=["online", "offline", "disabled"],
         default="offline",
     )
-
     wandb_project: Optional[str] = get_env_var(
         NAME_WANDB_PROJECT,
         default=None,
     )
     device: Literal["cpu", "cuda"] = "cuda" if torch.cuda.is_available() else "cpu"
+    slurm_local_install_script: Optional[str] = get_env_var(
+        NAME_SLURM_INSTALL_SCRIPT,
+        default=None,
+    )
 
     @staticmethod
     def get_slurm_account() -> str:
@@ -115,6 +119,18 @@ class Config:
                 f"Slurm Account not set. Define the {NAME_SLURM_ACCOUNT} environment variable."
             )
         return Config.slurm_account
+
+    @staticmethod
+    def get_slurm_local_install_script_path() -> Path:
+        if Config.slurm_local_install_script is None:
+            raise ValueError(
+                f"Slurm Install Script not set. Define the {NAME_SLURM_INSTALL_SCRIPT} environment variable."
+            )
+        if not Path(Config.slurm_local_install_script).exists():
+            raise ValueError(
+                f"Slurm Install Script not found. File {Config.slurm_local_install_script} does not exist."
+            )
+        return Path(Config.slurm_local_install_script)
 
     @staticmethod
     def get_workspace_directory() -> Path:
