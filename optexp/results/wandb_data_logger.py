@@ -144,8 +144,9 @@ def download_experiment(exp: Experiment):
 
 
 def download_experiments(exps: list[Experiment]) -> None:
-    exp_to_runs = get_wandb_runs(exps)
-    for exp, runs in tqdm(exp_to_runs.items(), total=len(exp_to_runs)):
+    runs_for_exps = get_wandb_runs(exps)
+    for exp in tqdm(exps, total=len(exps)):
+        runs = runs_for_exps[exp]
         if is_downloaded(exp):
             continue
 
