@@ -56,7 +56,7 @@ def should_convert_column_to_numpy(series: pd.Series):
         def list_elem_is_float_or_str_nan(x):
             if isinstance(x, (float, int)):
                 return True
-            return isinstance(x, str) and x == "NaN"
+            return isinstance(x, str) and x in ["NaN", "inf"]
 
         return isinstance(entry, list) and all(
             list_elem_is_float_or_str_nan(elem) for elem in entry
@@ -74,7 +74,16 @@ def should_convert_column_to_numpy(series: pd.Series):
 
 
 def numpyfy(df: pd.DataFrame) -> pd.DataFrame:
-    df.replace("Infinity", np.inf, inplace=True)
+    with pd.option_context("future.no_silent_downcasting", True):
+        df = df.replace(
+            {
+                "Infinity": np.inf,
+                "inf": np.inf,
+                "NaN": np.nan,
+                "nan": np.nan,
+            },
+        ).infer_objects()
+
     for key in df.columns:
         if should_convert_column_to_numpy(df[key]):
             df[key] = df[key].apply(column_to_numpy)
