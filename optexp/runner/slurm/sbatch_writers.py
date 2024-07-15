@@ -20,11 +20,11 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
     else:
         email_lines = [
             f"#SBATCH --mail-user={Config.slurm_email}",
-            f"#SBATCH --mail-type=ALL",
+            "#SBATCH --mail-type=ALL",
         ]
 
     header_lines = [
-        f"#!/bin/sh",
+        "#!/bin/sh",
         f"#SBATCH --account={Config.get_slurm_account()}",
         f"#SBATCH --mem={slurm_config.mem_str}",
         f"#SBATCH --time={slurm_config.time_str}",
