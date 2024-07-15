@@ -284,7 +284,7 @@ def run_slurm(
 
     group = experiments[0].group
     tmp_filename = f"tmp_{group}.sh"
-    print("  Saving sbatch file in {tmp_filename}")
+    print(f"  Saving sbatch file in {tmp_filename}")
     with open(tmp_filename, "w+", encoding="utf-8") as file:
         file.writelines(contents)
 
