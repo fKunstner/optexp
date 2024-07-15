@@ -18,4 +18,5 @@ class Model(Component, ABC):
     def load_model(
         self, input_shape: torch.Size, output_shape: torch.Size
     ) -> torch.nn.Module:
+        """Returns a :class:`torch.nn.Module` for the specified model."""
         raise NotImplementedError()

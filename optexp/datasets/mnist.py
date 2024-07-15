@@ -8,10 +8,10 @@ from torch.utils.data import TensorDataset
 
 from optexp.config import Config
 from optexp.datasets.dataset import (
-    AvailableAsTensor,
     Dataset,
     Downloadable,
     HasClassCounts,
+    InMemory,
     TrVa,
 )
 from optexp.datasets.utils import make_dataloader
@@ -20,7 +20,7 @@ MEAN, STD = 0.1307, 0.3081
 
 
 @frozen
-class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
+class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
     """The `MNIST <http://yann.lecun.com/exdb/mnist/>`_ dataset, provided through
     `TorchVision <https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html>`_.
     """
@@ -84,9 +84,7 @@ class MNIST(Dataset, HasClassCounts, Downloadable, AvailableAsTensor):
     ) -> torch.utils.data.DataLoader:
         return make_dataloader(self._get_dataset(tr_va), b, num_workers)
 
-    def get_tensor_dataloader(
-        self, b: int, tr_va: TrVa, num_workers: int, to_device: Optional[Device] = None
+    def get_in_memory_dataloader(
+        self, b: int, tr_va: TrVa, num_workers: int, device: Optional[Device] = None
     ) -> torch.utils.data.DataLoader:
-        return make_dataloader(
-            self._get_tensor_dataset(tr_va, to_device), b, num_workers
-        )
+        return make_dataloader(self._get_tensor_dataset(tr_va, device), b, num_workers)
