@@ -31,6 +31,6 @@ experiments = [
     )
 ]
 
-SLURM_CONFIG = SlurmConfig(hours=10, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
+SLURM_CONFIG = SlurmConfig(hours=1, gb_ram=8, n_cpus=1, n_gpus=1, gpu=True)
 if __name__ == "__main__":
     cli(experiments, slurm_config=SLURM_CONFIG)
