@@ -16,29 +16,25 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
         n_jobs: Number of jobs to run in the batch
     """
     if Config.slurm_email is None:
-        email_str = ""
+        email_lines = []
     else:
-        email_str = textwrap.dedent(
-            f"""
-            #SBATCH --mail-user={Config.slurm_email}
-            #SBATCH --mail-type=ALL
-            """
-        )
+        email_lines = [
+            f"#SBATCH --mail-user={Config.slurm_email}",
+            f"#SBATCH --mail-type=ALL",
+        ]
 
-    header = textwrap.dedent(
-        f"""
-        #!/bin/sh
-        #SBATCH --account={Config.get_slurm_account()}
-        #SBATCH --mem={slurm_config.mem_str}
-        #SBATCH --time={slurm_config.time_str}
-        #SBATCH --cpus-per-task={slurm_config.n_cpus}
-        {email_str}
-        #SBATCH --array=0-{n_jobs - 1}
-        {slurm_config.gpu_str}
-
-        """
-    )
-    return header
+    header_lines = [
+        f"#!/bin/sh",
+        f"#SBATCH --account={Config.get_slurm_account()}",
+        f"#SBATCH --mem={slurm_config.mem_str}",
+        f"#SBATCH --time={slurm_config.time_str}",
+        f"#SBATCH --cpus-per-task={slurm_config.n_cpus}",
+        *email_lines,
+        f"#SBATCH --array=0-{n_jobs - 1}",
+        slurm_config.gpu_str,
+        "",
+    ]
+    return "\n".join(header_lines)
 
 
 def make_jobarray_content(
