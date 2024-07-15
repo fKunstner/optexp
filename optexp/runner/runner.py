@@ -31,7 +31,7 @@ class MiniBatchEvaluator:
         self.output_cache = None
 
         is_tensor_data = (
-            isinstance(data, tuple)
+            isinstance(data, (tuple, list))
             and len(data) == 2
             and all(isinstance(d, torch.Tensor) for d in data)
         )
@@ -41,6 +41,7 @@ class MiniBatchEvaluator:
         )
 
         self.data_type: Literal["tensor", "graph"]
+
         if is_tensor_data:
             self.data_type = "tensor"
         elif is_graph_data:
@@ -48,7 +49,7 @@ class MiniBatchEvaluator:
         else:
             raise ValueError(
                 "Unknown data type. "
-                "Expected tuple(Tensor, Tensor) for tensor data or "
+                "Expected tuple[Tensor, Tensor] or list[Tensor] for tensor data or "
                 "torch_geometric.data.Data for graph data."
                 f"Got {type(data)}."
             )
