@@ -3,6 +3,7 @@ export OPTEXP_WORKSPACE=~/scratch/optexp_workspace
 
 export OPTEXP_WANDB_ENABLED=true
 export OPTEXP_WANDB_MODE=offline
+export OPTEXP_WANDB_AUTOSYNC=true
 export OPTEXP_WANDB_PROJECT=testing
 export OPTEXP_WANDB_ENTITY=ml568
 
