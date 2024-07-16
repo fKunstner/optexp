@@ -44,6 +44,12 @@ def run_handler(
             validate_index(experiments, idx)
             experiments = [experiments[idx]]
 
+        if args.single is not None:
+            idx = int(args.single)
+            validate_index(experiments, idx)
+            run_locally([experiments[idx]], force_rerun=args.force_rerun)
+            return
+
         if args.local:
             run_locally(experiments, force_rerun=args.force_rerun)
             return
@@ -124,14 +130,14 @@ def cli(
         help="Run experiments on slurm.",
         default=False,
     )
-    run_modifier = run_parser.add_mutually_exclusive_group()
-    run_modifier.add_argument(
+    run_command.add_argument(
         "--single",
         action="store",
         type=int,
-        help="Run a single experiments, by index.",
+        help="Run a single experiment locally by index.",
         default=None,
     )
+    run_modifier = run_parser.add_mutually_exclusive_group()
     run_modifier.add_argument(
         "--test",
         action="store_true",
