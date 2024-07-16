@@ -39,16 +39,16 @@ def run_handler(
         enabled=(resolve(args.wandb, args.no_wandb)),
         autosync=(resolve(args.autosync, args.no_autosync)),
     ):
-        if args.test or args.single is not None:
-            idx = 0 if args.test else int(args.single)
-            validate_index(experiments, idx)
-            experiments = [experiments[idx]]
-
         if args.single is not None:
             idx = int(args.single)
             validate_index(experiments, idx)
             run_locally([experiments[idx]], force_rerun=args.force_rerun)
             return
+
+        if args.test:
+            idx = 0
+            validate_index(experiments, idx)
+            experiments = [experiments[idx]]
 
         if args.local:
             run_locally(experiments, force_rerun=args.force_rerun)
