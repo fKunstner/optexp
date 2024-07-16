@@ -79,7 +79,7 @@ def make_jobarray_file_contents(
     header = make_sbatch_header(slurm_config=slurm_config, n_jobs=sum(should_run))
 
     body = make_jobarray_content(
-        run_exp_by_idx_command=f"python {experiment_file} --single",
+        run_exp_by_idx_command=f"python {experiment_file} run --single",
         should_run=should_run,
     )
 
