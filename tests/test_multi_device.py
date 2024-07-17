@@ -43,6 +43,7 @@ def create_python_run_file(experiment):
         from optexp.metrics import Accuracy, CrossEntropy
         from optexp.models.linear import Linear
         from optexp.optim import SGD, DecayEverything
+        from optexp.pipes.pipe import TensorDataPipe
         
         experiment={experiment}
         result = run_experiment(experiment)

@@ -6,6 +6,7 @@ from optexp.component import Component
 from optexp.datasets.dataset import Dataset
 from optexp.metrics.metric import Metric
 from optexp.models.model import Model
+from optexp.pipes.pipe import DataPipe, TensorDataPipe
 
 
 def to_frozenset(iterable: Iterable[Metric]) -> frozenset[Metric]:
@@ -31,3 +32,4 @@ class Problem(Component):
     batch_size: int
     lossfunc: Metric
     metrics: Iterable[Metric] = field(converter=to_frozenset)
+    datapipe: DataPipe = TensorDataPipe()

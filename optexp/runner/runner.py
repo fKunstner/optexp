@@ -1,15 +1,13 @@
 import math
 import pprint
 import random
-from typing import Dict, Iterable, Literal, Tuple
+from typing import Dict, Tuple
 
 import lightning as ptl
 import numpy as np
 import torch
 import torch.nn
-from torch import Tensor
 from torch.profiler import ProfilerActivity, profile, record_function
-from torch.utils.data import DataLoader
 
 from optexp.datasets.dataset import TrVa
 from optexp.experiment import Experiment
@@ -21,100 +19,6 @@ from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
 
 MetricsDict = Dict[str, float | list[float]]
-
-
-class MiniBatchEvaluator:
-
-    def __init__(self, data, cache_forward: bool = True):
-        self.data = data
-        self.should_cache_forward = cache_forward
-        self.output_cache = None
-
-        is_tensor_data = (
-            isinstance(data, (tuple, list))
-            and len(data) == 2
-            and all(isinstance(d, torch.Tensor) for d in data)
-        )
-        is_graph_data = all(
-            hasattr(data, name)
-            for name in ["x", "y", "edge_index", "train_mask", "val_mask"]
-        )
-
-        self.data_type: Literal["tensor", "graph"]
-
-        if is_tensor_data:
-            self.data_type = "tensor"
-        elif is_graph_data:
-            self.data_type = "graph"
-        else:
-            raise ValueError(
-                "Unknown data type. "
-                "Expected tuple[Tensor, Tensor] or list[Tensor] for tensor data or "
-                "torch_geometric.data.Data for graph data."
-                f"Got {type(data)}."
-            )
-
-    def forward(self, model):
-
-        if self.should_cache_forward and self.output_cache is not None:
-            return self.output_cache
-
-        if self.data_type == "tensor":
-            model_out = model(self.data[0])
-        elif self.data_type == "graph":
-            model_out = model(self.data.x, self.data.edge_index)
-        else:
-            raise ValueError("Unknown data type.")
-
-        if self.should_cache_forward:
-            self.output_cache = model_out
-
-        return model_out
-
-    def compute_metric(
-        self, model, metric: Metric, trva: TrVa
-    ) -> Tuple[Tensor, Tensor]:
-
-        if self.data_type == "tensor":
-            return metric(self.forward(model), self.data[1])
-
-        if self.data_type == "graph":
-            model_out = self.forward(model)
-            if trva == "tr":
-                return metric(
-                    model_out[self.data.train_mask],
-                    self.data.y[self.data.train_mask],
-                )
-            if trva == "va":
-                return metric(
-                    model_out[self.data.val_mask],
-                    self.data.y[self.data.val_mask],
-                )
-            raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
-        raise ValueError("Unknown data type.")
-
-    def compute_loss(
-        self,
-        lossfunc,
-        model,
-        trva: TrVa = "tr",
-    ) -> Tuple[Tensor, Tensor]:
-        if self.data_type == "tensor":
-            return lossfunc(self.forward(model), self.data[1])
-        if self.data_type == "graph":
-            model_out = self.forward(model)
-            if trva == "tr":
-                return lossfunc(
-                    model_out[self.data.train_mask],
-                    self.data.y[self.data.train_mask],
-                )
-            if trva == "va":
-                return lossfunc(
-                    model_out[self.data.val_mask],
-                    self.data.y[self.data.val_mask],
-                )
-            raise ValueError(f"Unknown split {trva}. Expected 'tr' or 'va'.")
-        raise ValueError("Unknown data type.")
 
 
 def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentState:
@@ -272,18 +176,16 @@ def eval_loop(
     with record_function("eval(tr)"):
         reduced_metrics_tr = evaluate(
             fabric=fabric,
-            loader=exp_state.dataloaders.tr_va,
-            metrics=exp.problem.metrics,
-            model=exp_state.model,
+            exp=exp,
+            exp_state=exp_state,
             trva="tr",
         )
 
     with record_function("eval(va)"):
         reduced_metrics_va = evaluate(
             fabric=fabric,
-            loader=exp_state.dataloaders.va_va,
-            metrics=exp.problem.metrics,
-            model=exp_state.model,
+            exp=exp,
+            exp_state=exp_state,
             trva="va",
         )
 
@@ -299,11 +201,16 @@ def eval_loop(
 
 def evaluate(
     fabric: ptl.Fabric,
-    loader: DataLoader,
-    metrics: Iterable[Metric],
-    model: torch.nn.Module,
+    exp: Experiment,
+    exp_state: ExperimentState,
     trva: TrVa,
 ) -> Dict[Metric, float | list]:
+
+    loader = (
+        exp_state.dataloaders.tr_va if trva == "tr" else exp_state.dataloaders.va_va
+    )
+    metrics = exp.problem.metrics
+    model = exp_state.model
 
     running_metrics: Dict[Metric, SumAndCounter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
@@ -312,9 +219,16 @@ def evaluate(
 
     with EvalMode(model), torch.no_grad():
         for _, batch in enumerate(loader):
-            with_data = MiniBatchEvaluator(batch)
+
+            cached_forward = exp.problem.datapipe.forward(batch, model, trva=trva)
             for metric in metrics:
-                loss, weight = with_data.compute_metric(model, metric, trva)
+                loss, weight = exp.problem.datapipe.compute_metric(
+                    data=batch,
+                    model=model,
+                    metric=metric,
+                    trva=trva,
+                    cached_forward=cached_forward,
+                )
                 running_metrics[metric] += SumAndCounter(loss.detach(), weight.detach())
 
         def reduce(x: SumAndCounter):
@@ -340,9 +254,11 @@ def training_step(
         for t in range(exp_state.batch_size_info.accumulation_steps):
             is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
             with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
-                with_batch = MiniBatchEvaluator(exp_state.get_batch())
-                loss, weight = with_batch.compute_loss(
-                    exp.problem.lossfunc, exp_state.model
+                loss, weight = exp.problem.datapipe.compute_loss(
+                    data=exp_state.get_batch(),
+                    model=exp_state.model,
+                    lossfunc=exp.problem.lossfunc,
+                    trva="tr",
                 )
                 total_loss_and_count += SumAndCounter(loss.detach(), weight)
                 fabric.backward(loss)
