@@ -15,20 +15,21 @@ class DataPipe(Component, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def compute_loss(
+    def compute_loss(  # pylint: disable=too-many-arguments
         self, data, model, lossfunc, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         raise NotImplementedError()
 
     @abstractmethod
-    def compute_metric(
+    def compute_metric(  # pylint: disable=too-many-arguments
         self, data, model, metric: Metric, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         raise NotImplementedError()
 
 
 class TensorDataPipe(DataPipe):
-    def _check_data(self, data):
+    @staticmethod
+    def _check_data(data):
         is_tensor_data = (
             isinstance(data, (tuple, list))
             and len(data) == 2
@@ -61,7 +62,7 @@ class TensorDataPipe(DataPipe):
         )
         return metric(forward, data[1])
 
-    def compute_loss(
+    def compute_loss(  # pylint: disable=too-many-arguments
         self, data, model, lossfunc, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         forward = (
@@ -73,7 +74,8 @@ class TensorDataPipe(DataPipe):
 
 
 class GraphDataPipe(DataPipe):
-    def _check_data(self, data):
+    @staticmethod
+    def _check_data(data):
         is_graph_data = all(
             hasattr(data, name)
             for name in ["x", "y", "edge_index", "train_mask", "val_mask"]
@@ -90,7 +92,7 @@ class GraphDataPipe(DataPipe):
         self._check_data(data)
         return model(data.x, data.edge_index)
 
-    def compute_metric(
+    def compute_metric(  # pylint: disable=too-many-arguments
         self, data, model, metric: Metric, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         model_out = (
@@ -101,7 +103,7 @@ class GraphDataPipe(DataPipe):
         mask = data.train_mask if trva == "tr" else data.val_mask
         return metric(model_out[mask], data.y[mask])
 
-    def compute_loss(
+    def compute_loss(  # pylint: disable=too-many-arguments
         self, data, model, lossfunc, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         model_out = (
