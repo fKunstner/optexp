@@ -152,18 +152,18 @@ def download_experiments(exps: list[Experiment]) -> None:
 
         if len(runs) == 0:
             raise ValueError(
-                f"No finished runs found for experiment {exp.short_equivalent_hash()}"
+                f"No finished runs found for experiment {exp.short_equivalent_hash()}, "
                 f"Has the experiment been uploaded? (full experiment: {exp})."
             )
         if len(runs) > 1:
             raise ValueError(
-                f"Multiple finished runs found for experiment {exp.short_equivalent_hash()}."
-                f"Only one run is expected. Check the runs at "
-                + str(
-                    f"https://wandb.ai/{WandbAPI.get_path()}/runs/{run.id}"
+                f"Multiple finished runs found for experiment {exp.short_equivalent_hash()}. "
+                f"Only one run is expected. Check the runs at \n"
+                + "\n".join(
+                    f"    https://wandb.ai/{WandbAPI.get_path()}/runs/{run.id}"
                     for run in runs
                 )
-                + f"(full experiment: {exp})."
+                + f"\nfull experiment: {exp}"
             )
 
         download_dir = wandb_download_dir(exp)
