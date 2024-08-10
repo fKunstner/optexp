@@ -40,9 +40,6 @@ class BPETokenizer(Tokenizer):
             tokenized_lines.append(
                 torch.tensor(tokenizer.encode_as_ids(line), dtype=torch.long)
             )
-        import pdb
-
-        # pdb.set_trace()
         return torch.cat(tokenized_lines)
 
 

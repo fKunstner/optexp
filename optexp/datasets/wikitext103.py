@@ -21,6 +21,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
     sequence_length: int = 1024
     vocab_size: int = 50257
     tokenizer: Tokenizer = BPETokenizer()
+    directory: Path = Config.get_dataset_directory() / "WikiText103"
 
     def get_dataloader(self, b: int, tr_va: TrVa, num_workers: int) -> DataLoader:
         dataset = self.get_dataset(tr_va)
@@ -95,9 +96,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         if self.is_tokenized(tr_va):
             tokens = torch.load(
                 open(
-                    Config.get_dataset_directory()
-                    / "WikiText103"
-                    / f"wikitext103_{tr_va}_tokenized.pt",
+                    self.directory / f"wikitext103_{tr_va}_tokenized.pt",
                     "rb",
                 )
             )
@@ -105,39 +104,29 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         raw_data = "wiki.train.tokens" if tr_va == "tr" else "wiki.valid.tokens"
         if not self.has_tokenizer():
             self.tokenizer.build_tokenizer(
-                Config.get_dataset_directory()
-                / "WikiText103"
-                / f"wikitext103_v={vocab_size}",
-                Config.get_dataset_directory() / "WikiText103" / "wiki.train.tokens",
+                self.directory / f"wikitext103_v={vocab_size}",
+                self.directory / "wiki.train.tokens",
                 vocab_size,
             )
         tokens = self.tokenizer.tokenize_and_numify(
-            Config.get_dataset_directory()
-            / "WikiText103"
-            / f"wikitext103_v={vocab_size}.model",
-            Config.get_dataset_directory() / "WikiText103" / raw_data,
+            self.directory / f"wikitext103_v={vocab_size}.model",
+            self.directory / raw_data,
         )
         torch.save(
             tokens,
             open(
-                Config.get_dataset_directory()
-                / "WikiText103"
-                / f"wikitext103_{tr_va}_tokenized.pt",
+                self.directory / f"wikitext103_{tr_va}_tokenized.pt",
                 "wb",
             ),
         )
         return tokens
 
     def is_tokenized(self, tr_va: TrVa):
-        return (
-            Config.get_dataset_directory()
-            / "WikiText103"
-            / f"wikitext103_{tr_va}_tokenized.pt"
-        ).exists()
+        return (self.directory / f"wikitext103_{tr_va}_tokenized.pt").exists()
 
     def has_tokenizer(self):
         return all(
-            (Config.get_dataset_directory() / "WikiText103" / file).exists()
+            (self.directory / file).exists()
             for file in [
                 f"wikitext103_v={self.vocab_size}.model",
                 f"wikitext103_v={self.vocab_size}.vocab",
@@ -146,7 +135,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
 
     def is_downloaded(self):
         return all(
-            (Config.get_dataset_directory() / "WikiText103" / file).exists()
+            (self.directory / file).exists()
             for file in [
                 "wiki.train.tokens",
                 "wiki.valid.tokens",
@@ -155,8 +144,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         )
 
     def download(self):
-        dataset_dir = Config.get_dataset_directory() / Path("WikiText103")
-        os.makedirs(dataset_dir, exist_ok=True)
+        os.makedirs(self.directory, exist_ok=True)
         base_url = "https://huggingface.co/datasets/Salesforce/wikitext/resolve/main/wikitext-103-v1"
         files = [
             "validation-00000-of-00001.parquet",
@@ -165,7 +153,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
             "train-00001-of-00002.parquet",
         ]
         for file in files:
-            filepath = dataset_dir / Path(file)
+            filepath = self.directory / Path(file)
             with requests.get(f"{base_url}/{file}", stream=True) as r:
                 with open(filepath, "wb") as f:
                     shutil.copyfileobj(r.raw, f)
@@ -177,7 +165,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
             if file.startswith("test"):
                 split = "test"
             with open(
-                dataset_dir / Path(f"wiki.{split}.tokens"),
+                self.directory / Path(f"wiki.{split}.tokens"),
                 "a",
             ) as f:
                 f.write("".join(data["text"]))
