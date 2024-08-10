@@ -80,6 +80,7 @@ def run(exp: Experiment) -> ExperimentState:
 
     with record_function("first evaluation"):
         loginfo_on_r0(fabric, "Initial evaluation...")
+        data_logger.log(current_time(exp_state))
         data_logger.log(regularization(exp, exp_state))
         data_logger.log(eval_loop(fabric, exp, exp_state))
         data_logger.commit()
