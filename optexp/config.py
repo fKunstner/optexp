@@ -157,6 +157,10 @@ class Config:
         return Config.get_workspace_directory() / "datasets"
 
     @staticmethod
+    def get_plots_directory() -> Path:
+        return Config.get_workspace_directory() / "plots"
+
+    @staticmethod
     def get_tokenizers_directory() -> Path:
         return Config.get_workspace_directory() / "tokenizers"
 
