@@ -11,6 +11,7 @@ class SlurmConfig:
     n_cpus: int = 1
     gpu: Optional[bool | GPU] = False
     n_gpus: Optional[int] = 1
+    jobs_per_node: Optional[int] = 1
 
     @property
     def time_str(self) -> str:

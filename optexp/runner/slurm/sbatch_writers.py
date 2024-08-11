@@ -1,5 +1,6 @@
 """Module to integrate with Slurm."""
 
+import math
 import textwrap
 from pathlib import Path
 from typing import List
@@ -38,8 +39,7 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
 
 
 def make_jobarray_content(
-    run_exp_by_idx_command: str,
-    should_run: List[bool],
+    run_exp_by_idx_command: str, should_run: List[bool], jobs_per_node: int
 ):
     """Creates the content of a jobarray sbatch file for Slurm.
 
@@ -54,17 +54,22 @@ def make_jobarray_content(
             bash_script_idx_to_exp_script_idx.append(i)
 
     commands_for_each_experiment = []
-    for bash_script_idx, exp_script_idx in enumerate(bash_script_idx_to_exp_script_idx):
-        commands_for_each_experiment.append(
-            textwrap.dedent(
-                f"""
-                if [ $SLURM_ARRAY_TASK_ID -eq {bash_script_idx} ]
-                then
-                    {run_exp_by_idx_command} {exp_script_idx}
-                fi
-                """
-            )
-        )
+
+    # for bash_script_idx, exp_script_idx in enumerate(bash_script_idx_to_exp_script_idx):
+    n_nodes_required = math.ceil(len(bash_script_idx_to_exp_script_idx) / jobs_per_node)
+    for bash_script_idx in range(n_nodes_required):
+        for _ in range(jobs_per_node):
+            if len(bash_script_idx_to_exp_script_idx) > 0:
+                commands_for_each_experiment.append(
+                    textwrap.dedent(
+                        f"""
+                        if [ $SLURM_ARRAY_TASK_ID -eq {bash_script_idx} ]
+                        then
+                            {run_exp_by_idx_command} {bash_script_idx_to_exp_script_idx.pop(0)}
+                        fi
+                        """
+                    )
+                )
 
     return "".join(commands_for_each_experiment)
 
@@ -81,6 +86,7 @@ def make_jobarray_file_contents(
     body = make_jobarray_content(
         run_exp_by_idx_command=f"python {experiment_file} run --single",
         should_run=should_run,
+        jobs_per_node=slurm_config.jobs_per_node,
     )
 
     footer = textwrap.dedent(
