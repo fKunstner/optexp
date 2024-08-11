@@ -1,5 +1,5 @@
 import warnings
-from typing import Dict, Iterable, List, Literal, Tuple
+from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
 import attrs
 import numpy as np
