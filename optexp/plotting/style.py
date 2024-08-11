@@ -1,4 +1,5 @@
 _GOLDEN_RATIO = (1 + 5.0 ** (1 / 2)) / 2.0
+_INVERSE_GOLDEN_RATIO = _GOLDEN_RATIO - 1
 
 
 def matplotlib_config(
@@ -7,7 +8,7 @@ def matplotlib_config(
     nrows=1,
     ncols=4,
     family="sans-serif",
-    height_to_width_ratio=_GOLDEN_RATIO,
+    height_to_width_ratio=_INVERSE_GOLDEN_RATIO,
 ):
     return {
         **font_config(family),
@@ -81,7 +82,7 @@ def font_config(family):
 
 
 def update_style(
-    plt, rel_width=1.0, nrows=1, ncols=4, height_to_width_ratio=_GOLDEN_RATIO
+    plt, rel_width=1.0, nrows=1, ncols=4, height_to_width_ratio=_INVERSE_GOLDEN_RATIO
 ):
     plt.rcParams.update(
         matplotlib_config(
@@ -94,7 +95,7 @@ def update_style(
 
 
 def make_axes(
-    plt, rel_width=1.0, nrows=1, ncols=1, height_to_width_ratio=_GOLDEN_RATIO
+    plt, rel_width=1.0, nrows=1, ncols=1, height_to_width_ratio=_INVERSE_GOLDEN_RATIO
 ):
     update_style(
         plt,
