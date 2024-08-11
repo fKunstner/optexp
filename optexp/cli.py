@@ -160,6 +160,8 @@ def make_run_parser(subparsers):
                 )
                 return
 
+            run_parser.print_help()
+
     run_parser.set_defaults(func=run_handler)
 
 
@@ -209,7 +211,8 @@ def make_plot_parser(subparsers):
                 folder_name=folder_name,
                 hyperparameter=args.grid_hyperparam,
             )
-        raise NotImplementedError
+            return
+        plot_parser.print_help()
 
     plot_parser.set_defaults(func=plot_handler)
 
