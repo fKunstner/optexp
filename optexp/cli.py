@@ -10,6 +10,7 @@ from tqdm import tqdm
 from optexp.config import get_logger, use_wandb_config
 from optexp.datasets.dataset import Downloadable
 from optexp.experiment import Experiment
+from optexp.plotting.plot_hyperparameter_grid import plot_optim_hyperparam_grids
 from optexp.results.wandb_data_logger import (
     download_experiments,
     remove_experiments_that_are_already_saved,
@@ -19,83 +20,6 @@ from optexp.runner.runner import run_experiment
 from optexp.runner.slurm.sbatch_writers import make_jobarray_file_contents
 from optexp.runner.slurm.slurm_config import SlurmConfig
 from optexp.utils import remove_duplicate_exps
-
-
-def run_handler(
-    args,
-    experiments: List[Experiment],
-    slurm_config: Optional[SlurmConfig] = None,
-    python_file: Optional[Path] = None,
-):
-
-    def resolve(should_enable: Optional[bool], should_disable) -> Optional[bool]:
-        if should_enable is None and should_disable is None:
-            return None
-        if should_enable and should_disable:
-            raise ValueError("Cannot both enable and disable a flag")
-        return should_enable
-
-    with use_wandb_config(
-        enabled=(resolve(args.wandb, args.no_wandb)),
-        autosync=(resolve(args.autosync, args.no_autosync)),
-    ):
-        if args.single is not None:
-            idx = int(args.single)
-            validate_index(experiments, idx)
-            run_locally([experiments[idx]], force_rerun=args.force_rerun)
-            return
-
-        if args.test:
-            idx = 0
-            validate_index(experiments, idx)
-            experiments = [experiments[idx]]
-
-        if args.local:
-            run_locally(experiments, force_rerun=args.force_rerun)
-            return
-
-        if args.slurm:
-            slurm_config = validate_slurm_config(slurm_config)
-            run_slurm(
-                experiments,
-                slurm_config,
-                force_rerun=args.force_rerun,
-                python_file=python_file,
-            )
-            return
-
-
-def download_handler(
-    args,
-    experiments: List[Experiment],
-    slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-    python_file: Optional[Path] = None,  # pylint: disable=unused-argument
-):
-    if args.clear:
-        clear_downloaded_data(experiments)
-        return 0
-
-    download_data(experiments)
-    return 0
-
-
-def check_handler(
-    args,  # pylint: disable=unused-argument
-    experiments: List[Experiment],
-    slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-    python_file: Optional[Path] = None,  # pylint: disable=unused-argument
-):
-    report(experiments, None)
-    return 0
-
-
-def prepare_handler(
-    args,  # pylint: disable=unused-argument
-    experiments: List[Experiment],
-    slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-    python_file: Optional[Path] = None,  # pylint: disable=unused-argument
-):
-    prepare(experiments)
 
 
 def cli(
@@ -109,13 +33,28 @@ def cli(
         experiments: List of experiments to run
         slurm_config: Configuration to use for running experiments on Slurm
         python_file: Path to the python file to run the experiments from.
-            Defaults to the file that called this function, sys.argv[0]
+            Defaults to the file that called this function, sys.argv[0].
     """
     experiments = remove_duplicate_exps(experiments)
 
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(required=True)
+    make_run_parser(subparsers)
+    make_check_parser(subparsers)
+    make_download_parser(subparsers)
+    make_prepare_parser(subparsers)
+    make_plot_parser(subparsers)
 
+    args = parser.parse_args()
+    args.func(
+        args,
+        experiments=experiments,
+        slurm_config=slurm_config,
+        python_file=python_file,
+    )
+
+
+def make_run_parser(subparsers):
     run_parser = subparsers.add_parser("run", help="Run the experiments")
     run_command = run_parser.add_mutually_exclusive_group(required=True)
     run_command.add_argument(
@@ -177,13 +116,124 @@ def cli(
         help="Enables autosync",
         default=None,
     )
+
+    def run_handler(
+        args,
+        experiments: List[Experiment],
+        slurm_config: Optional[SlurmConfig] = None,
+        python_file: Optional[Path] = None,
+    ):
+
+        def resolve(should_enable: Optional[bool], should_disable) -> Optional[bool]:
+            if should_enable is None and should_disable is None:
+                return None
+            if should_enable and should_disable:
+                raise ValueError("Cannot both enable and disable a flag")
+            return should_enable
+
+        with use_wandb_config(
+            enabled=(resolve(args.wandb, args.no_wandb)),
+            autosync=(resolve(args.autosync, args.no_autosync)),
+        ):
+            if args.single is not None:
+                idx = int(args.single)
+                validate_index(experiments, idx)
+                run_locally([experiments[idx]], force_rerun=args.force_rerun)
+                return
+
+            if args.test:
+                idx = 0
+                validate_index(experiments, idx)
+                experiments = [experiments[idx]]
+
+            if args.local:
+                run_locally(experiments, force_rerun=args.force_rerun)
+                return
+
+            if args.slurm:
+                slurm_config = validate_slurm_config(slurm_config)
+                run_slurm(
+                    experiments,
+                    slurm_config,
+                    force_rerun=args.force_rerun,
+                    python_file=python_file,
+                )
+                return
+
+            run_parser.print_help()
+
     run_parser.set_defaults(func=run_handler)
 
-    check_parser = subparsers.add_parser(
-        "check", help="Check the status of the experiments"
-    )
-    check_parser.set_defaults(func=check_handler)
 
+def make_plot_parser(subparsers):
+    plot_parser = subparsers.add_parser("plot", help="Make plots")
+    plot_parser.add_argument(
+        "--grid",
+        action="store_true",
+        help="Plots the optimizer hyperparameter grid.",
+        default=False,
+    )
+    plot_parser.add_argument(
+        "--grid_hyperparam",
+        type=str,
+        help="Name of the optimizer hyperparameter to grid over. Defaults to 'lr'.",
+        default="lr",
+    )
+    plot_parser.add_argument(
+        "--step",
+        type=int,
+        help="Maximum number of steps used for plotting. Useful to truncate long runs.",
+        default=None,
+    )
+    plot_parser.add_argument(
+        "--folder",
+        type=str,
+        help="Folder to save the plots in. Defaults to the group name.",
+        default=None,
+    )
+
+    def plot_handler(
+        args,
+        experiments: List[Experiment],
+        slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+    ):
+        if args.grid:
+            folder_name = args.folder
+            if folder_name is None:
+                group0 = experiments[0].group
+                if not all(exp.group == group0 for exp in experiments):
+                    raise ValueError("All experiments must have the same group name")
+                folder_name = group0
+
+            plot_optim_hyperparam_grids(
+                experiments,
+                folder_name=folder_name,
+                hyperparameter=args.grid_hyperparam,
+            )
+            return
+        plot_parser.print_help()
+
+    plot_parser.set_defaults(func=plot_handler)
+
+
+def make_prepare_parser(subparsers):
+    prepare_parser = subparsers.add_parser(
+        "prepare", help="Download results from the experiments"
+    )
+
+    def prepare_handler(
+        args,  # pylint: disable=unused-argument
+        experiments: List[Experiment],
+        slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+    ):
+        prepare(experiments)
+
+    prepare_parser.set_defaults(func=prepare_handler)
+
+
+def make_download_parser(subparsers):
     download_parser = subparsers.add_parser(
         "download", help="Download results from the experiments"
     )
@@ -193,20 +243,39 @@ def cli(
         help="Clear cache of downloaded results from wandb",
         default=False,
     )
-    download_parser.set_defaults(func=download_handler)
 
-    prepare_parser = subparsers.add_parser(
-        "prepare", help="Download results from the experiments"
-    )
-    prepare_parser.set_defaults(func=prepare_handler)
-
-    args = parser.parse_args()
-    args.func(
+    def download_handler(
         args,
-        experiments=experiments,
-        slurm_config=slurm_config,
-        python_file=python_file,
+        experiments: List[Experiment],
+        slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+    ):
+        if args.clear:
+            clear_downloaded_data(experiments)
+            return 0
+
+        download_data(experiments)
+        return 0
+
+    download_parser.set_defaults(func=download_handler)
+    return download_parser
+
+
+def make_check_parser(subparsers):
+    check_parser = subparsers.add_parser(
+        "check", help="Check the status of the experiments"
     )
+
+    def check_handler(
+        args,  # pylint: disable=unused-argument
+        experiments: List[Experiment],
+        slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
+        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
+    ):
+        report(experiments, None)
+        return 0
+
+    check_parser.set_defaults(func=check_handler)
 
 
 def validate_index(experiments, idx):

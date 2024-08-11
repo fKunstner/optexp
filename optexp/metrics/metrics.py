@@ -1,9 +1,16 @@
 from typing import Tuple
 
 import torch
-from torch.nn.functional import cross_entropy
+from torch.nn.functional import cross_entropy, mse_loss
 
 from optexp.metrics.metric import LossLikeMetric, Metric
+
+
+class MSE(Metric):
+    def __call__(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        return mse_loss(inputs, labels, reduction="sum"), torch.tensor(labels.numel())
 
 
 class CrossEntropy(Metric):
