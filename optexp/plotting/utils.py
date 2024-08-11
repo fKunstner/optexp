@@ -6,10 +6,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from pandas import DataFrame
 
-from optexp import Problem
 from optexp.experiment import Experiment
-from optexp.metrics import Metric
+from optexp.metrics.metrics import Metric
 from optexp.optim import Optimizer
+from optexp.problem import Problem
 
 
 def ensure_all_exps_have_same_problem(exps):
