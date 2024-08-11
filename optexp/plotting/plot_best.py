@@ -8,14 +8,14 @@ from pandas import DataFrame
 
 from optexp.config import Config
 from optexp.experiment import Experiment
+from optexp.optim import Optimizer
 from optexp.plotting.colors import Colors
 from optexp.plotting.style import make_axes
 from optexp.plotting.utils import (
     ensure_all_exps_have_hyperparameter,
     ensure_all_exps_have_same_problem,
-    get_hp_and_metrics_at_end_per_hp,
-    group_experiments_by_optimizers,
-    sanitize,
+    get_best_exps_per_group,
+    hack_steps_for_logscale,
     save_and_close,
     scale_str,
     set_limits,
@@ -26,11 +26,12 @@ from optexp.plotting.utils import (
 from optexp.results.wandb_data_logger import load_wandb_results
 
 
-def plot_optim_hyperparam_grids(
+def plot_metrics_over_time_for_best(
     exps: List[Experiment],
     folder_name: str,
     hp: str = "lr",
     step: Optional[int] = None,
+    metric_key: Optional[str] = None,
 ):
     """
     Args:
@@ -38,59 +39,80 @@ def plot_optim_hyperparam_grids(
         folder_name: Folder under which the plots will be saved.
         hp: Optimizer hyperparameter to optimize over. Defaults to "lr"
         step: Number of steps to plot up to. If None, plot all steps.
+        metric_key: Metric to use to decide which hyperparameter is best,
+            given in the format "[tr|va]_LossName". Defaults to the training loss.
     """
+
     ensure_all_exps_have_hyperparameter(exps, hp)
     problem = ensure_all_exps_have_same_problem(exps)
 
     exps_data = load_wandb_results(exps)
     exps_data = truncate_runs(exps_data, step)
 
-    folder = Config.get_plots_directory() / folder_name / "grid"
+    best_exps_per_group = get_best_exps_per_group(exps_data, hp, problem, metric_key)
+
+    folder = Config.get_plots_directory() / folder_name / "best"
     os.makedirs(folder, exist_ok=True)
 
     for metric, tr_va, logx, logy in itertools.product(
         problem.metrics, ["tr", "va"], [True, False], [True, False]
     ):
         key = f"{tr_va}_{metric.__class__.__name__}"
-        fig = make_step_size_grid_for_metric(exps_data, hp, key, (logx, logy))
+        fig = make_best_plot_for_metric(
+            best_exps_per_group, exps_data, key, (logx, logy)
+        )
         save_and_close(fig, folder, [key, f"{scale_str(logx)}x", f"{scale_str(logy)}y"])
 
 
-def make_step_size_grid_for_metric(
+def make_best_plot_for_metric(
+    best_exps_per_group: Dict[Optimizer, List[Experiment]],
     exps_data: Dict[Experiment, DataFrame],
-    hp: str,
     metric_key: str,
     log_x_y: Tuple[bool, bool] = (False, False),
 ) -> plt.Figure:
-
     fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
-    optim_groups = group_experiments_by_optimizers(exps_data.keys(), hp)
-    for i, (optim, exps) in enumerate(optim_groups.items()):
-        group_exps_data = {exp: exps_data[exp] for exp in exps}
-        hps, metrics = get_hp_and_metrics_at_end_per_hp(group_exps_data, hp, metric_key)
+    for i, (_, exps) in enumerate(best_exps_per_group.items()):
+        steps = np.array(list(exps_data[exps[0]]["step"]), dtype=float)
+        steps = hack_steps_for_logscale(steps)
+        values = np.stack([exps_data[exp][metric_key].dropna() for exp in exps])
+
         ax.fill_between(
-            hps,
-            [np.nanmin(metrics[hp]) for hp in hps],
-            [np.nanmax(metrics[hp]) for hp in hps],
+            steps,
+            np.min(values, axis=0),
+            np.max(values, axis=0),
             color=Colors.Vibrant.as_list[i],
             alpha=0.2,
         )
         ax.plot(
-            hps,
-            [np.median(sanitize(metrics[hp])) for hp in hps],
-            label=optim.equivalent_definition(),
+            steps,
+            np.median(values, axis=0),
             color=Colors.Vibrant.as_list[i],
-            marker="o",
+            label=exps[0].optim.equivalent_definition(),
         )
 
-    set_ylimits_to_fit_data_range(ax, exps_data, metric_key, log_x_y[1])
-    hp_values = [getattr(exp.optim, hp) for exp in exps_data.keys()]
-    set_limits(ax, x_y="x", limits=(min(hp_values), max(hp_values)), log=log_x_y[0])
+    def flatten(list_of_lists):
+        return [item for sublist in list_of_lists for item in sublist]
+
+    reduced_exp_data = {
+        exp: data
+        for exp, data in exps_data.items()
+        if exp in flatten(best_exps_per_group.values())
+    }
+
+    set_ylimits_to_fit_data_range(ax, reduced_exp_data, metric_key, log_x_y[1])
+    step_values = set(sum([list(data["step"]) for exp, data in exps_data.items()], []))
+    set_limits(
+        ax,
+        x_y="x",
+        limits=(min(step_values), max(step_values)),
+        log=log_x_y[0],
+        factor=1.0,
+    )
     set_scale(ax, log_x_y)
 
     ax.set_title(f"Grid for {metric_key}")
-    ax.set_xlabel(hp)
+    ax.set_xlabel("Steps")
     ax.set_ylabel(metric_key)
     ax.legend()
 
