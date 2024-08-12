@@ -80,8 +80,8 @@ def make_jobarray_file_contents(
     slurm_config: SlurmConfig,
 ):
     """Creates a jobarray sbatch file for Slurm."""
-
-    header = make_sbatch_header(slurm_config=slurm_config, n_jobs=sum(should_run))
+    n_jobs = math.ceil(sum(should_run) / slurm_config.jobs_per_node)
+    header = make_sbatch_header(slurm_config=slurm_config, n_jobs=n_jobs)
 
     body = make_jobarray_content(
         run_exp_by_idx_command=f"python {experiment_file} run --single",
