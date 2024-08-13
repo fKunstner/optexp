@@ -81,6 +81,9 @@ class CrossEntropyPerClass(LossLikeMetric):
         losses = cross_entropy(inputs, labels, reduction="none")
         return _groupby_sum(losses, labels, num_classes)
 
+    def smaller_better(self) -> bool:
+        return True
+
 
 class AccuracyPerClass(LossLikeMetric):
     """Accuracy per class.
@@ -93,3 +96,6 @@ class AccuracyPerClass(LossLikeMetric):
         classes = torch.argmax(inputs, dim=1)
         accuracy_per_sample = (classes == labels).float()
         return _groupby_sum(accuracy_per_sample, labels, num_classes)
+
+    def smaller_better(self) -> bool:
+        return True
