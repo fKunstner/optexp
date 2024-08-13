@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+from typing import List, Tuple, Any
 
 import pyarrow.parquet
 import requests
@@ -12,21 +13,23 @@ from optexp.config import Config
 from optexp.datasets import Dataset
 from optexp.datasets.dataset import TrVa, HasClassCounts, Downloadable
 from optexp.datasets.tokenizers import Tokenizer, BPETokenizer
+from optexp.datasets.utils import make_list_dataset
+
+DATA_PATH: Path = Config.get_dataset_directory() / "WikiText103"
 
 
-#  TODO <unk> considered harmful
 @frozen
 class WikiText103(Dataset, HasClassCounts, Downloadable):
 
     sequence_length: int = 1024
     vocab_size: int = 50257
+    raw: bool = True
     tokenizer: Tokenizer = BPETokenizer()
-    directory: Path = Config.get_dataset_directory() / "WikiText103"
 
     def get_dataloader(self, b: int, tr_va: TrVa, num_workers: int) -> DataLoader:
         dataset = self.get_dataset(tr_va)
 
-        def collate_fn(batch):
+        def collate_fn(batch: List[Tuple[Any, Any]]) -> Tuple[Any, Any]:
             src_batch, tgt_batch = [], []
             for sample in batch:
                 src_batch.append(sample[0])
@@ -79,73 +82,59 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
             sequences.append(sequence)
             targets.append(target)
 
-        class TorchDataset(torch.utils.data.Dataset):
-            def __init__(self):
-                self.sequences = sequences
-                self.targets = targets
+        return make_list_dataset(sequences, targets)
 
-            def __len__(self):
-                return len(self.sequences)
-
-            def __getitem__(self, idx: int):
-                return self.sequences[idx], self.targets[idx]
-
-        return TorchDataset()
-
-    def get_tokens(self, tr_va: TrVa, vocab_size: int):
+    def get_tokens(self, tr_va: TrVa, vocab_size: int) -> torch.Tensor:
+        raw_str = "-raw" if self.raw else ""
         if self.is_tokenized(tr_va):
-            tokens = torch.load(
-                open(
-                    self.directory / f"wikitext103_{tr_va}_tokenized.pt",
-                    "rb",
-                )
-            )
-            return tokens
-        raw_data = "wiki.train.tokens" if tr_va == "tr" else "wiki.valid.tokens"
+            return torch.load(DATA_PATH / f"wikitext103{raw_str}_{tr_va}_tokenized.pt")
+        text = (
+            f"wiki{raw_str}.train.tokens"
+            if tr_va == "tr"
+            else f"wiki{raw_str}.valid.tokens"
+        )
         if not self.has_tokenizer():
             self.tokenizer.build_tokenizer(
-                self.directory / f"wikitext103_v={vocab_size}",
-                self.directory / "wiki.train.tokens",
+                DATA_PATH / f"wikitext103{raw_str}_v={vocab_size}",
+                DATA_PATH / f"wiki{raw_str}.train.tokens",
                 vocab_size,
             )
         tokens = self.tokenizer.tokenize_and_numify(
-            self.directory / f"wikitext103_v={vocab_size}.model",
-            self.directory / raw_data,
+            DATA_PATH / f"wikitext103{raw_str}_v={vocab_size}.model",
+            DATA_PATH / text,
         )
-        torch.save(
-            tokens,
-            open(
-                self.directory / f"wikitext103_{tr_va}_tokenized.pt",
-                "wb",
-            ),
-        )
+        torch.save(tokens, DATA_PATH / f"wikitext103{raw_str}_{tr_va}_tokenized.pt")
         return tokens
 
-    def is_tokenized(self, tr_va: TrVa):
-        return (self.directory / f"wikitext103_{tr_va}_tokenized.pt").exists()
+    def is_tokenized(self, tr_va: TrVa) -> bool:
+        raw_str = "-raw" if self.raw else ""
+        return (DATA_PATH / f"wikitext103{raw_str}_{tr_va}_tokenized.pt").exists()
 
-    def has_tokenizer(self):
+    def has_tokenizer(self) -> bool:
+        raw_str = "-raw" if self.raw else ""
         return all(
-            (self.directory / file).exists()
+            (DATA_PATH / file).exists()
             for file in [
-                f"wikitext103_v={self.vocab_size}.model",
-                f"wikitext103_v={self.vocab_size}.vocab",
+                f"wikitext103{raw_str}_v={self.vocab_size}.model",
+                f"wikitext103{raw_str}_v={self.vocab_size}.vocab",
             ]
         )
 
-    def is_downloaded(self):
+    def is_downloaded(self) -> bool:
+        raw_str = "-raw" if self.raw else ""
         return all(
-            (self.directory / file).exists()
+            (DATA_PATH / file).exists()
             for file in [
-                "wiki.train.tokens",
-                "wiki.valid.tokens",
-                "wiki.test.tokens",
+                f"wiki{raw_str}.train.tokens",
+                f"wiki{raw_str}.valid.tokens",
+                f"wiki{raw_str}.test.tokens",
             ]
         )
 
     def download(self):
-        os.makedirs(self.directory, exist_ok=True)
-        base_url = "https://huggingface.co/datasets/Salesforce/wikitext/resolve/main/wikitext-103-v1"
+        os.makedirs(DATA_PATH, exist_ok=True)
+        raw_str = "-raw" if self.raw else ""
+        base_url = f"https://huggingface.co/datasets/Salesforce/wikitext/resolve/main/wikitext-103{raw_str}-v1"
         files = [
             "validation-00000-of-00001.parquet",
             "test-00000-of-00001.parquet",
@@ -153,19 +142,14 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
             "train-00001-of-00002.parquet",
         ]
         for file in files:
-            filepath = self.directory / Path(file)
+            filepath = DATA_PATH / Path(file)
             with requests.get(f"{base_url}/{file}", stream=True) as r:
                 with open(filepath, "wb") as f:
                     shutil.copyfileobj(r.raw, f)
             data = pyarrow.parquet.read_table(filepath).to_pydict()
-            if file.startswith("train"):
-                split = "train"
-            if file.startswith("validation"):
-                split = "valid"
-            if file.startswith("test"):
-                split = "test"
+            split = file.split("-", maxsplit=1)[0][0:5]
             with open(
-                self.directory / Path(f"wiki.{split}.tokens"),
+                DATA_PATH / Path(f"wiki{raw_str}.{split}.tokens"),
                 "a",
             ) as f:
                 f.write("".join(data["text"]))
