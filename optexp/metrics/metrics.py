@@ -24,11 +24,10 @@ class CrossEntropy(Metric):
             labels.numel()
         )
 
-<<<<<<< HEAD
     def smaller_better(self) -> bool:
-=======
+        return True
+
     def is_scalar(self):
->>>>>>> plotting_fixes
         return True
 
 
@@ -40,13 +39,11 @@ class Accuracy(Metric):
         classes = torch.argmax(inputs, dim=1)
         return torch.sum((classes == labels).float()), torch.tensor(classes.numel())
 
-<<<<<<< HEAD
     def smaller_better(self) -> bool:
         return False
-=======
+
     def is_scalar(self):
         return True
->>>>>>> plotting_fixes
 
 
 def _groupby_sum(
@@ -97,7 +94,6 @@ class CrossEntropyPerClass(LossLikeMetric):
         return False
 
 
-
 class AccuracyPerClass(LossLikeMetric):
     """Accuracy per class.
 
@@ -110,10 +106,8 @@ class AccuracyPerClass(LossLikeMetric):
         accuracy_per_sample = (classes == labels).float()
         return _groupby_sum(accuracy_per_sample, labels, num_classes)
 
-
     def smaller_better(self) -> bool:
         return True
 
     def is_scalar(self):
         return False
-
