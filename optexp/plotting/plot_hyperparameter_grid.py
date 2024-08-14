@@ -47,6 +47,9 @@ def plot_optim_hyperparam_grids(
     for metric, tr_va, logx, logy in itertools.product(
         problem.metrics, ["tr", "va"], [True, False], [True, False]
     ):
+        if not metric.is_scalar():
+            continue
+
         metric_key = f"{tr_va}_{metric.__class__.__name__}"
 
         fig = make_step_size_grid_for_metric(

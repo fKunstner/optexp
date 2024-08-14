@@ -21,6 +21,9 @@ class CrossEntropy(Metric):
             labels.numel()
         )
 
+    def is_scalar(self):
+        return True
+
 
 class Accuracy(Metric):
 
@@ -29,6 +32,9 @@ class Accuracy(Metric):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         classes = torch.argmax(inputs, dim=1)
         return torch.sum((classes == labels).float()), torch.tensor(classes.numel())
+
+    def is_scalar(self):
+        return True
 
 
 def _groupby_sum(
@@ -72,6 +78,9 @@ class CrossEntropyPerClass(LossLikeMetric):
         losses = cross_entropy(inputs, labels, reduction="none")
         return _groupby_sum(losses, labels, num_classes)
 
+    def is_scalar(self):
+        return False
+
 
 class AccuracyPerClass(LossLikeMetric):
     """Accuracy per class.
@@ -84,3 +93,6 @@ class AccuracyPerClass(LossLikeMetric):
         classes = torch.argmax(inputs, dim=1)
         accuracy_per_sample = (classes == labels).float()
         return _groupby_sum(accuracy_per_sample, labels, num_classes)
+
+    def is_scalar(self):
+        return False
