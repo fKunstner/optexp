@@ -1,3 +1,6 @@
+from typing import List, Tuple
+
+
 def rgb_to_unit(xs):
     """Convert a list of RGB numbers [1, 255] to a list of unit [0, 1]"""
     if len(xs) == 3:
@@ -6,7 +9,7 @@ def rgb_to_unit(xs):
 
 
 class BaseColorScheme:
-    as_list = []
+    as_list: List[Sequence] = []
 
     @classmethod
     def get(cls, i: int):
