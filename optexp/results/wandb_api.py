@@ -87,7 +87,7 @@ def get_wandb_runs_by_hash(
         if run.config["short_equiv_hash"] not in runs_by_hash:
             runs_by_hash[run.config["short_equiv_hash"]] = []
         runs_by_hash[run.config["short_equiv_hash"]].append(run)
-   
+
     for exp in experiments:
         if exp.short_equivalent_hash() not in runs_by_hash.keys():
             runs_by_hash[exp.short_equivalent_hash()] = []
