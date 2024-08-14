@@ -145,6 +145,7 @@ def group_experiments_by_optimizers(
 def sanitize(xs):
     max_val = 10**50
     xs = np.array(xs, dtype="float")
+    xs[np.isnan(xs)] = max_val
     xs[xs > max_val] = max_val
     return xs
 
@@ -156,9 +157,10 @@ def make_step_size_grid_for_metric(
     fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
     data_range = (
-        np.min(metric_at_end(exps_data, metric_key)),
-        np.max(metric_at_initialization(exps_data, metric_key)),
+        np.nanmin(metric_at_end(exps_data, metric_key)),
+        np.nanmax(metric_at_initialization(exps_data, metric_key)),
     )
+
     optim_groups = group_experiments_by_optimizers(exps_data.keys(), hyperparameter)
     for i, (optim, exps) in enumerate(optim_groups.items()):
         hps, metrics = get_hp_and_metrics_at_end_per_hp(
@@ -169,8 +171,8 @@ def make_step_size_grid_for_metric(
         )
         ax.fill_between(
             hps,
-            [np.nanmin(metrics[hp]) for hp in hps],
-            [np.nanmax(metrics[hp]) for hp in hps],
+            [np.min(sanitize(metrics[hp])) for hp in hps],
+            [np.max(sanitize(metrics[hp])) for hp in hps],
             color=Colors.Vibrant.get(i),
             alpha=0.2,
         )
