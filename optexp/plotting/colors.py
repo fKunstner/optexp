@@ -5,7 +5,7 @@ def rgb_to_unit(xs):
     return rgb_to_unit(xs[:3]) + xs[3:]
 
 
-class BaseColorScheme(object):
+class BaseColorScheme:
     as_list = []
 
     @classmethod
