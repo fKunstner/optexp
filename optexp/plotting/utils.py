@@ -91,6 +91,7 @@ def group_experiments_by_optimizers(
 def sanitize(xs):
     max_val = 10**50
     xs = np.array(xs, dtype="float")
+    xs[np.isnan(xs)] = max_val
     xs[xs > max_val] = max_val
     return xs
 
@@ -256,8 +257,8 @@ def get_best_hp(
 
 def set_ylimits_to_fit_data_range(ax, exps_data, metric_key, log_y):
     data_range = (
-        np.min(metric_at_end(exps_data, metric_key)),
-        np.max(metric_at_initialization(exps_data, metric_key)),
+        np.nanmin(metric_at_end(exps_data, metric_key)),
+        np.nanmax(metric_at_initialization(exps_data, metric_key)),
     )
     ax.axhline(data_range[1], color="black", linestyle="--", label="mean at init")
     set_limits(ax, x_y="y", limits=data_range, log=log_y)

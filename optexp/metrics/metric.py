@@ -17,6 +17,10 @@ class Metric(Component, ABC):
     def smaller_better(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_scalar(self):
+        raise NotImplementedError
+
 
 class LossLikeMetric(Metric):
     """Abstract base class for loss-like metrics, which take inputs and labels."""

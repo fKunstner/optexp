@@ -51,6 +51,8 @@ def plot_optim_hyperparam_grids(
     for metric, tr_va, logx, logy in itertools.product(
         problem.metrics, ["tr", "va"], [True, False], [True, False]
     ):
+        if not metric.is_scalar():
+            continue
         key = f"{tr_va}_{metric.__class__.__name__}"
         fig = make_step_size_grid_for_metric(exps_data, hp, key, (logx, logy))
         save_and_close(fig, folder, [key, f"{scale_str(logx)}x", f"{scale_str(logy)}y"])
@@ -71,16 +73,16 @@ def make_step_size_grid_for_metric(
         hps, metrics = get_hp_and_metrics_at_end_per_hp(group_exps_data, hp, metric_key)
         ax.fill_between(
             hps,
-            [np.nanmin(metrics[hp]) for hp in hps],
-            [np.nanmax(metrics[hp]) for hp in hps],
-            color=Colors.Vibrant.as_list[i],
+            [np.min(sanitize(metrics[hp])) for hp in hps],
+            [np.max(sanitize(metrics[hp])) for hp in hps],
+            color=Colors.Vibrant.get(i),
             alpha=0.2,
         )
         ax.plot(
             hps,
             [np.median(sanitize(metrics[hp])) for hp in hps],
             label=optim.equivalent_definition(),
-            color=Colors.Vibrant.as_list[i],
+            color=Colors.Vibrant.get(i),
             marker="o",
         )
 
