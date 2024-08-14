@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Sequence
 
 
 def rgb_to_unit(xs):
