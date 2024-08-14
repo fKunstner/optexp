@@ -168,14 +168,14 @@ def make_step_size_grid_for_metric(
             hps,
             [np.nanmin(metrics[hp]) for hp in hps],
             [np.nanmax(metrics[hp]) for hp in hps],
-            color=Colors.Vibrant.as_list[i],
+            color=Colors.Vibrant.get(i),
             alpha=0.2,
         )
         ax.plot(
             hps,
             [np.median(sanitize(metrics[hp])) for hp in hps],
             label=optim.equivalent_definition(),
-            color=Colors.Vibrant.as_list[i],
+            color=Colors.Vibrant.get(i),
             marker="o",
         )
 
