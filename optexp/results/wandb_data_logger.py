@@ -166,8 +166,25 @@ def download_experiments(exps: list[Experiment]) -> None:
                 + f"\nfull experiment: {exp}"
             )
 
-        download_dir = wandb_download_dir(exp)
         run = runs[0]
+        data_df = numpyfy(run.history(pandas=True, samples=10000))
+
+        if data_df.empty:
+            run.file("output.log").download("/tmp/wandb", replace=True)
+            cmd = "<<couldn't locate the sync command, go look on wandb.ai.>>"
+            with open("/tmp/wandb/output.log", "r") as f:
+                log_lines = f.readlines()
+                for line in log_lines:
+                    if "wandb sync" in line:
+                        cmd = line.strip()
+                        break
+            get_logger().warning(
+                f"{exp}\n has an empty dataframe. You will need to resync"
+                f"it from where it was run by going there and running \n{cmd}"
+            )
+            continue
+
+        download_dir = wandb_download_dir(exp)
         config_df = pd.DataFrame.from_records(flatten_dict(run.config))
         config_df.to_json(download_dir / CONFIG_FILENAME)
 
@@ -184,7 +201,6 @@ def download_experiments(exps: list[Experiment]) -> None:
         )
         misc_df.to_json(download_dir / MISC_FILENAME)
 
-        data_df = numpyfy(run.history(pandas=True, samples=10000))
         data_df.to_parquet(download_dir / DATA_FILENAME)
 
 
