@@ -19,16 +19,20 @@ def test_download_and_tokenize_wikitext():
     assert Path.exists(
         Config.get_dataset_directory() / "WikiText103" / "wiki-raw.test.tokens"
     )
-    # dataset.tokenizer.build_tokenizer(
-    #     Config.get_dataset_directory() / "WikiText103" / f"wikitext103-raw_v=50257",
-    #     Config.get_dataset_directory() / "WikiText103" / "wiki-raw.train.tokens",
-    #     vocab_size=50257,
-    # )
-    assert Path.exists(
-        Config.get_dataset_directory() / "WikiText103" / "wikitext103-raw_v=50257.model"
+    dataset.tokenizer.build_tokenizer(
+        Config.get_dataset_directory() / "WikiText103" / f"wikitext103-raw_v=50257",
+        Config.get_dataset_directory() / "WikiText103" / "wiki-raw.train.tokens",
+        vocab_size=50257,
     )
     assert Path.exists(
-        Config.get_dataset_directory() / "WikiText103" / "wikitext103-raw_v=50257.vocab"
+        Config.get_dataset_directory()
+        / "WikiText103"
+        / "wikitext103-raw_v=50257-merges.txt"
+    )
+    assert Path.exists(
+        Config.get_dataset_directory()
+        / "WikiText103"
+        / "wikitext103-raw_v=50257-vocab.json"
     )
     tokens = dataset.get_tokens(tr_va="tr", vocab_size=50257)
 
@@ -37,8 +41,7 @@ def test_download_and_tokenize_wikitext():
     )
     dataloader = dataset.get_dataloader(b=512, tr_va="tr", num_workers=4)
     batch, targets = next(iter(dataloader))
-    out = model(batch)
-    print(out)
+    print(batch, targets)
 
 
 if __name__ == "__main__":

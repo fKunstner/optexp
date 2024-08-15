@@ -18,12 +18,13 @@ profile = "black"
 module = [
     "torchvision.*",
     "lightning.*",
-    "torchtext.*",
     "sklearn.*",
     "matplotlib.*",
     "pandas.*",
     "wandb.*",
-    "vit_pytorch.*",
+    "pyarrow.*",
+    "tokenizers.*",
+
 ]
 ignore_missing_imports = true
 

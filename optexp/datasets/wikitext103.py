@@ -10,8 +10,7 @@ from attrs import frozen
 from torch.utils.data import DataLoader
 
 from optexp.config import Config
-from optexp.datasets import Dataset
-from optexp.datasets.dataset import TrVa, HasClassCounts, Downloadable
+from optexp.datasets.dataset import Dataset, TrVa, HasClassCounts, Downloadable
 from optexp.datasets.tokenizers import Tokenizer, BPETokenizer
 from optexp.datasets.utils import make_list_dataset
 
@@ -98,9 +97,10 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
                 DATA_PATH / f"wikitext103{raw_str}_v={vocab_size}",
                 DATA_PATH / f"wiki{raw_str}.train.tokens",
                 vocab_size,
+                specials=["<unk>"] if not self.raw else None,
             )
         tokens = self.tokenizer.tokenize_and_numify(
-            DATA_PATH / f"wikitext103{raw_str}_v={vocab_size}.model",
+            DATA_PATH / f"wikitext103{raw_str}_v={vocab_size}",
             DATA_PATH / text,
         )
         torch.save(tokens, DATA_PATH / f"wikitext103{raw_str}_{tr_va}_tokenized.pt")
@@ -115,8 +115,8 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         return all(
             (DATA_PATH / file).exists()
             for file in [
-                f"wikitext103{raw_str}_v={self.vocab_size}.model",
-                f"wikitext103{raw_str}_v={self.vocab_size}.vocab",
+                f"wikitext103{raw_str}_v={self.vocab_size}-vocab.json",
+                f"wikitext103{raw_str}_v={self.vocab_size}-merges.txt",
             ]
         )
 
@@ -134,7 +134,10 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
     def download(self):
         os.makedirs(DATA_PATH, exist_ok=True)
         raw_str = "-raw" if self.raw else ""
-        base_url = f"https://huggingface.co/datasets/Salesforce/wikitext/resolve/main/wikitext-103{raw_str}-v1"
+        base_url = (
+            f"https://huggingface.co/datasets/Salesforce/"
+            f"wikitext/resolve/main/wikitext-103{raw_str}-v1"
+        )
         files = [
             "validation-00000-of-00001.parquet",
             "test-00000-of-00001.parquet",
@@ -143,14 +146,13 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         ]
         for file in files:
             filepath = DATA_PATH / Path(file)
-            with requests.get(f"{base_url}/{file}", stream=True) as r:
-                with open(filepath, "wb") as f:
+            with requests.get(f"{base_url}/{file}", stream=True, timeout=10) as r:
+                with open(filepath, "wb", encoding="utf-8") as f:
                     shutil.copyfileobj(r.raw, f)
             data = pyarrow.parquet.read_table(filepath).to_pydict()
             split = file.split("-", maxsplit=1)[0][0:5]
             with open(
-                DATA_PATH / Path(f"wiki{raw_str}.{split}.tokens"),
-                "a",
+                DATA_PATH / Path(f"wiki{raw_str}.{split}.tokens"), "a", encoding="utf-8"
             ) as f:
                 f.write("".join(data["text"]))
             filepath.unlink()

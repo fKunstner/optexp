@@ -46,6 +46,7 @@ def make_jobarray_content(
     Args:
         run_exp_by_idx_command: Command to call to run the i-th experiments
         should_run: Whether the matching experiments should run
+        jobs_per_node: How many experiments to run (in sequence) on a slurm node
     """
 
     bash_script_idx_to_exp_script_idx = []
