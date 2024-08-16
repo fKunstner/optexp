@@ -8,6 +8,7 @@ from pandas import DataFrame
 
 from optexp.config import Config
 from optexp.experiment import Experiment
+from optexp.metrics import Metric
 from optexp.optim import Optimizer
 from optexp.plotting.colors import Colors
 from optexp.plotting.style import make_axes
@@ -55,19 +56,22 @@ def plot_metrics_over_time_for_best(
     folder = Config.get_plots_directory() / folder_name / "best" / steps_subfolder
     os.makedirs(folder, exist_ok=True)
 
-    for metric, tr_va, logx, logy in itertools.product(
-        problem.metrics, ["tr", "va"], [True, False], [True, False]
+    for metric, tr_va, log_x_y in itertools.product(
+        problem.metrics, ["tr", "va"], itertools.product([True, False], [True, False])
     ):
         key = f"{tr_va}_{metric.__class__.__name__}"
         fig = make_best_plot_for_metric(
-            best_exps_per_group, exps_data, key, (logx, logy)
+            best_exps_per_group, exps_data, metric, tr_va, log_x_y
         )
-        save_and_close(fig, folder, [key, f"{scale_str(logx)}x", f"{scale_str(logy)}y"])
+        save_and_close(
+            fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
+        )
 
 
 def make_best_plot_for_metric(
     best_exps_per_group: Dict[Optimizer, List[Experiment]],
     exps_data: Dict[Experiment, DataFrame],
+    metric: Metric,
     metric_key: str,
     log_x_y: Tuple[bool, bool] = (False, False),
 ) -> plt.Figure:
@@ -101,7 +105,7 @@ def make_best_plot_for_metric(
         if exp in flatten(best_exps_per_group.values())
     }
 
-    set_ylimits_to_fit_data_range(ax, reduced_exp_data, metric_key, log_x_y[1])
+    set_ylimits_to_fit_data_range(ax, reduced_exp_data, metric, metric_key, log_x_y[1])
     step_values = set(sum([list(data["step"]) for exp, data in exps_data.items()], []))
     set_limits(
         ax,

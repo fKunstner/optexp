@@ -255,12 +255,23 @@ def get_best_hp(
     return best_hp
 
 
-def set_ylimits_to_fit_data_range(ax, exps_data, metric_key, log_y):
-    data_range = (
-        np.nanmin(metric_at_end(exps_data, metric_key)),
-        np.nanmax(metric_at_initialization(exps_data, metric_key)),
+def set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_y):
+
+    init_values = metric_at_initialization(exps_data, metric_key)
+    end_values = metric_at_end(exps_data, metric_key)
+    if metric.smaller_better():
+        data_range = (
+            np.nanmin(end_values),
+            np.nanmax(init_values),
+        )
+    else:
+        data_range = (
+            np.nanmin(init_values),
+            np.nanmax(end_values),
+        )
+    ax.axhline(
+        np.median(init_values), color="black", linestyle="--", label="median init"
     )
-    ax.axhline(data_range[1], color="black", linestyle="--", label="mean at init")
     set_limits(ax, x_y="y", limits=data_range, log=log_y)
 
 

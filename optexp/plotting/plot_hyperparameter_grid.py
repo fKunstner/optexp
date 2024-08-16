@@ -8,6 +8,7 @@ from pandas import DataFrame
 
 from optexp.config import Config
 from optexp.experiment import Experiment
+from optexp.metrics import Metric
 from optexp.plotting.colors import Colors
 from optexp.plotting.style import make_axes
 from optexp.plotting.utils import (
@@ -49,19 +50,22 @@ def plot_optim_hyperparam_grids(
     folder = Config.get_plots_directory() / folder_name / "grid" / steps_subfolder
     os.makedirs(folder, exist_ok=True)
 
-    for metric, tr_va, logx, logy in itertools.product(
-        problem.metrics, ["tr", "va"], [True, False], [True, False]
+    for metric, tr_va, log_x_y in itertools.product(
+        problem.metrics, ["tr", "va"], itertools.product([True], [True, False])
     ):
         if not metric.is_scalar():
             continue
         key = f"{tr_va}_{metric.__class__.__name__}"
-        fig = make_step_size_grid_for_metric(exps_data, hp, key, (logx, logy))
-        save_and_close(fig, folder, [key, f"{scale_str(logx)}x", f"{scale_str(logy)}y"])
+        fig = make_step_size_grid_for_metric(exps_data, hp, metric, key, log_x_y)
+        save_and_close(
+            fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
+        )
 
 
 def make_step_size_grid_for_metric(
     exps_data: Dict[Experiment, DataFrame],
     hp: str,
+    metric: Metric,
     metric_key: str,
     log_x_y: Tuple[bool, bool] = (False, False),
 ) -> plt.Figure:
@@ -87,7 +91,7 @@ def make_step_size_grid_for_metric(
             marker="o",
         )
 
-    set_ylimits_to_fit_data_range(ax, exps_data, metric_key, log_x_y[1])
+    set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_x_y[1])
     hp_values = [getattr(exp.optim, hp) for exp in exps_data.keys()]
     set_limits(ax, x_y="x", limits=(min(hp_values), max(hp_values)), log=log_x_y[0])
     set_scale(ax, log_x_y)
