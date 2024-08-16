@@ -51,7 +51,8 @@ def plot_metrics_over_time_for_best(
 
     best_exps_per_group = get_best_exps_per_group(exps_data, hp, problem, metric_key)
 
-    folder = Config.get_plots_directory() / folder_name / "best"
+    steps_subfolder = "max_steps" if step is None else f"{step}_steps"
+    folder = Config.get_plots_directory() / folder_name / "best" / steps_subfolder
     os.makedirs(folder, exist_ok=True)
 
     for metric, tr_va, logx, logy in itertools.product(

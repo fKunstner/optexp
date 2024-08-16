@@ -45,7 +45,8 @@ def plot_optim_hyperparam_grids(
     exps_data = load_wandb_results(exps)
     exps_data = truncate_runs(exps_data, step)
 
-    folder = Config.get_plots_directory() / folder_name / "grid"
+    steps_subfolder = "max_steps" if step is None else f"{step}_steps"
+    folder = Config.get_plots_directory() / folder_name / "grid" / steps_subfolder
     os.makedirs(folder, exist_ok=True)
 
     for metric, tr_va, logx, logy in itertools.product(
