@@ -59,9 +59,11 @@ def plot_metrics_over_time_for_best(
     for metric, tr_va, log_x_y in itertools.product(
         problem.metrics, ["tr", "va"], itertools.product([True, False], [True, False])
     ):
+        if not metric.is_scalar():
+            continue
         key = f"{tr_va}_{metric.__class__.__name__}"
         fig = make_best_plot_for_metric(
-            best_exps_per_group, exps_data, metric, tr_va, log_x_y
+            best_exps_per_group, exps_data, metric, key, log_x_y
         )
         save_and_close(
             fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
@@ -86,13 +88,13 @@ def make_best_plot_for_metric(
             steps,
             np.min(values, axis=0),
             np.max(values, axis=0),
-            color=Colors.Vibrant.as_list[i],
+            color=Colors.Vibrant.get(i),
             alpha=0.2,
         )
         ax.plot(
             steps,
             np.median(values, axis=0),
-            color=Colors.Vibrant.as_list[i],
+            color=Colors.Vibrant.get(i),
             label=exps[0].optim.equivalent_definition(),
         )
 
