@@ -108,11 +108,15 @@ def make_best_plot_for_metric(
     }
 
     set_ylimits_to_fit_data_range(ax, reduced_exp_data, metric, metric_key, log_x_y[1])
-    step_values = set(sum([list(data["step"]) for exp, data in exps_data.items()], []))
+
+    min_and_max_step_values = (
+        min(data["step"].min() for exp, data in exps_data.items()),
+        max(data["step"].max() for exp, data in exps_data.items()),
+    )
     set_limits(
         ax,
         x_y="x",
-        limits=(min(step_values), max(step_values)),
+        limits=min_and_max_step_values,
         log=log_x_y[0],
         factor=1.0,
     )
