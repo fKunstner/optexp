@@ -145,7 +145,15 @@ def download_experiment(exp: Experiment):
 
 def download_experiments(exps: list[Experiment]) -> None:
     runs_for_exps = get_wandb_runs(exps)
-    for exp in tqdm(exps, total=len(exps)):
+
+    only_new_exps = [exp for exp in exps if not is_downloaded(exp)]
+
+    print(
+        f"New experiments to download: {len(only_new_exps)} "
+        f"(already downloaded {len(exps)-len(only_new_exps)}/{len(exps)}"
+    )
+
+    for exp in tqdm(only_new_exps, total=len(only_new_exps)):
         runs = runs_for_exps[exp]
         if is_downloaded(exp):
             continue
