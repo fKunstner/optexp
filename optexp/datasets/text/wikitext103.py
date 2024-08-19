@@ -22,47 +22,38 @@ class WTFiles:
         "train-00000-of-00002.parquet",
         "train-00001-of-00002.parquet",
     ]
-    DATA_PATH: Path = Config.get_dataset_directory() / "WikiText103"
     BASE_URL = "https://huggingface.co/datasets/Salesforce/wikitext/resolve/main"
 
     def __init__(self, raw: bool):
+        self.n = 103
         self.raw = raw
         self.raw_str = "-raw" if raw else ""
 
-    def full_path(self, file: str):
-        return self.DATA_PATH / file
+    def url(self):
+        return f"{self.BASE_URL}/wikitext-{self.n}{self.raw_str}-v1"
 
-    def tokens_file(self, split: str):
+    def base_path(self):
+        return Config.get_dataset_directory() / (f"WikiText{self.n}" + self.raw_str)
+
+    def txt_file(self, split: str):
         match split:
             case "tr" | "train":
-                return self.full_path(f"wiki{self.raw_str}.train.tokens")
+                return self.base_path() / f"wiki{self.raw_str}.train.txt"
             case "va" | "valid":
-                return self.full_path(f"wiki{self.raw_str}.valid.tokens")
+                return self.base_path() / f"wiki{self.raw_str}.valid.txt"
             case "te" | "test":
-                return self.full_path(f"wiki{self.raw_str}.test.tokens")
+                return self.base_path() / f"wiki{self.raw_str}.test.txt"
             case _:
                 raise ValueError(
                     f"Unknown split {split}. "
                     f"Expected 'tr', 'train', 'va', 'valid', 'te' or 'test'."
                 )
 
-    def all_tokens_file(self):
-        return [self.tokens_file(split) for split in ["tr", "va", "te"]]
+    def all_txt_files(self):
+        return [self.txt_file(split) for split in ["tr", "va", "te"]]
 
-    def tokenizer_base_path(self, vocab_size: int):
-        return self.full_path(f"wikitext103{self.raw_str}_v={vocab_size}")
-
-    def tokenized_file(self, tr_va):
-        return self.full_path(f"wikitext103{self.raw_str}_{tr_va}_tokenized.pt")
-
-    def merge_file(self, vocab_size: int):
-        return self.full_path(f"wikitext103{self.raw_str}_v={vocab_size}-merges.txt")
-
-    def vocab_file(self, vocab_size: int):
-        return self.full_path(f"wikitext103{self.raw_str}_v={vocab_size}-vocab.txt")
-
-    def dataset_url(self):
-        return f"{self.BASE_URL}/wikitext-103{self.raw_str}-v1"
+    def tokenized_file(self, split):
+        return self.base_path() / f"wikitext{self.n}{self.raw_str}_{split}_tokenized.pt"
 
 
 @frozen
@@ -131,46 +122,34 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
 
         return ListDataset(sequences, targets)
 
-    def get_tokens(self, tr_va: TrVa) -> torch.Tensor:
-        if self.is_tokenized(tr_va):
-            return torch.load(WTFiles(self.raw).tokenized_file(tr_va))
-
-        if not self.has_tokenizer():
+    def build_tokenizer_if_not_exists(self):
+        if not self.tokenizer.has_been_trained(
+            WTFiles(self.raw).base_path(), self.vocab_size
+        ):
             self.tokenizer.build_tokenizer(
-                WTFiles(self.raw).tokenizer_base_path(self.vocab_size),
-                WTFiles(self.raw).tokens_file("tr"),
+                WTFiles(self.raw).base_path(),
+                WTFiles(self.raw).txt_file("tr"),
                 self.vocab_size,
                 specials=["<unk>"] if not self.raw else None,
             )
 
-        tokens = self.tokenizer.tokenize_and_numify(
-            WTFiles(self.raw).tokenizer_base_path(self.vocab_size),
-            WTFiles(self.raw).tokens_file(tr_va),
-        )
-        torch.save(tokens, WTFiles(self.raw).tokenized_file(tr_va))
-        return tokens
-
-    def is_tokenized(self, tr_va: TrVa) -> bool:
-        return (WTFiles(self.raw).tokenized_file(tr_va)).exists()
-
-    def has_tokenizer(self) -> bool:
-        return all(
-            file.exists()
-            for file in [
-                WTFiles(self.raw).vocab_file(self.vocab_size),
-                WTFiles(self.raw).merge_file(self.vocab_size),
-            ]
+    def get_tokens(self, tr_va: TrVa) -> torch.Tensor:
+        self.build_tokenizer_if_not_exists()
+        return self.tokenizer.tokenize_and_numify(
+            WTFiles(self.raw).base_path(),
+            WTFiles(self.raw).txt_file(tr_va),
+            self.vocab_size,
         )
 
     def is_downloaded(self) -> bool:
-        return all(file.exists() for file in WTFiles(self.raw).all_tokens_file())
+        return all(file.exists() for file in WTFiles(self.raw).all_txt_files())
 
     def download(self):
-        os.makedirs(WTFiles(self.raw).DATA_PATH, exist_ok=True)
-        base_url = WTFiles(self.raw).dataset_url()
+        os.makedirs(WTFiles(self.raw).base_path(), exist_ok=True)
+        base_url = WTFiles(self.raw).url()
         files = WTFiles(self.raw).PARQUET_FILES
         for file in files:
-            filepath = WTFiles(self.raw).DATA_PATH / Path(file)
+            filepath = WTFiles(self.raw).base_path() / Path(file)
             self._download_file(base_url, file, filepath)
             split = file.split("-", maxsplit=1)[0][0:5]
             self._extract(split, filepath)
@@ -178,7 +157,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
 
     def _extract(self, split, filepath):
         data = pyarrow.parquet.read_table(filepath).to_pydict()
-        with open(WTFiles(self.raw).tokens_file(split), "a", encoding="utf-8") as f:
+        with open(WTFiles(self.raw).txt_file(split), "a", encoding="utf-8") as f:
             f.write("".join(data["text"]))
 
     @staticmethod
