@@ -16,12 +16,7 @@ class Dataset(ABC, Component):
     """Abstract base class for datasets."""
 
     @abstractmethod
-    def get_dataloader(
-        self,
-        b: int,
-        tr_va: TrVa,
-        num_workers: int,
-    ) -> DataLoader:
+    def get_dataloader(self, b: int, tr_va: TrVa, num_workers: int) -> DataLoader:
         """Return a dataloader with batch size ``b`` for the training or validation dataset."""
         raise NotImplementedError()
 
