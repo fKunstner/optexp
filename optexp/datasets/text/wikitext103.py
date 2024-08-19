@@ -60,9 +60,8 @@ class WTFiles:
 class WikiText103(Dataset, HasClassCounts, Downloadable):
 
     sequence_length: int = 1024
-    vocab_size: int = 50257
     raw: bool = True
-    tokenizer: Tokenizer = BPETokenizer()
+    tokenizer: Tokenizer = BPETokenizer(vocab_size=50257)
 
     def get_dataloader(self, b: int, tr_va: TrVa, num_workers: int) -> DataLoader:
         dataset = self.get_dataset(tr_va)
@@ -90,7 +89,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         return torch.Size([batch_size, self.sequence_length, 1])
 
     def output_shape(self, batch_size: int) -> torch.Size:
-        return torch.Size([batch_size, self.sequence_length, self.vocab_size])
+        return torch.Size([batch_size, self.sequence_length, self.tokenizer.vocab_size])
 
     def get_num_samples(self, tr_va: TrVa) -> int:
         tokens = self.get_tokens(tr_va)
@@ -123,13 +122,10 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         return ListDataset(sequences, targets)
 
     def build_tokenizer_if_not_exists(self):
-        if not self.tokenizer.has_been_trained(
-            WTFiles(self.raw).base_path(), self.vocab_size
-        ):
+        if not self.tokenizer.has_been_trained(WTFiles(self.raw).base_path()):
             self.tokenizer.build_tokenizer(
                 WTFiles(self.raw).base_path(),
                 WTFiles(self.raw).txt_file("tr"),
-                self.vocab_size,
                 specials=["<unk>"] if not self.raw else None,
             )
 
@@ -138,7 +134,6 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
         return self.tokenizer.tokenize_and_numify(
             WTFiles(self.raw).base_path(),
             WTFiles(self.raw).txt_file(tr_va),
-            self.vocab_size,
         )
 
     def is_downloaded(self) -> bool:
@@ -147,8 +142,7 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
     def download(self):
         os.makedirs(WTFiles(self.raw).base_path(), exist_ok=True)
         base_url = WTFiles(self.raw).url()
-        files = WTFiles(self.raw).PARQUET_FILES
-        for file in files:
+        for file in WTFiles(self.raw).PARQUET_FILES:
             filepath = WTFiles(self.raw).base_path() / Path(file)
             self._download_file(base_url, file, filepath)
             split = file.split("-", maxsplit=1)[0][0:5]
@@ -163,5 +157,5 @@ class WikiText103(Dataset, HasClassCounts, Downloadable):
     @staticmethod
     def _download_file(base_url, file, filepath):
         with requests.get(f"{base_url}/{file}", stream=True, timeout=10) as r:
-            with open(filepath, "wb", encoding="utf-8") as f:
+            with open(filepath, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
