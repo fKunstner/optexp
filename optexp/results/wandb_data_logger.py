@@ -145,7 +145,15 @@ def download_experiment(exp: Experiment):
 
 def download_experiments(exps: list[Experiment]) -> None:
     runs_for_exps = get_wandb_runs(exps)
-    for exp in tqdm(exps, total=len(exps)):
+
+    only_new_exps = [exp for exp in exps if not is_downloaded(exp)]
+
+    print(
+        f"New experiments to download: {len(only_new_exps)} "
+        f"(already downloaded {len(exps)-len(only_new_exps)}/{len(exps)}"
+    )
+
+    for exp in tqdm(only_new_exps, total=len(only_new_exps)):
         runs = runs_for_exps[exp]
         if is_downloaded(exp):
             continue
@@ -166,8 +174,14 @@ def download_experiments(exps: list[Experiment]) -> None:
                 + f"\nfull experiment: {exp}"
             )
 
-        download_dir = wandb_download_dir(exp)
         run = runs[0]
+        data_df = numpyfy(run.history(pandas=True, samples=10000))
+
+        if data_df.empty:
+            log_debug_info_empty_history(exp, run)
+            continue
+
+        download_dir = wandb_download_dir(exp)
         config_df = pd.DataFrame.from_records(flatten_dict(run.config))
         config_df.to_json(download_dir / CONFIG_FILENAME)
 
@@ -184,8 +198,35 @@ def download_experiments(exps: list[Experiment]) -> None:
         )
         misc_df.to_json(download_dir / MISC_FILENAME)
 
-        data_df = numpyfy(run.history(pandas=True, samples=10000))
         data_df.to_parquet(download_dir / DATA_FILENAME)
+
+
+def log_debug_info_empty_history(exp, run):
+
+    cmd = find_sync_command_in_logs(run)
+    how_to_sync = "Logs did not contain sync command."
+    if cmd is not None:
+        how_to_sync = f"The experiment was synced with `{cmd}`"
+
+    run_url = "https://wandb.ai/" + "/".join(run.path)
+
+    get_logger().warning(
+        f"Experiment history is empty for experiment {exp.short_equivalent_hash()}. "
+        "This might be due to a syncing issue. For additional information, see"
+        f"  Wandb run: {run_url}"
+        f"  Full experiment: {exp}"
+        f"  {how_to_sync}"
+    )
+
+
+def find_sync_command_in_logs(run):
+    run.file("output.log").download("/tmp/wandb", replace=True)
+    with open("/tmp/wandb/output.log", "r", encoding="utf-8") as f:
+        log_lines = f.readlines()
+        for line in log_lines:
+            if "wandb sync" in line:
+                return line.strip()
+    return None
 
 
 def remove_experiments_that_are_already_saved(

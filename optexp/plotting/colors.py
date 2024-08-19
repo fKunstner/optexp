@@ -1,3 +1,6 @@
+from typing import List, Sequence
+
+
 def rgb_to_unit(xs):
     """Convert a list of RGB numbers [1, 255] to a list of unit [0, 1]"""
     if len(xs) == 3:
@@ -5,9 +8,17 @@ def rgb_to_unit(xs):
     return rgb_to_unit(xs[:3]) + xs[3:]
 
 
+class BaseColorScheme:
+    as_list: List[Sequence] = []
+
+    @classmethod
+    def get(cls, i: int):
+        return cls.as_list[i % len(cls.as_list)]
+
+
 class Colors:
 
-    class HighContrast:
+    class HighContrast(BaseColorScheme):
         """
         High contrast color scheme from Paul Tol
         https://personal.sron.nl/~pault/
@@ -18,7 +29,7 @@ class Colors:
         red = rgb_to_unit([187, 85, 102])
         as_list = [blue, yellow, red]
 
-    class Vibrant:
+    class Vibrant(BaseColorScheme):
         """
         Vibrant color scheme from Paul Tol
         https://personal.sron.nl/~pault/

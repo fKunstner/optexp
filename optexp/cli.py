@@ -10,6 +10,7 @@ from tqdm import tqdm
 from optexp.config import get_logger, use_wandb_config
 from optexp.datasets.dataset import Downloadable
 from optexp.experiment import Experiment
+from optexp.plotting.plot_best import plot_metrics_over_time_for_best
 from optexp.plotting.plot_hyperparameter_grid import plot_optim_hyperparam_grids
 from optexp.results.wandb_data_logger import (
     download_experiments,
@@ -170,19 +171,34 @@ def make_plot_parser(subparsers):
     plot_parser.add_argument(
         "--grid",
         action="store_true",
-        help="Plots the optimizer hyperparameter grid.",
+        help="Plot the performance vs. hyperparameter.",
         default=False,
     )
     plot_parser.add_argument(
-        "--grid_hyperparam",
+        "--best",
+        action="store_true",
+        help="Plot the performance over time for the ``best'' hyperparameter",
+        default=False,
+    )
+    plot_parser.add_argument(
+        "--hyperparam",
         type=str,
-        help="Name of the optimizer hyperparameter to grid over. Defaults to 'lr'.",
+        help="Name of the optimizer hyperparameter to use for --grid or --best. Defaults to 'lr'.",
         default="lr",
     )
     plot_parser.add_argument(
         "--step",
         type=int,
         help="Maximum number of steps used for plotting. Useful to truncate long runs.",
+        default=None,
+    )
+    plot_parser.add_argument(
+        "--best-metric",
+        type=str,
+        help=(
+            "Metric to use to determine the ``best'' run. "
+            "Defaults to the training loss. Use as ``tr_CrossEntropy''."
+        ),
         default=None,
     )
     plot_parser.add_argument(
@@ -209,10 +225,26 @@ def make_plot_parser(subparsers):
             plot_optim_hyperparam_grids(
                 experiments,
                 folder_name=folder_name,
-                hyperparameter=args.grid_hyperparam,
+                hp=args.hyperparam,
+                step=args.step,
             )
-            return
-        plot_parser.print_help()
+        if args.best:
+            folder_name = args.folder
+            if folder_name is None:
+                group0 = experiments[0].group
+                if not all(exp.group == group0 for exp in experiments):
+                    raise ValueError("All experiments must have the same group name")
+                folder_name = group0
+
+            plot_metrics_over_time_for_best(
+                experiments,
+                folder_name=folder_name,
+                hp=args.hyperparam,
+                step=args.step,
+                metric_key=args.best_metric,
+            )
+        if not any([args.grid, args.best]):
+            plot_parser.print_help()
 
     plot_parser.set_defaults(func=plot_handler)
 
