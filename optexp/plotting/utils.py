@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from pandas import DataFrame
 
 from optexp.experiment import Experiment
-from optexp.metrics.metrics import Metric
+from optexp.metrics import Metric
 from optexp.optim import Optimizer
 from optexp.problem import Problem
 

@@ -1,12 +1,14 @@
 from typing import Tuple
 
 import torch
+from attr import frozen
 from torch.nn.functional import cross_entropy, mse_loss
 
-from optexp.metrics.metric import LossLikeMetric, Metric
+from optexp.metrics.metric import LossLikeMetric
 
 
-class MSE(Metric):
+class MSE(LossLikeMetric):
+
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -15,8 +17,21 @@ class MSE(Metric):
     def smaller_better(self) -> bool:
         return True
 
+    def is_scalar(self):
+        return True
 
-class CrossEntropy(Metric):
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return mse_loss(inputs, labels, reduction="none")
+
+
+class CrossEntropy(LossLikeMetric):
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return cross_entropy(inputs, labels, reduction="none")
+
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -31,7 +46,12 @@ class CrossEntropy(Metric):
         return True
 
 
-class Accuracy(Metric):
+class Accuracy(LossLikeMetric):
+
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return torch.argmax(inputs, dim=1) == labels
 
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
