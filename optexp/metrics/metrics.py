@@ -1,7 +1,6 @@
 from typing import Tuple
 
 import torch
-from attr import frozen
 from torch.nn.functional import cross_entropy, mse_loss
 
 from optexp.metrics.metric import LossLikeMetric
