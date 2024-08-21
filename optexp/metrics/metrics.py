@@ -112,6 +112,11 @@ class CrossEntropyPerClass(LossLikeMetric):
     def is_scalar(self):
         return False
 
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return CrossEntropy().unreduced_call(inputs, labels)
+
 
 class AccuracyPerClass(LossLikeMetric):
     """Accuracy per class.
@@ -130,3 +135,8 @@ class AccuracyPerClass(LossLikeMetric):
 
     def is_scalar(self):
         return False
+
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return Accuracy().unreduced_call(inputs, labels)
