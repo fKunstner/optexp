@@ -5,7 +5,8 @@ from torch import Tensor
 
 from optexp.component import Component
 from optexp.datasets.dataset import TrVa
-from optexp.metrics import Metric
+from optexp.metrics import LossLikeMetric, Metric
+from optexp.metrics.metric import GraphMetric
 
 
 class DataPipe(Component, ABC):
@@ -13,6 +14,11 @@ class DataPipe(Component, ABC):
     @abstractmethod
     def forward(self, data, model, trva: TrVa):
         raise NotImplementedError()
+
+    def forward_or_cache(self, data, model, trva: TrVa, cached_forward=None):
+        if cached_forward is not None:
+            return cached_forward
+        return self.forward(data, model, trva)
 
     @abstractmethod
     def compute_loss(  # pylint: disable=too-many-arguments
@@ -48,28 +54,19 @@ class TensorDataPipe(DataPipe):
         return model(data[0])
 
     def compute_metric(  # pylint: disable=too-many-arguments
-        self,
-        data,
-        model,
-        metric: Metric,
-        trva: TrVa,
-        cached_forward=None,
+        self, data, model, metric: Metric, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        forward = (
-            self.forward(data, model, trva)
-            if cached_forward is None
-            else cached_forward
+        forward = self.forward_or_cache(data, model, trva, cached_forward)
+        if isinstance(metric, LossLikeMetric):
+            return metric(forward, data[1])
+        raise ValueError(
+            f"Unknown metric type: {type(metric)}. " f"Expected LossLikeMetric."
         )
-        return metric(forward, data[1])
 
     def compute_loss(  # pylint: disable=too-many-arguments
         self, data, model, lossfunc, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        forward = (
-            self.forward(data, model, trva)
-            if cached_forward is None
-            else cached_forward
-        )
+        forward = self.forward_or_cache(data, model, trva, cached_forward)
         return lossfunc(forward, data[1])
 
 
@@ -95,21 +92,20 @@ class GraphDataPipe(DataPipe):
     def compute_metric(  # pylint: disable=too-many-arguments
         self, data, model, metric: Metric, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        model_out = (
-            self.forward(data, model, trva)
-            if cached_forward is None
-            else cached_forward
-        )
+        model_out = self.forward_or_cache(data, model, trva, cached_forward)
         mask = data.train_mask if trva == "tr" else data.val_mask
-        return metric(model_out[mask], data.y[mask])
+        if isinstance(metric, LossLikeMetric):
+            return metric(model_out[mask], data.y[mask])
+        if isinstance(metric, GraphMetric):
+            return metric(data, mask, model_out[mask], data.y[mask])
+        raise ValueError(
+            f"Unknown metric type: {type(metric)}. "
+            f"Expected LossLikeMetric or InputOutputLabelMetric."
+        )
 
     def compute_loss(  # pylint: disable=too-many-arguments
         self, data, model, lossfunc, trva: TrVa, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        model_out = (
-            self.forward(data, model, trva)
-            if cached_forward is None
-            else cached_forward
-        )
+        model_out = self.forward_or_cache(data, model, trva, cached_forward)
         mask = data.train_mask if trva == "tr" else data.val_mask
         return lossfunc(model_out[mask], data.y[mask])

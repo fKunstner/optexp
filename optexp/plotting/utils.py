@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from pandas import DataFrame
 
 from optexp.experiment import Experiment
-from optexp.metrics.metrics import Metric
+from optexp.metrics import Metric
 from optexp.optim import Optimizer
 from optexp.problem import Problem
 
@@ -260,15 +260,19 @@ def set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_y):
     init_values = metric_at_initialization(exps_data, metric_key)
     end_values = metric_at_end(exps_data, metric_key)
     if metric.smaller_better():
-        data_range = (
-            np.nanmin(end_values),
-            np.nanmax(init_values),
-        )
+        low_vals = end_values
+        high_vals = init_values
     else:
-        data_range = (
-            np.nanmin(init_values),
-            np.nanmax(end_values),
-        )
+        low_vals = init_values
+        high_vals = end_values
+
+    data_range = (
+        np.nanmin(low_vals),
+        np.nanmax(high_vals),
+    )
+    if data_range[0] <= 0 and log_y:
+        data_range = (np.nanmin([val for val in low_vals if val > 0]), data_range[1])
+
     ax.axhline(
         np.median(init_values), color="black", linestyle="--", label="median init"
     )

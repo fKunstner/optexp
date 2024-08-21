@@ -65,6 +65,7 @@ def get_wandb_runs_by_hash(
 
     filters = {
         "$and": [{"state": {"$in": ["finished"]}}]
+        + [{"tags": {"$in": ["finished"]}}]
         + [{k: v} for k, v in _create_wandb_filter(experiments).items()]
     }
 
@@ -116,7 +117,7 @@ def get_wandb_runs_for_group(group: str) -> List[wandb.apis.public.Run]:
     if any("exp_id" not in run.config for run in runs):
         get_logger().warning("Some runs do not have an exp_id attribute.")
 
-    return [run for run in runs if run.state == "finished"]
+    return [run for run in runs if run.state == "finished" and "finished" in run.tags]
 
 
 def get_successful_ids_and_runs(group: str):
@@ -126,7 +127,11 @@ def get_successful_ids_and_runs(group: str):
     successful_runs = []
     successful_exp_ids = []
     for run in runs:
-        if run.config["exp_id"] not in successful_exp_ids and run.state == "finished":
+        if (
+            run.config["exp_id"] not in successful_exp_ids
+            and run.state == "finished"
+            and "finished" in run.tags
+        ):
             successful_runs.append(run)
             successful_exp_ids.append(run.config["exp_id"])
 

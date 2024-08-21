@@ -18,22 +18,31 @@ class Metric(Component, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def is_scalar(self):
+    def is_scalar(self) -> bool:
         raise NotImplementedError
 
 
 class LossLikeMetric(Metric):
     """Abstract base class for loss-like metrics, which take inputs and labels."""
 
+    @abstractmethod
     def __call__(
         self, inputs: torch.Tensor, labels: torch.Tensor
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
+    @abstractmethod
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        raise NotImplementedError
 
-class ModelMetric(Metric):
-    """Abstract base class for metrics that takes a model."""
+
+class GraphMetric(Metric):
+    """Abstract base class for metrics that take raw data inputs, outputs, and labels."""
 
     @abstractmethod
-    def __call__(self, model: torch.nn.Module):
-        raise NotImplementedError()
+    def __call__(
+        self, data, mask: torch.Tensor, outputs: torch.Tensor, labels: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        raise NotImplementedError

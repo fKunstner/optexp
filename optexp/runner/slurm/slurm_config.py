@@ -9,6 +9,7 @@ class SlurmConfig:
     hours: int
     gb_ram: int
     n_cpus: int = 1
+    jobs_per_node: int = 1
     gpu: Optional[bool | GPU] = False
     n_gpus: Optional[int] = 1
 
