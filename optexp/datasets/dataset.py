@@ -80,7 +80,7 @@ class InMemory:
 
     @abstractmethod
     def get_in_memory_dataloader(
-        self, b: int, tr_va: TrVa, num_workers: int, device: Optional[Device] = None
+        self, b: int, tr_va: TrVa, num_workers: int, to_device: Optional[Device] = None
     ) -> torch.utils.data.DataLoader:
         """Returns a Dataloader with the dataset already loaded into RAM on the device."""
         raise NotImplementedError()
