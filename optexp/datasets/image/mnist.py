@@ -12,7 +12,7 @@ from optexp.datasets.dataset import (
     Downloadable,
     HasClassCounts,
     InMemory,
-    TrVa,
+    TrVaTe,
 )
 from optexp.datasets.utils import make_dataloader
 
@@ -25,14 +25,14 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
     `TorchVision <https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html>`_.
     """
 
-    def get_num_samples(self, tr_va: TrVa) -> int:
-        if tr_va == "tr":
+    def get_num_samples(self, tr_va_te: TrVaTe) -> int:
+        if tr_va_te == "tr":
             return 60_000
-        if tr_va == "va":
+        if tr_va_te == "va":
             return 10_000
-        raise ValueError(f"Invalid tr_va: {tr_va}")
+        raise ValueError(f"Invalid tr_va: {tr_va_te}")
 
-    def class_counts(self, tr_va: TrVa) -> torch.Tensor:
+    def class_counts(self, tr_va: TrVaTe) -> torch.Tensor:
         return torch.bincount(self._get_dataset(tr_va).targets)
 
     def input_shape(self, batch_size) -> torch.Size:
@@ -40,6 +40,9 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
 
     def output_shape(self, batch_size) -> torch.Size:
         return torch.Size([batch_size, 10])
+
+    def has_test_set(self) -> bool:
+        return False
 
     def is_downloaded(self):
         return all(
@@ -58,10 +61,10 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
             torchvision.datasets.MNIST(path, download=True, train=train)
 
     @staticmethod
-    def _get_dataset(tr_va: TrVa):
+    def _get_dataset(tr_va_te: TrVaTe):
         return torchvision.datasets.MNIST(
             root=str(Config.get_dataset_directory()),
-            train=tr_va == "tr",
+            train=tr_va_te == "tr",
             transform=torchvision.transforms.Compose(
                 [
                     torchvision.transforms.ToTensor(),
@@ -70,8 +73,8 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
             ),
         )
 
-    def _get_tensor_dataset(self, tr_va: TrVa, to_device: Optional[Device] = None):
-        dataset = self._get_dataset(tr_va)
+    def _get_tensor_dataset(self, tr_va_te: TrVaTe, to_device: Optional[Device] = None):
+        dataset = self._get_dataset(tr_va_te)
         data, targets = dataset.data, dataset.targets
         data = torchvision.transforms.Normalize(mean=MEAN, std=STD)(data / 255.0)
         data = data.unsqueeze(1)
@@ -80,11 +83,11 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
         return TensorDataset(data, targets)
 
     def get_dataloader(
-        self, b: int, tr_va: TrVa, num_workers: int
+        self, b: int, tr_va_te: TrVaTe, num_workers: int
     ) -> torch.utils.data.DataLoader:
-        return make_dataloader(self._get_dataset(tr_va), b, num_workers)
+        return make_dataloader(self._get_dataset(tr_va_te), b, num_workers)
 
     def get_in_memory_dataloader(
-        self, b: int, tr_va: TrVa, num_workers: int, device: Optional[Device] = None
+        self, b: int, tr_va: TrVaTe, num_workers: int, device: Optional[Device] = None
     ) -> torch.utils.data.DataLoader:
         return make_dataloader(self._get_tensor_dataset(tr_va, device), b, num_workers)

@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 
 from optexp.component import Component
 
-TrVa = Literal["tr", "va"]
+TrVaTe = Literal["tr", "va", "te"]
 
 
 @frozen
@@ -16,7 +16,7 @@ class Dataset(ABC, Component):
     """Abstract base class for datasets."""
 
     @abstractmethod
-    def get_dataloader(self, b: int, tr_va: TrVa, num_workers: int) -> DataLoader:
+    def get_dataloader(self, b: int, tr_va_te: TrVaTe, num_workers: int) -> DataLoader:
         """Return a dataloader with batch size ``b`` for the training or validation dataset."""
         raise NotImplementedError()
 
@@ -31,8 +31,13 @@ class Dataset(ABC, Component):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_num_samples(self, tr_va: TrVa) -> int:
+    def get_num_samples(self, tr_va_te: TrVaTe) -> int:
         """The number of samples in the training or validation sets."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def has_test_set(self) -> bool:
+        """Does the dataset have a test set."""
         raise NotImplementedError()
 
 
@@ -40,7 +45,7 @@ class HasClassCounts:
     """Extension for datasets that provide class frequencies."""
 
     @abstractmethod
-    def class_counts(self, tr_va: TrVa) -> torch.Tensor:
+    def class_counts(self, tr_va_te: TrVaTe) -> torch.Tensor:
         raise NotImplementedError()
 
 
@@ -80,7 +85,11 @@ class InMemory:
 
     @abstractmethod
     def get_in_memory_dataloader(
-        self, b: int, tr_va: TrVa, num_workers: int, device: Optional[Device] = None
+        self,
+        b: int,
+        tr_va_te: TrVaTe,
+        num_workers: int,
+        device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:
         """Returns a Dataloader with the dataset already loaded into RAM on the device."""
         raise NotImplementedError()
