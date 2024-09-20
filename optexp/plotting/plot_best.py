@@ -31,6 +31,7 @@ def plot_metrics_over_time_for_best(
     exps: List[Experiment],
     folder_name: str,
     hp: str = "lr",
+    regularized: bool = False,
     step: Optional[int] = None,
     metric_key: Optional[str] = None,
 ):
@@ -39,6 +40,7 @@ def plot_metrics_over_time_for_best(
         exps: List of experiments to use for the plot.
         folder_name: Folder under which the plots will be saved.
         hp: Optimizer hyperparameter to optimize over. Defaults to "lr"
+        regularized: Whether to consider the regularization penalty in the loss
         step: Number of steps to plot up to. If None, plot all steps.
         metric_key: Metric to use to decide which hyperparameter is best,
             given in the format "[tr|va]_LossName". Defaults to the training loss.
@@ -50,7 +52,9 @@ def plot_metrics_over_time_for_best(
     exps_data = load_wandb_results(exps)
     exps_data = truncate_runs(exps_data, step)
 
-    best_exps_per_group = get_best_exps_per_group(exps_data, hp, problem, metric_key)
+    best_exps_per_group = get_best_exps_per_group(
+        exps_data, hp, problem, regularized, metric_key
+    )
 
     steps_subfolder = "max_steps" if step is None else f"{step}_steps"
     folder = Config.get_plots_directory() / folder_name / "best" / steps_subfolder

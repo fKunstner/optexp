@@ -16,7 +16,7 @@ class Dataset(ABC, Component):
     """Abstract base class for datasets."""
 
     @abstractmethod
-    def get_dataloader(self, b: int, tr_va_te: TrVaTe, num_workers: int) -> DataLoader:
+    def get_dataloader(self, b: int, trvate: TrVaTe, num_workers: int) -> DataLoader:
         """Return a dataloader with batch size ``b`` for the training or validation dataset."""
         raise NotImplementedError()
 
@@ -31,7 +31,7 @@ class Dataset(ABC, Component):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_num_samples(self, tr_va_te: TrVaTe) -> int:
+    def get_num_samples(self, trvate: TrVaTe) -> int:
         """The number of samples in the training or validation sets."""
         raise NotImplementedError()
 
@@ -45,7 +45,7 @@ class HasClassCounts:
     """Extension for datasets that provide class frequencies."""
 
     @abstractmethod
-    def class_counts(self, tr_va_te: TrVaTe) -> torch.Tensor:
+    def class_counts(self, trvate: TrVaTe) -> torch.Tensor:
         raise NotImplementedError()
 
 
@@ -87,9 +87,9 @@ class InMemory:
     def get_in_memory_dataloader(
         self,
         b: int,
-        tr_va_te: TrVaTe,
+        trvate: TrVaTe,
         num_workers: int,
-        device: Optional[Device] = None,
+        to_device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:
         """Returns a Dataloader with the dataset already loaded into RAM on the device."""
         raise NotImplementedError()

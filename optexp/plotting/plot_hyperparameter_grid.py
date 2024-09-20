@@ -75,7 +75,9 @@ def make_step_size_grid_for_metric(
     optim_groups = group_experiments_by_optimizers(exps_data.keys(), hp)
     for i, (optim, exps) in enumerate(optim_groups.items()):
         group_exps_data = {exp: exps_data[exp] for exp in exps}
-        hps, metrics = get_hp_and_metrics_at_end_per_hp(group_exps_data, hp, metric_key)
+        hps, metrics = get_hp_and_metrics_at_end_per_hp(
+            group_exps_data, hp, False, metric_key
+        )
         ax.fill_between(
             hps,
             [np.min(sanitize(metrics[hp])) for hp in hps],

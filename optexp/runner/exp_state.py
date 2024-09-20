@@ -32,6 +32,7 @@ class DataLoaders:
     tr_tr: DataLoader
     tr_va: DataLoader
     va_va: DataLoader
+    te_va: DataLoader
 
 
 @dataclass

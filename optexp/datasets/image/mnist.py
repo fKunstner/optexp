@@ -92,8 +92,8 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
         b: int,
         tr_va_te: TrVaTe,
         num_workers: int,
-        device: Optional[Device] = None,
+        to_device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:
         return make_dataloader(
-            self._get_tensor_dataset(tr_va_te, device), b, num_workers
+            self._get_tensor_dataset(tr_va_te, to_device), b, num_workers
         )

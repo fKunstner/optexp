@@ -66,6 +66,7 @@ def get_wandb_runs_by_hash(
     filters = {
         "$and": [{"state": {"$in": ["finished"]}}]
         + [{"tags": {"$in": ["finished"]}}]
+        + [{"tags": {"$nin": ["failed_sync"]}}]
         + [{k: v} for k, v in _create_wandb_filter(experiments).items()]
     }
 

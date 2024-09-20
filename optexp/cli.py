@@ -202,6 +202,12 @@ def make_plot_parser(subparsers):
         default=None,
     )
     plot_parser.add_argument(
+        "--regularized",
+        action="store_true",
+        help="Adds regularization to loss.Defaults false",
+        default=False,
+    )
+    plot_parser.add_argument(
         "--folder",
         type=str,
         help="Folder to save the plots in. Defaults to the group name.",
@@ -235,11 +241,16 @@ def make_plot_parser(subparsers):
                 if not all(exp.group == group0 for exp in experiments):
                     raise ValueError("All experiments must have the same group name")
                 folder_name = group0
+                if args.regularized and args.best_metric is not None:
+                    raise ValueError(
+                        f"Can only regularize tr_CrossEntropy loss. best_metric set to {args.best_metric}."
+                    )
 
             plot_metrics_over_time_for_best(
                 experiments,
                 folder_name=folder_name,
                 hp=args.hyperparam,
+                regularized=args.regularized,
                 step=args.step,
                 metric_key=args.best_metric,
             )

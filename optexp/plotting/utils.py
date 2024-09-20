@@ -97,14 +97,16 @@ def sanitize(xs):
 
 
 def get_hp_and_metrics_at_end_per_hp(
-    exps_data: Dict[Experiment, DataFrame], hp: str, metric_key: str
+    exps_data: Dict[Experiment, DataFrame], hp: str, regularized: bool, metric_key: str
 ) -> Tuple[List[float], Dict[float, List[float]]]:
     hp_values = sorted(list(set(getattr(exp.optim, hp) for exp in exps_data.keys())))
     metrics_at_end_for_hp: Dict[float, List[float]] = {hp: [] for hp in hp_values}
     for exp, exp_data in exps_data.items():
         val = getattr(exp.optim, hp)
-        metrics_at_end_for_hp[val].append(exp_data[metric_key].iloc[-1])
-
+        data = exp_data[metric_key].iloc[-1]
+        if regularized:
+            data += exp_data["regularization"].iloc[-1]
+        metrics_at_end_for_hp[val].append(data)
     return hp_values, metrics_at_end_for_hp
 
 
@@ -185,10 +187,13 @@ def validate_metric_key(metric_key, problem) -> Tuple[str, Metric]:
             f"Invalid format for the metric. Got {metric_key}, expected '[tr|va]_{{loss}}'."
         )
     available_metrics = [metric.__class__.__name__ for metric in problem.metrics]
+    available_metrics = {
+        metric.__class__.__name__: metric for metric in problem.metrics
+    }
     metric = None
-    for available_metric in available_metrics:
+    for available_metric, metric_class in available_metrics.items():
         if available_metric in metric_key:
-            metric = available_metric
+            metric = metric_class
 
     if metric is None:
         raise ValueError(
@@ -202,6 +207,7 @@ def get_best_exps_per_group(
     exps_data: Dict[Experiment, DataFrame],
     hp: str,
     problem: Problem,
+    regularized: bool,
     metric_key: Optional[str] = None,
 ) -> Dict[Optimizer, List[Experiment]]:
     metric_key, best_metric = validate_metric_key(metric_key, problem)
@@ -212,7 +218,7 @@ def get_best_exps_per_group(
     for opt, group in optim_groups.items():
         group_exps_data = {exp: exps_data[exp] for exp in group}
         best_hp_per_group[opt] = get_best_hp(
-            group_exps_data, hp, metric_key, best_metric.smaller_better()
+            group_exps_data, hp, regularized, metric_key, best_metric.smaller_better()
         )
 
     def filter_hp(exps, value):
@@ -229,10 +235,13 @@ def get_best_exps_per_group(
 def get_best_hp(
     group_exps_data: Dict[Experiment, DataFrame],
     hp: str,
+    regularized: bool,
     metric_key: str,
     smaller_better: bool,
 ) -> float:
-    _, metrics = get_hp_and_metrics_at_end_per_hp(group_exps_data, hp, metric_key)
+    _, metrics = get_hp_and_metrics_at_end_per_hp(
+        group_exps_data, hp, regularized, metric_key
+    )
 
     def worst_case(values_at_end: Iterable[float]):
         if smaller_better:
