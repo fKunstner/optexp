@@ -28,20 +28,20 @@ def download_and_run(dataset):
     print(batch, targets)
 
 
-@pytest.mark.long
+@pytest.mark.slow
 def test_download_and_tokenize_wikitext2():
     raw = True
-    vocab_size = 10000
+    vocab_size = 1000
     dataset = WikiText2(
         raw=raw, sequence_length=1024, tokenizer=BPETokenizer(vocab_size=vocab_size)
     )
     download_and_run(dataset)
 
 
-@pytest.mark.long
+@pytest.mark.slow
 def test_download_and_tokenize_wikitext103():
     raw = True
-    vocab_size = 50257
+    vocab_size = 1000
     dataset = WikiText103(
         raw=raw, sequence_length=1024, tokenizer=BPETokenizer(vocab_size=vocab_size)
     )

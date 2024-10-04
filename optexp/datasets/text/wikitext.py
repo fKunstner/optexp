@@ -2,7 +2,7 @@ import os
 import shutil
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pyarrow.parquet
 import requests
@@ -11,36 +11,41 @@ from attrs import frozen
 from torch.utils.data import DataLoader
 
 from optexp.config import Config
-from optexp.datasets.dataset import Dataset, Downloadable, HasClassCounts, Split, splits
+from optexp.datasets.dataset import Dataset, Downloadable, HasClassCounts, Split
 from optexp.datasets.text.tokenizers import BPETokenizer, Tokenizer
 from optexp.datasets.utils import ListDataset
 
 
 class WTFiles:
-    _PARQUET_FILES_103 = [
-        "validation-00000-of-00001.parquet",
-        "test-00000-of-00001.parquet",
-        "train-00000-of-00002.parquet",
-        "train-00001-of-00002.parquet",
-    ]
-    _PARQUET_FILES_2 = [
-        "validation-00000-of-00001.parquet",
-        "test-00000-of-00001.parquet",
-        "train-00000-of-00001.parquet",
-    ]
+    _TXT_FILES: Dict[Split, str] = {
+        "te": "wiki.test",
+        "tr": "wiki.train",
+        "va": "wiki.valid",
+    }
     _BASE_URL = "https://huggingface.co/datasets/Salesforce/wikitext/resolve/main"
+    _URLS_103: Dict[Split, List[str]] = {
+        "te": ["test-00000-of-00001.parquet"],
+        "tr": ["train-00000-of-00002.parquet", "train-00001-of-00002.parquet"],
+        "va": ["validation-00000-of-00001.parquet"],
+    }
+    _URLS_2: Dict[Split, List[str]] = {
+        "te": ["test-00000-of-00001.parquet"],
+        "tr": ["train-00000-of-00001.parquet"],
+        "va": ["validation-00000-of-00001.parquet"],
+    }
 
     def __init__(self, n: int, raw: bool):
-        if n not in {2, 103}:
+
+        if n == 2:
+            self.parquet_files = self._URLS_2
+        elif n == 103:
+            self.parquet_files = self._URLS_103
+        else:
             raise ValueError(f"WikiText{n} unknown. {n} must be 2 or 103")
+
         self.n = n
         self.raw = raw
         self.raw_str = "-raw" if raw else ""
-
-    def parquet_files(self):
-        if self.n == 103:
-            return self._PARQUET_FILES_103
-        return self._PARQUET_FILES_2
 
     def url(self):
         return f"{self._BASE_URL}/wikitext-{self.n}{self.raw_str}-v1"
@@ -49,21 +54,10 @@ class WTFiles:
         return Config.get_dataset_directory() / (f"WikiText{self.n}" + self.raw_str)
 
     def txt_file(self, split: Split):
-        match split:
-            case "tr" | "train":
-                return self.base_path() / f"wiki{self.raw_str}.train.txt"
-            case "va" | "valid":
-                return self.base_path() / f"wiki{self.raw_str}.valid.txt"
-            case "te" | "test":
-                return self.base_path() / f"wiki{self.raw_str}.test.txt"
-            case _:
-                raise ValueError(
-                    f"Unknown split {split}. "
-                    f"Expected 'tr', 'train', 'va', 'valid', 'te' or 'test'."
-                )
+        return self.base_path() / f"{self._TXT_FILES[split]}.txt"
 
     def all_txt_files(self):
-        return [self.txt_file(split) for split in splits]
+        return [self.txt_file(split) for split in self._TXT_FILES]
 
     def tokenized_file(self, split):
         return self.base_path() / f"wikitext{self.n}{self.raw_str}_{split}_tokenized.pt"
@@ -82,7 +76,7 @@ def collate_fn(batch: List[Tuple[Any, Any]]) -> Tuple[Any, Any]:
 class WikiTextBase(Dataset, HasClassCounts, Downloadable):
 
     sequence_length: int = 1024
-    raw: bool = True
+    raw: bool = False
     tokenizer: Tokenizer = BPETokenizer(vocab_size=50257)
 
     def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
@@ -156,21 +150,28 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     def download(self):
         os.makedirs(self._get_files().base_path(), exist_ok=True)
         base_url = self._get_files().url()
-        for file in self._get_files().parquet_files():
-            filepath = self._get_files().base_path() / Path(file)
-            self._download_file(base_url, file, filepath)
-            split = file.split("-", maxsplit=1)[0][0:5]
-            self._extract(split, filepath)
-            filepath.unlink()
+        for split in self._get_files().parquet_files.keys():
+            parquet_files = self._get_files().parquet_files[split]
+            txt_file = self._get_files().txt_file(split)
 
-    def _extract(self, split, filepath):
-        data = pyarrow.parquet.read_table(filepath).to_pydict()
-        with open(self._get_files().txt_file(split), "a", encoding="utf-8") as f:
+            if txt_file.exists():
+                txt_file.unlink()
+
+            for parquet_filename in parquet_files:
+                parquet_path = self._get_files().base_path() / Path(parquet_filename)
+                self._download_file(f"{base_url}/{parquet_filename}", parquet_path)
+                self._extract_append_to(parquet_path, txt_file)
+                parquet_path.unlink()
+
+    @staticmethod
+    def _extract_append_to(parquet_file, final_txt_tile):
+        data = pyarrow.parquet.read_table(parquet_file).to_pydict()
+        with open(final_txt_tile, "a", encoding="utf-8") as f:
             f.write("".join(data["text"]))
 
     @staticmethod
-    def _download_file(base_url, file, filepath):
-        with requests.get(f"{base_url}/{file}", stream=True, timeout=10) as r:
+    def _download_file(url, filepath):
+        with requests.get(url, stream=True, timeout=10) as r:
             with open(filepath, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
 
@@ -185,10 +186,10 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
 class WikiText2(WikiTextBase):
 
     def _get_files(self) -> WTFiles:
-        return WTFiles(n=2, raw=False)
+        return WTFiles(n=2, raw=self.raw)
 
 
 class WikiText103(WikiTextBase):
 
     def _get_files(self) -> WTFiles:
-        return WTFiles(n=103, raw=False)
+        return WTFiles(n=103, raw=self.raw)
