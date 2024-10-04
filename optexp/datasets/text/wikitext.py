@@ -2,7 +2,7 @@ import os
 import shutil
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import pyarrow.parquet
 import requests
@@ -10,10 +10,30 @@ import torch
 from attrs import frozen
 from torch.utils.data import DataLoader
 
+from optexp.component import Component
 from optexp.config import Config
 from optexp.datasets.dataset import Dataset, Downloadable, HasClassCounts, Split
 from optexp.datasets.text.tokenizers import BPETokenizer, Tokenizer
 from optexp.datasets.utils import ListDataset
+
+
+def tokens_to_sequences_and_targets(
+    tokens: torch.Tensor, sequence_len: int
+) -> tuple[torch.Tensor, torch.Tensor]:
+    n_tokens = tokens.size()[0]
+    n_sequences = n_tokens // sequence_len
+
+    last_target_is_incomplete = n_tokens < (n_sequences * sequence_len) + 1
+    if last_target_is_incomplete:
+        n_sequences -= 1
+
+    sequences_mat = tokens[0 : n_sequences * sequence_len]
+    targets_mat = tokens[1 : n_sequences * sequence_len + 1]
+
+    sequences_mat = sequences_mat.view(n_sequences, sequence_len)
+    targets_mat = targets_mat.view(n_sequences, sequence_len)
+
+    return sequences_mat, targets_mat
 
 
 class WTFiles:
@@ -73,11 +93,25 @@ def collate_fn(batch: List[Tuple[Any, Any]]) -> Tuple[Any, Any]:
 
 
 @frozen
+class Truncate(Component):
+    tr: Optional[int] = None
+    va: Optional[int] = None
+    te: Optional[int] = None
+
+    def should_truncate(self, split: Split) -> bool:
+        return getattr(self, split) is not None
+
+    def truncate_to(self, split: Split) -> Optional[int]:
+        return getattr(self, split)
+
+
+@frozen
 class WikiTextBase(Dataset, HasClassCounts, Downloadable):
 
     sequence_length: int = 1024
     raw: bool = False
     tokenizer: Tokenizer = BPETokenizer(vocab_size=50257)
+    truncate: Truncate = Truncate()
 
     def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
         dataset = self.get_dataset(split)
@@ -100,34 +134,22 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
         return torch.Size([batch_size, self.sequence_length, self.tokenizer.vocab_size])
 
     def get_num_samples(self, split: Split) -> int:
-        tokens = self.get_tokens(split)
-        n_sequences = tokens.size()[0] // self.sequence_length
-        return n_sequences * self.sequence_length
+        sequences, _ = self.get_data_matrices(split)
+        return sequences.shape[0]
+
+    def get_num_tokens(self, split: Split) -> int:
+        sequences, _ = self.get_data_matrices(split)
+        return sequences.numel()
 
     def class_counts(self, split: Split) -> torch.Tensor:
-        tokens = self.get_tokens(split)
-        n_sequences = tokens.size()[0] // self.sequence_length
-        cut_tokens = tokens[0 : n_sequences * self.sequence_length]
-        return torch.bincount(cut_tokens)
+        _, targets = self.get_data_matrices(split)
+        return torch.bincount(targets.view(-1))
 
     def get_dataset(self, split: Split) -> torch.utils.data.Dataset:
-        tokens = self.get_tokens(split)
-        n_tokens = tokens.size()[0]
-        n_sequences = n_tokens // self.sequence_length
-        cut_sequences = tokens[0 : n_sequences * self.sequence_length].view(
-            n_sequences, self.sequence_length
-        )
-        sequences = []
-        targets = []
-        for i in range(n_sequences):
-            sequence = cut_sequences[i]
-            target = tokens[
-                i * self.sequence_length + 1 : (i + 1) * self.sequence_length + 1
-            ]
-            sequences.append(sequence)
-            targets.append(target)
-
-        return ListDataset(sequences, targets)
+        sequences, targets = self.get_data_matrices(split)
+        sequences_list = [sequences[i] for i in range(sequences.shape[0])]
+        targets_list = [targets[i] for i in range(sequences.shape[0])]
+        return ListDataset(sequences_list, targets_list)
 
     def build_tokenizer_if_not_exists(self):
         if not self.tokenizer.has_been_trained(self._get_files().base_path()):
@@ -137,12 +159,23 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
                 specials=["<unk>"] if not self.raw else None,
             )
 
+    def get_data_matrices(self, split: Split) -> Tuple[torch.Tensor, torch.Tensor]:
+        x, y = tokens_to_sequences_and_targets(
+            self.get_tokens(split), self.sequence_length
+        )
+
+        if self.truncate.should_truncate(split):
+            x = x[: self.truncate.truncate_to(split), :]
+            y = y[: self.truncate.truncate_to(split)]
+        return x, y
+
     def get_tokens(self, split: Split) -> torch.Tensor:
         self.build_tokenizer_if_not_exists()
-        return self.tokenizer.tokenize_and_numify(
+        tokens = self.tokenizer.tokenize_and_numify(
             self._get_files().base_path(),
             self._get_files().txt_file(split),
         )
+        return tokens
 
     def is_downloaded(self) -> bool:
         return all(file.exists() for file in self._get_files().all_txt_files())

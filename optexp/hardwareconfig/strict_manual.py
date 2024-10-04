@@ -28,7 +28,7 @@ class StrictManualConfig(HardwareConfig):
         micro_batch_size (int, optional): mumber of samples loaded at once during training.
             Needs to evenly divide the batch size.
             If not provided, the :py:class:`Problem` batch size is used.
-        eval_micro_batch_size (int, optional): number of samples loaded at once during training.
+        eval_micro_batch_size (int, optional): number of samples loaded at once during evaluation.
             Size of the actual minibatches that will be loaded during evaluation.
             If not provided, the `micro_batch_size` is used.
         num_workers (int, optional): number of workers to load samples. Defaults to 0
@@ -123,17 +123,17 @@ class StrictManualConfig(HardwareConfig):
 
         if effective_bs % (tr_mbs * w) != 0:
             raise ValueError(
-                "Batch size must be a multiple of micro batch size * num workers."
+                "Batch size must be a multiple of micro batch size * num workers. "
                 f"Got batch size : {effective_bs}, "
                 f"micro batch size: {tr_mbs}, num workers: {w} (total: {w * tr_mbs})"
             )
 
         if n_va % (va_mbs * w) != 0:
             raise ValueError(
-                "Error in the micro batch size for evaluation dataloader."
-                "Num workers * Micro batch size must divide number of validation samples."
-                f"Got micro batch size: {va_mbs},"
-                f"Got num_workers: {w},"
+                "Error in the micro batch size for evaluation dataloader. "
+                "Num workers * Micro batch size must divide number of validation samples. "
+                f"Got micro batch size: {va_mbs}, "
+                f"Got num_workers: {w}, "
                 f"number of validation samples: {n_va}"
             )
 
