@@ -11,7 +11,7 @@ from attrs import frozen
 from torch.utils.data import DataLoader
 
 from optexp.config import Config
-from optexp.datasets.dataset import Dataset, Downloadable, HasClassCounts, TrVaTe
+from optexp.datasets.dataset import Dataset, Downloadable, HasClassCounts, Split, splits
 from optexp.datasets.text.tokenizers import BPETokenizer, Tokenizer
 from optexp.datasets.utils import ListDataset
 
@@ -48,7 +48,7 @@ class WTFiles:
     def base_path(self):
         return Config.get_dataset_directory() / (f"WikiText{self.n}" + self.raw_str)
 
-    def txt_file(self, split: TrVaTe):
+    def txt_file(self, split: Split):
         match split:
             case "tr" | "train":
                 return self.base_path() / f"wiki{self.raw_str}.train.txt"
@@ -63,7 +63,7 @@ class WTFiles:
                 )
 
     def all_txt_files(self):
-        return [self.txt_file(split) for split in TrVaTe]
+        return [self.txt_file(split) for split in splits]
 
     def tokenized_file(self, split):
         return self.base_path() / f"wikitext{self.n}{self.raw_str}_{split}_tokenized.pt"
@@ -85,8 +85,8 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     raw: bool = True
     tokenizer: Tokenizer = BPETokenizer(vocab_size=50257)
 
-    def get_dataloader(self, b: int, tr_va_te: TrVaTe, num_workers: int) -> DataLoader:
-        dataset = self.get_dataset(tr_va_te)
+    def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
+        dataset = self.get_dataset(split)
 
         loader = DataLoader(
             dataset,
@@ -105,19 +105,19 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     def output_shape(self, batch_size: int) -> torch.Size:
         return torch.Size([batch_size, self.sequence_length, self.tokenizer.vocab_size])
 
-    def get_num_samples(self, tr_va_te: TrVaTe) -> int:
-        tokens = self.get_tokens(tr_va_te)
+    def get_num_samples(self, split: Split) -> int:
+        tokens = self.get_tokens(split)
         n_sequences = tokens.size()[0] // self.sequence_length
         return n_sequences * self.sequence_length
 
-    def class_counts(self, tr_va_te: TrVaTe) -> torch.Tensor:
-        tokens = self.get_tokens(tr_va_te)
+    def class_counts(self, split: Split) -> torch.Tensor:
+        tokens = self.get_tokens(split)
         n_sequences = tokens.size()[0] // self.sequence_length
         cut_tokens = tokens[0 : n_sequences * self.sequence_length]
         return torch.bincount(cut_tokens)
 
-    def get_dataset(self, tr_va_te: TrVaTe) -> torch.utils.data.Dataset:
-        tokens = self.get_tokens(tr_va_te)
+    def get_dataset(self, split: Split) -> torch.utils.data.Dataset:
+        tokens = self.get_tokens(split)
         n_tokens = tokens.size()[0]
         n_sequences = n_tokens // self.sequence_length
         cut_sequences = tokens[0 : n_sequences * self.sequence_length].view(
@@ -143,11 +143,11 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
                 specials=["<unk>"] if not self.raw else None,
             )
 
-    def get_tokens(self, tr_va_te: TrVaTe) -> torch.Tensor:
+    def get_tokens(self, split: Split) -> torch.Tensor:
         self.build_tokenizer_if_not_exists()
         return self.tokenizer.tokenize_and_numify(
             self._get_files().base_path(),
-            self._get_files().txt_file(tr_va_te),
+            self._get_files().txt_file(split),
         )
 
     def is_downloaded(self) -> bool:
@@ -177,6 +177,9 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     @abstractmethod
     def _get_files(self) -> WTFiles:
         raise NotImplementedError
+
+    def has_test_set(self) -> bool:
+        return False
 
 
 class WikiText2(WikiTextBase):

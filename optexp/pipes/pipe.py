@@ -4,7 +4,7 @@ from typing import Tuple
 from torch import Tensor
 
 from optexp.component import Component
-from optexp.datasets.dataset import TrVaTe
+from optexp.datasets.dataset import Split
 from optexp.metrics import LossLikeMetric, Metric
 from optexp.metrics.metric import GraphMetric
 
@@ -12,23 +12,23 @@ from optexp.metrics.metric import GraphMetric
 class DataPipe(Component, ABC):
 
     @abstractmethod
-    def forward(self, data, model, trvate: TrVaTe):
+    def forward(self, data, model, split: Split):
         raise NotImplementedError()
 
-    def forward_or_cache(self, data, model, trvate: TrVaTe, cached_forward=None):
+    def forward_or_cache(self, data, model, split: Split, cached_forward=None):
         if cached_forward is not None:
             return cached_forward
-        return self.forward(data, model, trvate)
+        return self.forward(data, model, split)
 
     @abstractmethod
     def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, trvate: TrVaTe, cached_forward=None
+        self, data, model, lossfunc, split: Split, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         raise NotImplementedError()
 
     @abstractmethod
     def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, trvate: TrVaTe, cached_forward=None
+        self, data, model, metric: Metric, split: Split, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
         raise NotImplementedError()
 
@@ -49,14 +49,14 @@ class TensorDataPipe(DataPipe):
                 "Did you select the correct DataPipe?"
             )
 
-    def forward(self, data, model, trvate: TrVaTe):
+    def forward(self, data, model, split: Split):
         self._check_data(data)
         return model(data[0])
 
     def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, trvate: TrVaTe, cached_forward=None
+        self, data, model, metric: Metric, split: Split, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, trvate, cached_forward)
+        forward = self.forward_or_cache(data, model, split, cached_forward)
         if isinstance(metric, LossLikeMetric):
             return metric(forward, data[1])
         raise ValueError(
@@ -64,9 +64,9 @@ class TensorDataPipe(DataPipe):
         )
 
     def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, trvate: TrVaTe, cached_forward=None
+        self, data, model, lossfunc, split: Split, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, trvate, cached_forward)
+        forward = self.forward_or_cache(data, model, split, cached_forward)
         return lossfunc(forward, data[1])
 
 
@@ -85,17 +85,17 @@ class GraphDataPipe(DataPipe):
                 "Did you select the correct DataPipe?"
             )
 
-    def forward(self, data, model, trvate: TrVaTe):
+    def forward(self, data, model, split: Split):
         self._check_data(data)
         return model(data.x, data.edge_index)
 
     def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, trvate: TrVaTe, cached_forward=None
+        self, data, model, metric: Metric, split: Split, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        model_out = self.forward_or_cache(data, model, trvate, cached_forward)
-        if trvate == "tr":
+        model_out = self.forward_or_cache(data, model, split, cached_forward)
+        if split == "tr":
             mask = data.train_mask
-        elif trvate == "va":
+        elif split == "va":
             mask = data.val_mask
         else:
             mask = data.test_mask
@@ -109,12 +109,12 @@ class GraphDataPipe(DataPipe):
         )
 
     def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, trvate: TrVaTe, cached_forward=None
+        self, data, model, lossfunc, split: Split, cached_forward=None
     ) -> Tuple[Tensor, Tensor]:
-        model_out = self.forward_or_cache(data, model, trvate, cached_forward)
-        if trvate == "tr":
+        model_out = self.forward_or_cache(data, model, split, cached_forward)
+        if split == "tr":
             mask = data.train_mask
-        elif trvate == "va":
+        elif split == "va":
             mask = data.val_mask
         else:
             mask = data.test_mask

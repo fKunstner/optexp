@@ -1,10 +1,10 @@
-from optexp.datasets.dataset import TrVaTe
+from optexp.datasets.dataset import Split
 
 
-def batchsize_mismatch_message(trvate: TrVaTe, n, b):
-    if trvate == "tr":
+def batchsize_mismatch_message(split: Split, n, b):
+    if split == "tr":
         dataloader = "training dataloader"
-    elif trvate == "va":
+    elif split == "va":
         dataloader = "validation dataloader"
     else:
         dataloader = "test dataset"

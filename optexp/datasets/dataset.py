@@ -8,7 +8,8 @@ from torch.utils.data import DataLoader
 
 from optexp.component import Component
 
-TrVaTe = Literal["tr", "va", "te"]
+Split = Literal["tr", "va", "te"]
+splits: list[Split] = ["tr", "va", "te"]
 
 
 @frozen
@@ -16,7 +17,7 @@ class Dataset(ABC, Component):
     """Abstract base class for datasets."""
 
     @abstractmethod
-    def get_dataloader(self, b: int, trvate: TrVaTe, num_workers: int) -> DataLoader:
+    def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
         """Return a dataloader with batch size ``b`` for the training or validation dataset."""
         raise NotImplementedError()
 
@@ -31,7 +32,7 @@ class Dataset(ABC, Component):
         raise NotImplementedError()
 
     @abstractmethod
-    def get_num_samples(self, trvate: TrVaTe) -> int:
+    def get_num_samples(self, split: Split) -> int:
         """The number of samples in the training or validation sets."""
         raise NotImplementedError()
 
@@ -45,7 +46,7 @@ class HasClassCounts:
     """Extension for datasets that provide class frequencies."""
 
     @abstractmethod
-    def class_counts(self, trvate: TrVaTe) -> torch.Tensor:
+    def class_counts(self, split: Split) -> torch.Tensor:
         raise NotImplementedError()
 
 
@@ -87,7 +88,7 @@ class InMemory:
     def get_in_memory_dataloader(
         self,
         b: int,
-        trvate: TrVaTe,
+        split: Split,
         num_workers: int,
         to_device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:

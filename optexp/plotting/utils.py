@@ -186,7 +186,6 @@ def validate_metric_key(metric_key, problem) -> Tuple[str, Metric]:
         raise ValueError(
             f"Invalid format for the metric. Got {metric_key}, expected '[tr|va]_{{loss}}'."
         )
-    available_metrics = [metric.__class__.__name__ for metric in problem.metrics]
     available_metrics = {
         metric.__class__.__name__: metric for metric in problem.metrics
     }

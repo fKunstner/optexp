@@ -41,6 +41,8 @@ disable = [
     "logging-fstring-interpolation",
     # "logging-not-lazy",
 ]
+max-locals=20
+max-args=8
 
 [tool.pytest.ini_options]
 testpaths = "tests"

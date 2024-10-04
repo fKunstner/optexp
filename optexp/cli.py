@@ -243,7 +243,8 @@ def make_plot_parser(subparsers):
                 folder_name = group0
                 if args.regularized and args.best_metric is not None:
                     raise ValueError(
-                        f"Can only regularize tr_CrossEntropy loss. best_metric set to {args.best_metric}."
+                        f"Can only regularize tr_CrossEntropy loss. "
+                        f"best_metric set to {args.best_metric}."
                     )
 
             plot_metrics_over_time_for_best(

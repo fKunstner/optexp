@@ -9,7 +9,7 @@ import torch
 import torch.nn
 from torch.profiler import ProfilerActivity, profile, record_function
 
-from optexp.datasets.dataset import TrVaTe
+from optexp.datasets.dataset import Split
 from optexp.experiment import Experiment
 from optexp.metrics.metric import Metric
 from optexp.optim.optimizer import Regularizable
@@ -139,20 +139,20 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
 
     loginfo_on_r0(fabric, "Loading the dataset...")
     tr_tr_dl = exp.problem.dataset.get_dataloader(
-        trvate="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
+        split="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
     )
     tr_va_dl = exp.problem.dataset.get_dataloader(
-        trvate="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+        split="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
     )
     va_va_dl = exp.problem.dataset.get_dataloader(
-        trvate="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+        split="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
     )
 
     loaders = [tr_tr_dl, tr_va_dl, va_va_dl]
 
     if exp.problem.dataset.has_test_set():
         te_va_dl = exp.problem.dataset.get_dataloader(
-            trvate="te", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+            split="te", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
         )
         loaders.append(te_va_dl)
 
@@ -180,56 +180,54 @@ def eval_loop(
     exp_state: ExperimentState,
 ) -> MetricsDict:
 
+    metrics_dicts: MetricsDict = {}
     with record_function("eval(tr)"):
         reduced_metrics_tr = evaluate(
-            fabric=fabric,
-            exp=exp,
-            exp_state=exp_state,
-            trvate="tr",
+            fabric=fabric, exp=exp, exp_state=exp_state, split="tr"
+        )
+        metrics_dicts.update(
+            {
+                f"tr_{str(k.__class__.__name__)}": v
+                for k, v in reduced_metrics_tr.items()
+            }
         )
 
     with record_function("eval(va)"):
         reduced_metrics_va = evaluate(
-            fabric=fabric,
-            exp=exp,
-            exp_state=exp_state,
-            trvate="va",
+            fabric=fabric, exp=exp, exp_state=exp_state, split="va"
+        )
+        metrics_dicts.update(
+            {
+                f"va_{str(k.__class__.__name__)}": v
+                for k, v in reduced_metrics_va.items()
+            }
         )
 
-    renamed_te = {}
     if exp.problem.dataset.has_test_set():
         with record_function("eval(te)"):
             reduced_metrics_te = evaluate(
-                fabric=fabric,
-                exp=exp,
-                exp_state=exp_state,
-                trvate="te",
+                fabric=fabric, exp=exp, exp_state=exp_state, split="te"
             )
-            renamed_te: Dict = {
-                f"te_{str(k.__class__.__name__)}": v
-                for k, v in reduced_metrics_te.items()
-            }
+            metrics_dicts.update(
+                {
+                    f"te_{str(k.__class__.__name__)}": v
+                    for k, v in reduced_metrics_te.items()
+                }
+            )
 
-    renamed_tr: Dict = {
-        f"tr_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_tr.items()
-    }
-    renamed_va: Dict = {
-        f"va_{str(k.__class__.__name__)}": v for k, v in reduced_metrics_va.items()
-    }
-
-    return {**renamed_tr, **renamed_va, **renamed_te}
+    return metrics_dicts
 
 
 def evaluate(
     fabric: ptl.Fabric,
     exp: Experiment,
     exp_state: ExperimentState,
-    trvate: TrVaTe,
+    split: Split,
 ) -> Dict[Metric, float | list]:
 
-    if trvate == "te":
+    if split == "te":
         loader = exp_state.dataloaders.te_va
-    elif trvate == "tr":
+    elif split == "tr":
         loader = exp_state.dataloaders.tr_va
     else:
         loader = exp_state.dataloaders.va_va
@@ -245,13 +243,13 @@ def evaluate(
     with EvalMode(model), torch.no_grad():
         for _, batch in enumerate(loader):
 
-            cached_forward = exp.problem.datapipe.forward(batch, model, trvate=trvate)
+            cached_forward = exp.problem.datapipe.forward(batch, model, split=split)
             for metric in metrics:
                 loss, weight = exp.problem.datapipe.compute_metric(
                     data=batch,
                     model=model,
                     metric=metric,
-                    trvate=trvate,
+                    split=split,
                     cached_forward=cached_forward,
                 )
                 running_metrics[metric] += SumAndCounter(loss.detach(), weight.detach())
@@ -283,7 +281,7 @@ def training_step(
                     data=exp_state.get_batch(),
                     model=exp_state.model,
                     lossfunc=exp.problem.lossfunc,
-                    trvate="tr",
+                    split="tr",
                 )
                 total_loss_and_count += SumAndCounter(loss.detach(), weight)
                 fabric.backward(loss)

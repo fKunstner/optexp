@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import lightning
 import torch.optim
@@ -32,7 +33,7 @@ class DataLoaders:
     tr_tr: DataLoader
     tr_va: DataLoader
     va_va: DataLoader
-    te_va: DataLoader
+    te_va: Optional[DataLoader] = None
 
 
 @dataclass

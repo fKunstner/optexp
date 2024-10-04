@@ -1,7 +1,9 @@
 from pathlib import Path
 
+import pytest
+
 from optexp.datasets import WikiText103
-from optexp.datasets.text.tokenizers import BPETokenizer
+from optexp.datasets.text.tokenizers import MERGE_FILE, VOCAB_FILE, BPETokenizer
 from optexp.datasets.text.wikitext import WikiText2
 
 
@@ -18,20 +20,15 @@ def download_and_run(dataset):
     )
 
     assert isinstance(dataset.tokenizer, BPETokenizer)
-    assert (
-        dataset.tokenizer._tokenizer_path(files.base_path())
-        / dataset.tokenizer._merge_file()
-    ).exists()
-    assert (
-        dataset.tokenizer._tokenizer_path(files.base_path())
-        / dataset.tokenizer._vocab_file()
-    ).exists()
+    assert (dataset.tokenizer._tokenizer_path(files.base_path()) / MERGE_FILE).exists()
+    assert (dataset.tokenizer._tokenizer_path(files.base_path()) / VOCAB_FILE).exists()
 
-    dataloader = dataset.get_dataloader(b=512, tr_va="tr", num_workers=4)
+    dataloader = dataset.get_dataloader(b=512, split="tr", num_workers=4)
     batch, targets = next(iter(dataloader))
     print(batch, targets)
 
 
+@pytest.mark.long
 def test_download_and_tokenize_wikitext2():
     raw = True
     vocab_size = 10000
@@ -41,6 +38,7 @@ def test_download_and_tokenize_wikitext2():
     download_and_run(dataset)
 
 
+@pytest.mark.long
 def test_download_and_tokenize_wikitext103():
     raw = True
     vocab_size = 50257

@@ -4,7 +4,7 @@ import torch
 from torch.types import Device
 from torch.utils.data import TensorDataset
 
-from optexp.datasets.dataset import Dataset, TrVaTe
+from optexp.datasets.dataset import Dataset, Split
 from optexp.datasets.utils import make_dataloader
 
 
@@ -31,12 +31,12 @@ class DummyRegression(Dataset):
     n_tr: int = 100
     n_va: int = 10
 
-    def get_num_samples(self, tr_va_te: TrVaTe) -> int:
-        if tr_va_te == "tr":
+    def get_num_samples(self, split: Split) -> int:
+        if split == "tr":
             return self.n_tr
-        if tr_va_te == "va":
+        if split == "va":
             return self.n_va
-        raise ValueError(f"Invalid tr_va_te: {tr_va_te}")
+        raise ValueError(f"Invalid split: {split}")
 
     def input_shape(self, batch_size) -> torch.Size:
         return torch.Size([batch_size, 1])
@@ -48,13 +48,13 @@ class DummyRegression(Dataset):
         return False
 
     @staticmethod
-    def _get_dataset(tr_va_te: TrVaTe, to_device: Optional[Device] = None):
-        if tr_va_te == "tr":
+    def _get_dataset(split: Split, to_device: Optional[Device] = None):
+        if split == "tr":
             data, targets = make_dataset(DummyRegression.n_tr)
-        elif tr_va_te == "va":
+        elif split == "va":
             data, targets = make_dataset(DummyRegression.n_va)
         else:
-            raise ValueError(f"Invalid tr_va: {tr_va_te}")
+            raise ValueError(f"Invalid tr_va: {split}")
 
         if to_device is not None:
             data, targets = data.to(to_device), targets.to(to_device)
@@ -63,19 +63,19 @@ class DummyRegression(Dataset):
     def get_dataloader(
         self,
         b: int,
-        tr_va_te: TrVaTe,
+        split: Split,
         num_workers: int,
         to_device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:
         return make_dataloader(
-            self._get_dataset(tr_va_te, to_device=to_device), b, num_workers
+            self._get_dataset(split, to_device=to_device), b, num_workers
         )
 
     def get_tensor_dataloader(
         self,
         b: int,
-        tr_va_te: TrVaTe,
+        split: Split,
         num_workers: int,
         to_device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:
-        return self.get_dataloader(b, tr_va_te, num_workers, to_device=to_device)
+        return self.get_dataloader(b, split, num_workers, to_device=to_device)

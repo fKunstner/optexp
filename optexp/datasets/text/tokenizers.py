@@ -10,6 +10,10 @@ from tqdm import tqdm
 
 from optexp.component import Component
 
+TOKENIZER_FILE = "tokenizer.json"
+VOCAB_FILE = "vocab.json"
+MERGE_FILE = "merges.txt"
+
 
 @frozen
 class Tokenizer(ABC, Component):
@@ -54,14 +58,14 @@ class BPETokenizer(Tokenizer):
             special_tokens=specials if specials else [],
         )
         tokenizer.save_model(str(self._tokenizer_path(base_path)))
-        tokenizer.save(str(self._tokenizer_path(base_path) / self._tokenizer_file()))
+        tokenizer.save(str(self._tokenizer_path(base_path) / TOKENIZER_FILE))
 
     def tokenize_and_numify(self, base_path: Path, data_path: Path):
         if self.tokenized_path(base_path, data_path).exists():
             return torch.load(self.tokenized_path(base_path, data_path))
 
         tokenizer = HF_Tokenizer.from_file(
-            str(self._tokenizer_path(base_path) / self._tokenizer_file())
+            str(self._tokenizer_path(base_path) / TOKENIZER_FILE)
         )
 
         with open(data_path, "r", encoding="utf-8") as f:
@@ -80,19 +84,10 @@ class BPETokenizer(Tokenizer):
         return all(
             file.exists()
             for file in [
-                self._tokenizer_path(base_path) / self._merge_file(),
-                self._tokenizer_path(base_path) / self._vocab_file(),
+                self._tokenizer_path(base_path) / MERGE_FILE,
+                self._tokenizer_path(base_path) / VOCAB_FILE,
             ]
         )
-
-    def _merge_file(self):
-        return "merges.txt"
-
-    def _vocab_file(self):
-        return "vocab.json"
-
-    def _tokenizer_file(self):
-        return "tokenizer.json"
 
     def _tokenizer_path(self, base_path: Path):
         base_path = base_path / self.equivalent_definition()

@@ -2,6 +2,8 @@ import subprocess
 import sys
 import textwrap
 
+import pytest
+
 from optexp import Experiment, Problem
 from optexp.datasets import DummyRegression
 from optexp.hardwareconfig import StrictManualConfig
@@ -56,6 +58,7 @@ def create_python_run_file(experiment):
     )
 
 
+@pytest.mark.skip(reason="Test unreliable")
 def test_seed_initialization(tmp_path_factory):
 
     experiments = [

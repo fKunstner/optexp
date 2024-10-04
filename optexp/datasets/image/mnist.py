@@ -12,7 +12,7 @@ from optexp.datasets.dataset import (
     Downloadable,
     HasClassCounts,
     InMemory,
-    TrVaTe,
+    Split,
 )
 from optexp.datasets.utils import make_dataloader
 
@@ -25,15 +25,15 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
     `TorchVision <https://pytorch.org/vision/main/generated/torchvision.datasets.MNIST.html>`_.
     """
 
-    def get_num_samples(self, tr_va_te: TrVaTe) -> int:
-        if tr_va_te == "tr":
+    def get_num_samples(self, split: Split) -> int:
+        if split == "tr":
             return 60_000
-        if tr_va_te == "va":
+        if split == "va":
             return 10_000
-        raise ValueError(f"Invalid tr_va: {tr_va_te}")
+        raise ValueError(f"Invalid tr_va: {split}")
 
-    def class_counts(self, tr_va: TrVaTe) -> torch.Tensor:
-        return torch.bincount(self._get_dataset(tr_va).targets)
+    def class_counts(self, split: Split) -> torch.Tensor:
+        return torch.bincount(self._get_dataset(split).targets)
 
     def input_shape(self, batch_size) -> torch.Size:
         return torch.Size([batch_size, 1, 28, 28])
@@ -61,10 +61,10 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
             torchvision.datasets.MNIST(path, download=True, train=train)
 
     @staticmethod
-    def _get_dataset(tr_va_te: TrVaTe):
+    def _get_dataset(split: Split):
         return torchvision.datasets.MNIST(
             root=str(Config.get_dataset_directory()),
-            train=tr_va_te == "tr",
+            train=split == "tr",
             transform=torchvision.transforms.Compose(
                 [
                     torchvision.transforms.ToTensor(),
@@ -73,8 +73,8 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
             ),
         )
 
-    def _get_tensor_dataset(self, tr_va_te: TrVaTe, to_device: Optional[Device] = None):
-        dataset = self._get_dataset(tr_va_te)
+    def _get_tensor_dataset(self, split: Split, to_device: Optional[Device] = None):
+        dataset = self._get_dataset(split)
         data, targets = dataset.data, dataset.targets
         data = torchvision.transforms.Normalize(mean=MEAN, std=STD)(data / 255.0)
         data = data.unsqueeze(1)
@@ -83,17 +83,17 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
         return TensorDataset(data, targets)
 
     def get_dataloader(
-        self, b: int, tr_va_te: TrVaTe, num_workers: int
+        self, b: int, split: Split, num_workers: int
     ) -> torch.utils.data.DataLoader:
-        return make_dataloader(self._get_dataset(tr_va_te), b, num_workers)
+        return make_dataloader(self._get_dataset(split), b, num_workers)
 
     def get_in_memory_dataloader(
         self,
         b: int,
-        tr_va_te: TrVaTe,
+        split: Split,
         num_workers: int,
         to_device: Optional[Device] = None,
     ) -> torch.utils.data.DataLoader:
         return make_dataloader(
-            self._get_tensor_dataset(tr_va_te, to_device), b, num_workers
+            self._get_tensor_dataset(split, to_device), b, num_workers
         )
