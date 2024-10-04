@@ -225,13 +225,7 @@ def evaluate(
     split: Split,
 ) -> Dict[Metric, float | list]:
 
-    if split == "te":
-        loader = exp_state.dataloaders.te_va
-    elif split == "tr":
-        loader = exp_state.dataloaders.tr_va
-    else:
-        loader = exp_state.dataloaders.va_va
-
+    loader = exp_state.dataloaders.get_val_dataloader(split)
     metrics = exp.problem.metrics
     model = exp_state.model
 

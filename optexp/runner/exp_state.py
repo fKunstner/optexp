@@ -35,6 +35,15 @@ class DataLoaders:
     va_va: DataLoader
     te_va: Optional[DataLoader] = None
 
+    def get_val_dataloader(self, split):
+        if split == "tr":
+            return self.tr_tr
+        if split == "va":
+            return self.tr_va
+        if split == "te":
+            return self.te_va
+        raise ValueError(f"Unknown split: {split}")
+
 
 @dataclass
 class ExperimentState:
