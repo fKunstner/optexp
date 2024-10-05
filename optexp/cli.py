@@ -365,7 +365,7 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
     datasets = set(exp.problem.dataset for exp in experiments)
 
     for dataset in datasets:
-        if isinstance(dataset, Downloadable):
+        if isinstance(dataset, Downloadable) and not dataset.is_downloaded():
             dataset.download()
 
     for exp in tqdm(experiments):
