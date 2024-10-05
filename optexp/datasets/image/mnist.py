@@ -35,10 +35,10 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
     def class_counts(self, split: Split) -> torch.Tensor:
         return torch.bincount(self._get_dataset(split).targets)
 
-    def input_shape(self, batch_size) -> torch.Size:
+    def data_input_shape(self, batch_size) -> torch.Size:
         return torch.Size([batch_size, 1, 28, 28])
 
-    def output_shape(self, batch_size) -> torch.Size:
+    def model_output_shape(self, batch_size) -> torch.Size:
         return torch.Size([batch_size, 10])
 
     def has_test_set(self) -> bool:

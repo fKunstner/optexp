@@ -158,8 +158,8 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
 
     loginfo_on_r0(fabric, "Loading the model...")
     pytorch_model = exp.problem.model.load_model(
-        exp.problem.dataset.input_shape(bs_info.mbatchsize_tr),
-        exp.problem.dataset.output_shape(bs_info.mbatchsize_tr),
+        exp.problem.dataset.data_input_shape(bs_info.mbatchsize_tr),
+        exp.problem.dataset.model_output_shape(bs_info.mbatchsize_tr),
     )
 
     loginfo_on_r0(fabric, "Loading optimizer...")

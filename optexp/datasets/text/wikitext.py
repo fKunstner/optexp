@@ -2,7 +2,7 @@ import os
 import shutil
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import pyarrow.parquet
 import requests
@@ -83,15 +83,6 @@ class WTFiles:
         return self.base_path() / f"wikitext{self.n}{self.raw_str}_{split}_tokenized.pt"
 
 
-def collate_fn(batch: List[Tuple[Any, Any]]) -> Tuple[Any, Any]:
-    src_batch, tgt_batch = [], []
-    for sample in batch:
-        src_batch.append(sample[0])
-        tgt_batch.append(sample[1])
-
-    return torch.vstack(src_batch), torch.vstack(tgt_batch).reshape(-1)
-
-
 @frozen
 class Truncate(Component):
     tr: Optional[int] = None
@@ -119,7 +110,6 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
         loader = DataLoader(
             dataset,
             batch_size=b,
-            collate_fn=collate_fn,
             shuffle=False,
             num_workers=num_workers,
             drop_last=False,
@@ -127,10 +117,10 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
         )
         return loader
 
-    def input_shape(self, batch_size: int) -> torch.Size:
-        return torch.Size([batch_size, self.sequence_length, 1])
+    def data_input_shape(self, batch_size: int) -> torch.Size:
+        return torch.Size([batch_size, self.sequence_length])
 
-    def output_shape(self, batch_size: int) -> torch.Size:
+    def model_output_shape(self, batch_size: int) -> torch.Size:
         return torch.Size([batch_size, self.sequence_length, self.tokenizer.vocab_size])
 
     def get_num_samples(self, split: Split) -> int:
@@ -166,7 +156,7 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
 
         if self.truncate.should_truncate(split):
             x = x[: self.truncate.truncate_to(split), :]
-            y = y[: self.truncate.truncate_to(split)]
+            y = y[: self.truncate.truncate_to(split), :]
         return x, y
 
     def get_tokens(self, split: Split) -> torch.Tensor:

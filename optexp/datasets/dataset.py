@@ -22,12 +22,12 @@ class Dataset(ABC, Component):
         raise NotImplementedError()
 
     @abstractmethod
-    def input_shape(self, batch_size: int) -> torch.Size:
+    def data_input_shape(self, batch_size: int) -> torch.Size:
         """The expected input shape of the data, including the batch size"""
         raise NotImplementedError()
 
     @abstractmethod
-    def output_shape(self, batch_size: int) -> torch.Size:
+    def model_output_shape(self, batch_size: int) -> torch.Size:
         """The expected output shape of the data, the shape of the targets"""
         raise NotImplementedError()
 
