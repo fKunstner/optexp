@@ -123,6 +123,18 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     def model_output_shape(self, batch_size: int) -> torch.Size:
         return torch.Size([batch_size, self.sequence_length, self.tokenizer.vocab_size])
 
+    def get_truncation_information(self) -> Dict[Split, Dict]:
+        info = {}
+        splits: List[Split] = ["tr", "va", "te"]
+        for split in splits:
+            x_raw, _ = self.get_data_matrices(split, truncate=False)
+            n = x_raw.shape[0]
+            info[split] = {
+                "truncated to": self.truncate.truncate_to(split),
+                "raw": n,
+            }
+        return info
+
     def get_num_samples(self, split: Split) -> int:
         sequences, _ = self.get_data_matrices(split)
         return sequences.shape[0]
@@ -149,12 +161,14 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
                 specials=["<unk>"] if not self.raw else None,
             )
 
-    def get_data_matrices(self, split: Split) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_data_matrices(
+        self, split: Split, truncate=True
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         x, y = tokens_to_sequences_and_targets(
             self.get_tokens(split), self.sequence_length
         )
 
-        if self.truncate.should_truncate(split):
+        if truncate and self.truncate.should_truncate(split):
             x = x[: self.truncate.truncate_to(split), :]
             y = y[: self.truncate.truncate_to(split), :]
         return x, y

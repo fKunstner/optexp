@@ -138,6 +138,10 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     torch.cuda.manual_seed_all(seed)
 
     loginfo_on_r0(fabric, "Loading the dataset...")
+    if hasattr(exp.problem.dataset, "get_truncation_information"):
+        truncation_info = exp.problem.dataset.get_truncation_information()
+        loginfo_on_r0(fabric, f"  Dataset might be truncated: {truncation_info}")
+
     tr_tr_dl = exp.problem.dataset.get_dataloader(
         split="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
     )
