@@ -31,17 +31,17 @@ class IterationCounter:
 @dataclass
 class DataLoaders:
     tr_tr: DataLoader
-    tr_va: DataLoader
-    va_va: DataLoader
-    te_va: Optional[DataLoader] = None
+    eval_tr: DataLoader
+    eval_va: DataLoader
+    eval_te: Optional[DataLoader] = None
 
     def get_val_dataloader(self, split):
         if split == "tr":
-            return self.tr_tr
+            return self.eval_tr
         if split == "va":
-            return self.tr_va
+            return self.eval_va
         if split == "te":
-            return self.te_va
+            return self.eval_te
         raise ValueError(f"Unknown split: {split}")
 
 

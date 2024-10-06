@@ -105,17 +105,14 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     truncate: Truncate = Truncate()
 
     def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
-        dataset = self.get_dataset(split)
-
-        loader = DataLoader(
-            dataset,
+        return DataLoader(
+            self.get_dataset(split),
             batch_size=b,
             shuffle=False,
             num_workers=num_workers,
             drop_last=False,
             pin_memory=True,
         )
-        return loader
 
     def data_input_shape(self, batch_size: int) -> torch.Size:
         return torch.Size([batch_size, self.sequence_length])

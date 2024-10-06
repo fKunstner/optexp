@@ -142,23 +142,23 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
         truncation_info = exp.problem.dataset.get_truncation_information()
         loginfo_on_r0(fabric, f"  Dataset might be truncated: {truncation_info}")
 
-    tr_tr_dl = exp.problem.dataset.get_dataloader(
+    train_tr_set_dl = exp.problem.dataset.get_dataloader(
         split="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
     )
-    tr_va_dl = exp.problem.dataset.get_dataloader(
+    eval_tr_set_dl = exp.problem.dataset.get_dataloader(
         split="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
     )
-    va_va_dl = exp.problem.dataset.get_dataloader(
+    eval_va_set_dl = exp.problem.dataset.get_dataloader(
         split="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
     )
 
-    loaders = [tr_tr_dl, tr_va_dl, va_va_dl]
+    loaders = [train_tr_set_dl, eval_tr_set_dl, eval_va_set_dl]
 
     if exp.problem.dataset.has_test_set():
-        te_va_dl = exp.problem.dataset.get_dataloader(
+        eval_te_set_dl = exp.problem.dataset.get_dataloader(
             split="te", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
         )
-        loaders.append(te_va_dl)
+        loaders.append(eval_te_set_dl)
 
     loginfo_on_r0(fabric, "Loading the model...")
     pytorch_model = exp.problem.model.load_model(
