@@ -84,9 +84,10 @@ def make_best_plot_for_metric(
     fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
     for i, (_, exps) in enumerate(best_exps_per_group.items()):
-        steps = np.array(list(exps_data[exps[0]]["step"]), dtype=float)
+        reduced_dfs = [exps_data[exp][["step", metric_key]].dropna() for exp in exps]
+        steps = np.array(list(reduced_dfs[0]["step"]), dtype=float)
         steps = hack_steps_for_logscale(steps)
-        values = np.stack([exps_data[exp][metric_key].dropna() for exp in exps])
+        values = np.stack([df[metric_key] for df in reduced_dfs])
 
         ax.fill_between(
             steps,
