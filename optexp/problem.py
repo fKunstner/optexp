@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Iterable, Optional
 
 from attrs import field, frozen
 
@@ -7,6 +7,7 @@ from optexp.datasets.dataset import Dataset
 from optexp.metrics.metric import Metric
 from optexp.models.model import Model
 from optexp.pipes.pipe import DataPipe, TensorDataPipe
+from optexp.runner.init_callback import InitCallback
 
 
 def to_frozenset(iterable: Iterable[Metric]) -> frozenset[Metric]:
@@ -33,3 +34,4 @@ class Problem(Component):
     lossfunc: Metric
     metrics: Iterable[Metric] = field(converter=to_frozenset)
     datapipe: DataPipe = TensorDataPipe()
+    init_callback: Optional[InitCallback] = None

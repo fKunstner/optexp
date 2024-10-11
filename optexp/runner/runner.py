@@ -170,12 +170,16 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     pytorch_opt = exp.optim.load(pytorch_model)
     ptl_model, ptl_opt = fabric.setup(pytorch_model, pytorch_opt)
 
-    return ExperimentState(
+    exp_state = ExperimentState(
         model=ptl_model,
         optimizer=ptl_opt,
         dataloaders=DataLoaders(*fabric.setup_dataloaders(*loaders)),
         batch_size_info=bs_info,
     )
+
+    if exp.problem.init_callback is not None:
+        exp_state = exp.problem.init_callback(exp, exp_state)
+    return exp_state
 
 
 def eval_loop(
