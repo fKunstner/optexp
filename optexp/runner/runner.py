@@ -103,6 +103,9 @@ def run(exp: Experiment) -> ExperimentState:
 
             is_stopping = should_early_stop(fabric, live_loss)
             if is_stopping:
+                loginfo_on_r0(
+                    fabric, f"Stopping early due to divergence. Live loss = {live_loss}"
+                )
                 break
 
     data_logger.finish(exit_code=0, stopped_early=is_stopping)
