@@ -178,7 +178,11 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     )
 
     if exp.problem.init_callback is not None:
-        exp_state = exp.problem.init_callback(exp, exp_state)
+
+        def log(message):
+            loginfo_on_r0(fabric, message)
+
+        exp_state = exp.problem.init_callback(exp, exp_state, log)
     return exp_state
 
 

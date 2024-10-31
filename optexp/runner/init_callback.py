@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable
 
 from attr import field, frozen
 
@@ -13,7 +13,10 @@ if TYPE_CHECKING:
 @frozen
 class InitCallback(Component, ABC):
     def __call__(
-        self, exp: "Experiment", exp_state: "ExperimentState"
+        self,
+        exp: "Experiment",
+        exp_state: "ExperimentState",
+        log: Callable[[str], None],
     ) -> "ExperimentState":
         raise NotImplementedError
 
@@ -23,8 +26,11 @@ class InitCallbackSequence(InitCallback):
     callbacks: Iterable[InitCallback] = field(converter=tuple)
 
     def __call__(
-        self, exp: "Experiment", exp_state: "ExperimentState"
+        self,
+        exp: "Experiment",
+        exp_state: "ExperimentState",
+        log: Callable[[str], None],
     ) -> "ExperimentState":
         for callback in self.callbacks:
-            exp_state = callback(exp, exp_state)
+            exp_state = callback(exp, exp_state, log)
         return exp_state
