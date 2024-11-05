@@ -67,6 +67,7 @@ def plot_metrics_over_time_for_best(
     ):
         key = metric.key(tr_va)
         if metric.is_scalar():
+            continue
             fig = make_best_plot_for_metric(
                 best_exps_per_group, exps_data, metric, key, log_x_y
             )
@@ -89,31 +90,57 @@ def make_best_plot_for_non_scalar_metric(
 
     n_groups = len(best_exps_per_group)
     fig, axes = make_axes(plt, rel_width=1.0, nrows=1, ncols=n_groups)
+    if n_groups == 1:
+        axes = [[axes]]
 
-    for i, (_, exps) in enumerate(best_exps_per_group.items()):
+    for i, (opt, exps) in enumerate(best_exps_per_group.items()):
         reduced_dfs = [exps_data[exp][["step", metric_key]].dropna() for exp in exps]
         steps = np.array(list(reduced_dfs[0]["step"]), dtype=float)
         steps = hack_steps_for_logscale(steps)
         values = np.stack([np.stack(df[metric_key].to_numpy()) for df in reduced_dfs])
 
-        n_exps, n_series, n_steps = values.shape
+        n_exps, n_steps, n_series = values.shape
 
         for j in range(n_series):
-            axes[i].fill_between(
+            axes[0][i].fill_between(
                 steps,
-                np.min(values[:, j, :], axis=0),
-                np.max(values[:, j, :], axis=0),
+                np.min(values[:, :, j], axis=0),
+                np.max(values[:, :, j], axis=0),
                 color=Colors.viridis(j, n_series),
                 alpha=0.2,
             )
-            axes[i].plot(
+            axes[0][i].plot(
                 steps,
-                np.median(values[:, j, :], axis=0),
+                np.median(values[:, :, j], axis=0),
                 color=Colors.viridis(j, n_series),
                 label=exps[0].optim.equivalent_definition(),
             )
+        axes[0][i].set_title(opt.equivalent_definition())
 
-    warnings.warn("The cleaning of the graph axes has not been implemented yet.")
+    reduced_exp_data = {
+        exp: data
+        for exp, data in exps_data.items()
+        if exp in flatten(best_exps_per_group.values())
+    }
+
+    min_and_max_step_values = (
+        min(data["step"].min() for exp, data in exps_data.items()),
+        max(data["step"].max() for exp, data in exps_data.items()),
+    )
+    for ax in flatten(axes):
+        set_ylimits_to_fit_data_range(
+            ax, reduced_exp_data, metric, metric_key, log_x_y[1]
+        )
+        set_limits(
+            ax,
+            x_y="x",
+            limits=min_and_max_step_values,
+            log=log_x_y[0],
+            factor=1.0,
+        )
+        set_scale(ax, log_x_y)
+        ax.set_xlabel("Steps")
+        ax.set_ylabel(metric_key)
 
     return fig
 
