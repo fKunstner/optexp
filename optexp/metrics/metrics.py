@@ -135,19 +135,23 @@ class PerClassMetric(LossLikeMetric):
                 "But dataset does not have class counts"
             )
 
+        class_counts = dataset.class_counts("tr")
         out_shape = exp_info.exp.problem.dataset.model_output_shape(inputs.shape[0])
         num_classes = out_shape[1]
-
-        values = self.metric.unreduced_call(inputs, labels)
-        by_class = _groupby_sum(values, labels, num_classes)
-
-        class_counts = dataset.class_counts("tr")
         assert class_counts.numel() == num_classes
         assert len(class_counts.shape) == 1
-        sort_idx = torch.flip(class_counts.argsort(), dims=[0])
-        labels = torch.arange(0, num_classes, device=class_counts.device)
-        sorted_labels = labels[sort_idx]
-        freq_sorted = class_counts[sort_idx] / class_counts.sum()
-        splits = _split_frequencies_by_groups(sorted_labels, freq_sorted, self.groups)
 
-        raise NotImplementedError("Need to implement grouping")
+        values = self.metric.unreduced_call(inputs, labels)
+        values = values.to(torch.float)
+        sum_by_class, counts = _groupby_sum(values, labels, num_classes)
+
+        sort_idx = torch.flip(class_counts.argsort(), dims=[0])
+        all_labels = torch.arange(0, num_classes, device=class_counts.device)
+        sorted_labels = all_labels[sort_idx]
+        freq_sorted = class_counts[sort_idx] / class_counts.sum()
+        groups = _split_frequencies_by_groups(sorted_labels, freq_sorted, self.groups)
+
+        losses_per_group = torch.stack([torch.sum(sum_by_class[g]) for g in groups])
+        counts_per_group = torch.stack([torch.sum(counts[g]) for g in groups])
+
+        return losses_per_group, counts_per_group
