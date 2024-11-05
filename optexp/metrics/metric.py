@@ -2,10 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 import torch
+from attr import frozen
 
 from optexp.component import Component
+from optexp.datastructures import ExpInfo
 
 
+@frozen
 class Metric(Component, ABC):
     """Abstract base class for metrics."""
 
@@ -14,7 +17,7 @@ class Metric(Component, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def smaller_better(self) -> bool:
+    def smaller_is_better(self) -> bool:
         raise NotImplementedError
 
     @abstractmethod
@@ -22,12 +25,12 @@ class Metric(Component, ABC):
         raise NotImplementedError
 
 
-class LossLikeMetric(Metric):
+class LossLikeMetric(Metric, ABC):
     """Abstract base class for loss-like metrics, which take inputs and labels."""
 
     @abstractmethod
     def __call__(
-        self, inputs: torch.Tensor, labels: torch.Tensor
+        self, inputs: torch.Tensor, labels: torch.Tensor, exp_info: ExpInfo
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
 
@@ -38,11 +41,16 @@ class LossLikeMetric(Metric):
         raise NotImplementedError
 
 
-class GraphMetric(Metric):
+class GraphLossLikeMetric(Metric):
     """Abstract base class for metrics that take raw data inputs, outputs, and labels."""
 
     @abstractmethod
     def __call__(
-        self, data, mask: torch.Tensor, outputs: torch.Tensor, labels: torch.Tensor
+        self,
+        data,
+        mask: torch.Tensor,
+        outputs: torch.Tensor,
+        labels: torch.Tensor,
+        exp_info: ExpInfo,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError

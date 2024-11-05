@@ -10,8 +10,9 @@ import torch.nn
 from torch.profiler import ProfilerActivity, profile, record_function
 
 from optexp.datasets.dataset import Split
+from optexp.datastructures import AdditionalInfo
 from optexp.experiment import Experiment
-from optexp.metrics.metric import Metric
+from optexp.metrics.metric import LossLikeMetric, Metric
 from optexp.optim.optimizer import Regularizable
 from optexp.results.data_logger import DataLogger, DummyDataLogger
 from optexp.results.main_data_logger import MainDataLogger
@@ -244,31 +245,32 @@ def evaluate(
     metrics = exp.problem.metrics
     model = exp_state.model
 
-    running_metrics: Dict[Metric, SumAndCounter] = {
+    running_sum_metrics: Dict[Metric, SumAndCounter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
         for metric in metrics
     }
 
+    losslike_metrics = [
+        metric for metric in metrics if isinstance(metric, LossLikeMetric)
+    ]
+
     with EvalMode(model), torch.no_grad():
         for _, batch in enumerate(loader):
-
-            cached_forward = exp.problem.datapipe.forward(batch, model, split=split)
-            for metric in metrics:
+            cached_forward = exp.problem.datapipe.forward(batch, model)
+            additional_info = AdditionalInfo(split, exp, exp_state, cached_forward)
+            for metric in losslike_metrics:
                 loss, weight = exp.problem.datapipe.compute_metric(
                     data=batch,
                     model=model,
                     metric=metric,
-                    split=split,
-                    cached_forward=cached_forward,
+                    additional_info=additional_info,
                 )
-                running_metrics[metric] += SumAndCounter(loss.detach(), weight.detach())
+                running_sum = SumAndCounter(loss.detach(), weight.detach())
+                running_sum_metrics[metric] += running_sum
 
-        def reduce(x: SumAndCounter):
-            num, den = x.reduce(fabric)
-            v = (num / den).cpu()
-            return v.tolist() if torch.numel(v) > 1 else v.item()
-
-        reduced_results = {k: reduce(v) for k, v in running_metrics.items()}
+        reduced_results = {
+            k: v.reduce_and_divide(fabric) for k, v in running_sum_metrics.items()
+        }
 
         return reduced_results
 
@@ -290,7 +292,7 @@ def training_step(
                     data=exp_state.get_batch(),
                     model=exp_state.model,
                     lossfunc=exp.problem.lossfunc,
-                    split="tr",
+                    additional_info=AdditionalInfo("tr", exp, exp_state),
                 )
                 total_loss_and_count += SumAndCounter(loss.detach(), weight)
                 fabric.backward(loss)

@@ -217,7 +217,11 @@ def get_best_exps_per_group(
     for opt, group in optim_groups.items():
         group_exps_data = {exp: exps_data[exp] for exp in group}
         best_hp_per_group[opt] = get_best_hp(
-            group_exps_data, hp, regularized, metric_key, best_metric.smaller_better()
+            group_exps_data,
+            hp,
+            regularized,
+            metric_key,
+            best_metric.smaller_is_better(),
         )
 
     def filter_hp(exps, value):
@@ -267,7 +271,7 @@ def set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_y):
 
     init_values = metric_at_initialization(exps_data, metric_key)
     end_values = metric_at_end(exps_data, metric_key)
-    if metric.smaller_better():
+    if metric.smaller_is_better():
         low_vals = end_values
         high_vals = init_values
     else:

@@ -5,31 +5,35 @@ import torch
 from torch import Tensor
 
 from optexp.component import Component
-from optexp.datasets.dataset import Split
+from optexp.datastructures import AdditionalInfo, ExpInfo
 from optexp.metrics import LossLikeMetric, Metric
-from optexp.metrics.metric import GraphMetric
+from optexp.metrics.metric import GraphLossLikeMetric
+
+
+def exp_info(additional_info: AdditionalInfo) -> ExpInfo:
+    return ExpInfo(additional_info.exp, additional_info.exp_state)
 
 
 class DataPipe(Component, ABC):
 
     @abstractmethod
-    def forward(self, data, model, split: Split):
+    def forward(self, data, model):
         raise NotImplementedError()
 
-    def forward_or_cache(self, data, model, split: Split, cached_forward=None):
+    def forward_or_cache(self, data, model, cached_forward):
         if cached_forward is not None:
             return cached_forward
-        return self.forward(data, model, split)
+        return self.forward(data, model)
 
     @abstractmethod
-    def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, split: Split, cached_forward=None
+    def compute_loss(
+        self, data, model, lossfunc, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
         raise NotImplementedError()
 
     @abstractmethod
-    def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, split: Split, cached_forward=None
+    def compute_metric(
+        self, data, model, metric: LossLikeMetric, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
         raise NotImplementedError()
 
@@ -52,24 +56,20 @@ class TensorDataPipe(DataPipe):
                 "Did you select the correct DataPipe?"
             )
 
-    def forward(self, data, model, split: Split):
+    def forward(self, data, model):
         self._check_data(data)
         return model(data[0])
 
-    def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, split: Split, cached_forward=None
+    def compute_metric(
+        self, data, model, metric: LossLikeMetric, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, split, cached_forward)
-        if isinstance(metric, LossLikeMetric):
-            return metric(forward, data[1])
-        raise ValueError(
-            f"Unknown metric type: {type(metric)}. Expected LossLikeMetric."
-        )
+        forward = self.forward_or_cache(data, model, additional_info.cached_forward)
+        return metric(forward, data[1], exp_info(additional_info))
 
-    def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, split: Split, cached_forward=None
+    def compute_loss(
+        self, data, model, lossfunc, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, split, cached_forward)
+        forward = self.forward_or_cache(data, model, additional_info.cached_forward)
         return lossfunc(forward, data[1])
 
 
@@ -93,29 +93,37 @@ class SequenceDataPipe(DataPipe):
             raise ValueError(
                 "Unknown data type. "
                 "Expected tuple[Tensor, Tensor] or list[Tensor] containing long for sequence data "
-                f"but tot {type(data)}."
+                f"but tot {type(data)}. "
                 "Did you select the correct DataPipe?"
             )
 
-    def forward(self, data, model, split: Split):
+    def forward(self, data, model):
         self._check_data(data)
         return model(data[0])
 
-    def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, split: Split, cached_forward=None
+    def compute_metric(
+        self, data, model, metric: LossLikeMetric, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, split, cached_forward)
-        if isinstance(metric, LossLikeMetric):
-            return metric(forward.reshape(-1, forward.shape[2]), data[1].reshape(-1))
-        raise ValueError(
-            f"Unknown metric type: {type(metric)}. " f"Expected LossLikeMetric."
+        forward = self.forward_or_cache(data, model, additional_info.cached_forward)
+        return metric(
+            forward.reshape(-1, forward.shape[2]),
+            data[1].reshape(-1),
+            exp_info(additional_info),
         )
 
-    def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, split: Split, cached_forward=None
+    def compute_loss(
+        self, data, model, lossfunc, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, split, cached_forward)
+        forward = self.forward_or_cache(data, model, additional_info.cached_forward)
         return lossfunc(forward.reshape(-1, forward.shape[2]), data[1].reshape(-1))
+
+
+def get_mask(data, additional_info):
+    if additional_info.split == "tr":
+        return data.train_mask
+    if additional_info.split == "va":
+        return data.val_mask
+    return data.test_mask
 
 
 class GraphDataPipe(DataPipe):
@@ -135,37 +143,24 @@ class GraphDataPipe(DataPipe):
                 "Did you select the correct DataPipe?"
             )
 
-    def forward(self, data, model, split: Split):
+    def forward(self, data, model):
         self._check_data(data)
         return model(data.x, data.edge_index)
 
-    def compute_metric(  # pylint: disable=too-many-arguments
-        self, data, model, metric: Metric, split: Split, cached_forward=None
+    def compute_metric(
+        self, data, model, metric: Metric, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
-        model_out = self.forward_or_cache(data, model, split, cached_forward)
-        if split == "tr":
-            mask = data.train_mask
-        elif split == "va":
-            mask = data.val_mask
-        else:
-            mask = data.test_mask
-        if isinstance(metric, LossLikeMetric):
-            return metric(model_out[mask], data.y[mask])
-        if isinstance(metric, GraphMetric):
-            return metric(data, mask, model_out[mask], data.y[mask])
-        raise ValueError(
-            f"Unknown metric type: {type(metric)}. "
-            f"Expected LossLikeMetric or InputOutputLabelMetric."
-        )
+        model_out = self.forward_or_cache(data, model, additional_info.cached_forward)
+        mask = get_mask(data, additional_info)
+        if isinstance(metric, GraphLossLikeMetric):
+            return metric(
+                data, mask, model_out[mask], data.y[mask], exp_info(additional_info)
+            )
+        return metric(model_out[mask], data.y[mask], exp_info(additional_info))
 
-    def compute_loss(  # pylint: disable=too-many-arguments
-        self, data, model, lossfunc, split: Split, cached_forward=None
+    def compute_loss(
+        self, data, model, lossfunc, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
-        model_out = self.forward_or_cache(data, model, split, cached_forward)
-        if split == "tr":
-            mask = data.train_mask
-        elif split == "va":
-            mask = data.val_mask
-        else:
-            mask = data.test_mask
+        model_out = self.forward_or_cache(data, model, additional_info.cached_forward)
+        mask = get_mask(data, additional_info)
         return lossfunc(model_out[mask], data.y[mask])

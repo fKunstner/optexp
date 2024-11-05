@@ -1,73 +1,70 @@
 from typing import Tuple
 
 import torch
+from attr import frozen
+from torch import Tensor
 from torch.nn.functional import cross_entropy, mse_loss
 
+from optexp.datasets.dataset import HasClassCounts
+from optexp.datastructures import ExpInfo
 from optexp.metrics.metric import LossLikeMetric
 
 
 class MSE(LossLikeMetric):
 
+    def smaller_is_better(self) -> bool:
+        return True
+
+    def is_scalar(self) -> bool:
+        return True
+
     def __call__(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tuple[Tensor, Tensor]:
         return mse_loss(inputs, labels, reduction="sum"), torch.tensor(labels.numel())
 
-    def smaller_better(self) -> bool:
-        return True
-
-    def is_scalar(self):
-        return True
-
-    def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
         return mse_loss(inputs, labels, reduction="none")
 
 
 class CrossEntropy(LossLikeMetric):
-    def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
-        return cross_entropy(inputs, labels, reduction="none")
+
+    def smaller_is_better(self) -> bool:
+        return True
+
+    def is_scalar(self) -> bool:
+        return True
 
     def __call__(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tuple[Tensor, Tensor]:
         return cross_entropy(inputs, labels, reduction="sum"), torch.tensor(
             labels.numel()
         )
 
-    def smaller_better(self) -> bool:
-        return True
-
-    def is_scalar(self):
-        return True
+    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+        return cross_entropy(inputs, labels, reduction="none")
 
 
 class Accuracy(LossLikeMetric):
 
-    def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
+    def smaller_is_better(self) -> bool:
+        return True
+
+    def is_scalar(self) -> bool:
+        return True
+
+    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
         return torch.argmax(inputs, dim=1) == labels
 
     def __call__(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        classes = torch.argmax(inputs, dim=1)
-        return torch.sum((classes == labels).float()), torch.tensor(classes.numel())
-
-    def smaller_better(self) -> bool:
-        return False
-
-    def is_scalar(self):
-        return True
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tuple[Tensor, Tensor]:
+        acc = self.unreduced_call(inputs, labels)
+        return torch.sum(acc.float()), torch.tensor(labels.numel())
 
 
-def _groupby_sum(
-    inputs: torch.Tensor, classes, num_classes
-) -> Tuple[torch.Tensor, torch.Tensor]:
+def _groupby_sum(inputs: Tensor, classes, num_classes) -> Tuple[Tensor, Tensor]:
     """Sums by class.
 
     Args:
@@ -84,59 +81,73 @@ def _groupby_sum(
         sum_by_class[c] == sum(inputs[classes == c])
         label_counts[c] == sum(classes == c)
     """
+
     classes = classes.view(-1)
 
     label_counts = torch.zeros(num_classes, dtype=torch.float, device=classes.device)
-    label_counts = label_counts.scatter_add_(0, classes, torch.ones_like(inputs))
+    label_counts = label_counts.scatter_add_(
+        0, classes, torch.ones_like(inputs, dtype=label_counts.dtype)
+    )
 
-    sum_by_class = torch.zeros(num_classes, dtype=torch.float, device=classes.device)
-    sum_by_class = sum_by_class.scatter_add_(0, classes, inputs)
+    sum_by_class = torch.zeros(num_classes, dtype=inputs.dtype, device=classes.device)
+    sum_by_class = sum_by_class.scatter_add_(dim=0, index=classes, src=inputs)
 
     return sum_by_class, label_counts
 
 
-class CrossEntropyPerClass(LossLikeMetric):
-    """Cross entropy loss per class.
+def _split_frequencies_by_groups(sorted_labels, freq_sorted, n_splits):
+    cum_freq_sorted = freq_sorted.cumsum(0)
+    freq_breakpoints = torch.linspace(0, 1, n_splits + 1)[1:-1]
+    indices = torch.searchsorted(cum_freq_sorted, freq_breakpoints, side="left")
 
-    Can result in large logs on problems with many classes.
-    """
+    split_sizes = []
+    previous_idx = 0
+    for idx in indices:
+        split_sizes.append((1 + idx - previous_idx).item())
+        previous_idx = idx
+    split_sizes.append(len(sorted_labels) - sum(split_sizes))
 
-    def __call__(self, inputs, labels):
-        num_classes = inputs.shape[1]
-        losses = cross_entropy(inputs, labels, reduction="none")
-        return _groupby_sum(losses, labels, num_classes)
+    splits = torch.split(sorted_labels, split_size_or_sections=split_sizes, dim=0)
+    return splits
 
-    def smaller_better(self) -> bool:
-        return True
 
-    def is_scalar(self):
+@frozen
+class PerClassMetric(LossLikeMetric):
+    metric: LossLikeMetric
+    groups: int = 10
+
+    def smaller_is_better(self) -> bool:
+        return self.metric.smaller_is_better()
+
+    def is_scalar(self) -> bool:
         return False
 
-    def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
-        return CrossEntropy().unreduced_call(inputs, labels)
+    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+        return self.metric.unreduced_call(inputs, labels)
 
+    def __call__(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tuple[Tensor, Tensor]:
+        dataset = exp_info.exp.problem.dataset
+        if not isinstance(dataset, HasClassCounts):
+            raise ValueError(
+                f"Asked to compute PerClassMetric {self} on dataset {dataset}. "
+                "But dataset does not have class counts"
+            )
 
-class AccuracyPerClass(LossLikeMetric):
-    """Accuracy per class.
+        out_shape = exp_info.exp.problem.dataset.model_output_shape(inputs.shape[0])
+        num_classes = out_shape[1]
 
-    Can result in large logs on problems with many classes.
-    """
+        values = self.metric.unreduced_call(inputs, labels)
+        by_class = _groupby_sum(values, labels, num_classes)
 
-    def __call__(self, inputs, labels):
-        num_classes = inputs.shape[1]
-        classes = torch.argmax(inputs, dim=1)
-        accuracy_per_sample = (classes == labels).float()
-        return _groupby_sum(accuracy_per_sample, labels, num_classes)
+        class_counts = dataset.class_counts("tr")
+        assert class_counts.numel() == num_classes
+        assert len(class_counts.shape) == 1
+        sort_idx = torch.flip(class_counts.argsort(), dims=[0])
+        labels = torch.arange(0, num_classes, device=class_counts.device)
+        sorted_labels = labels[sort_idx]
+        freq_sorted = class_counts[sort_idx] / class_counts.sum()
+        splits = _split_frequencies_by_groups(sorted_labels, freq_sorted, self.groups)
 
-    def smaller_better(self) -> bool:
-        return True
-
-    def is_scalar(self):
-        return False
-
-    def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
-    ) -> torch.Tensor:
-        return Accuracy().unreduced_call(inputs, labels)
+        raise NotImplementedError("Need to implement grouping")

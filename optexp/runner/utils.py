@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import lightning as ptl
 import torch
@@ -32,6 +32,13 @@ class SumAndCounter:
         numerator = reduce_tensor(fabric, self.numerator, reduce_op=reduce_op)
         denominator = reduce_tensor(fabric, self.denominator, reduce_op=reduce_op)
         return numerator, denominator
+
+    def reduce_and_divide(
+        self, fabric: ptl.Fabric, reduce_op="sum"
+    ) -> List[float] | float:
+        numerator, denominator = self.reduce(fabric, reduce_op=reduce_op)
+        v = (numerator / denominator).cpu()
+        return v.tolist() if torch.numel(v) > 1 else v.item()
 
     def result(self) -> Tensor:
         return self.numerator / self.denominator
