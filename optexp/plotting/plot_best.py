@@ -1,6 +1,5 @@
 import itertools
 import os
-import warnings
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -67,7 +66,6 @@ def plot_metrics_over_time_for_best(
     ):
         key = metric.key(tr_va)
         if metric.is_scalar():
-            continue
             fig = make_best_plot_for_metric(
                 best_exps_per_group, exps_data, metric, key, log_x_y
             )
@@ -99,7 +97,8 @@ def make_best_plot_for_non_scalar_metric(
         steps = hack_steps_for_logscale(steps)
         values = np.stack([np.stack(df[metric_key].to_numpy()) for df in reduced_dfs])
 
-        n_exps, n_steps, n_series = values.shape
+        # values : [n_exps, n_steps, n_series]
+        n_series = values.shape[2]
 
         for j in range(n_series):
             axes[0][i].fill_between(
