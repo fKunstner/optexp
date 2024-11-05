@@ -201,23 +201,13 @@ def eval_loop(
         reduced_metrics_tr = evaluate(
             fabric=fabric, exp=exp, exp_state=exp_state, split="tr"
         )
-        metrics_dicts.update(
-            {
-                f"tr_{str(k.__class__.__name__)}": v
-                for k, v in reduced_metrics_tr.items()
-            }
-        )
+        metrics_dicts.update({m.key("tr"): v for m, v in reduced_metrics_tr.items()})
 
     with record_function("eval(va)"):
         reduced_metrics_va = evaluate(
             fabric=fabric, exp=exp, exp_state=exp_state, split="va"
         )
-        metrics_dicts.update(
-            {
-                f"va_{str(k.__class__.__name__)}": v
-                for k, v in reduced_metrics_va.items()
-            }
-        )
+        metrics_dicts.update({m.key("va"): v for m, v in reduced_metrics_va.items()})
 
     if exp.problem.dataset.has_test_set():
         with record_function("eval(te)"):
@@ -225,10 +215,7 @@ def eval_loop(
                 fabric=fabric, exp=exp, exp_state=exp_state, split="te"
             )
             metrics_dicts.update(
-                {
-                    f"te_{str(k.__class__.__name__)}": v
-                    for k, v in reduced_metrics_te.items()
-                }
+                {m.key("te"): v for m, v in reduced_metrics_te.items()}
             )
 
     return metrics_dicts
@@ -288,10 +275,10 @@ def training_step(
         for t in range(exp_state.batch_size_info.accumulation_steps):
             is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
             with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
-                loss, weight = exp.problem.datapipe.compute_loss(
+                loss, weight = exp.problem.datapipe.compute_metric(
                     data=exp_state.get_batch(),
                     model=exp_state.model,
-                    lossfunc=exp.problem.lossfunc,
+                    metric=exp.problem.lossfunc,
                     additional_info=AdditionalInfo("tr", exp, exp_state),
                 )
                 total_loss_and_count += SumAndCounter(loss.detach(), weight)

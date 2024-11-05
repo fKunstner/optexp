@@ -1,5 +1,6 @@
 import itertools
 import os
+import warnings
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ from optexp.plotting.style import make_axes
 from optexp.plotting.utils import (
     ensure_all_exps_have_hyperparameter,
     ensure_all_exps_have_same_problem,
+    flatten,
     get_best_exps_per_group,
     hack_steps_for_logscale,
     save_and_close,
@@ -63,15 +65,57 @@ def plot_metrics_over_time_for_best(
     for metric, tr_va, log_x_y in itertools.product(
         problem.metrics, ["tr", "va"], itertools.product([True, False], [True, False])
     ):
-        if not metric.is_scalar():
-            continue
-        key = f"{tr_va}_{metric.__class__.__name__}"
-        fig = make_best_plot_for_metric(
-            best_exps_per_group, exps_data, metric, key, log_x_y
-        )
+        key = metric.key(tr_va)
+        if metric.is_scalar():
+            fig = make_best_plot_for_metric(
+                best_exps_per_group, exps_data, metric, key, log_x_y
+            )
+        else:
+            fig = make_best_plot_for_non_scalar_metric(
+                best_exps_per_group, exps_data, metric, key, log_x_y
+            )
         save_and_close(
             fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
+
+
+def make_best_plot_for_non_scalar_metric(
+    best_exps_per_group: Dict[Optimizer, List[Experiment]],
+    exps_data: Dict[Experiment, DataFrame],
+    metric: Metric,
+    metric_key: str,
+    log_x_y: Tuple[bool, bool] = (False, False),
+) -> plt.Figure:
+
+    n_groups = len(best_exps_per_group)
+    fig, axes = make_axes(plt, rel_width=1.0, nrows=1, ncols=n_groups)
+
+    for i, (_, exps) in enumerate(best_exps_per_group.items()):
+        reduced_dfs = [exps_data[exp][["step", metric_key]].dropna() for exp in exps]
+        steps = np.array(list(reduced_dfs[0]["step"]), dtype=float)
+        steps = hack_steps_for_logscale(steps)
+        values = np.stack([np.stack(df[metric_key].to_numpy()) for df in reduced_dfs])
+
+        n_exps, n_series, n_steps = values.shape
+
+        for j in range(n_series):
+            axes[i].fill_between(
+                steps,
+                np.min(values[:, j, :], axis=0),
+                np.max(values[:, j, :], axis=0),
+                color=Colors.viridis(j, n_series),
+                alpha=0.2,
+            )
+            axes[i].plot(
+                steps,
+                np.median(values[:, j, :], axis=0),
+                color=Colors.viridis(j, n_series),
+                label=exps[0].optim.equivalent_definition(),
+            )
+
+    warnings.warn("The cleaning of the graph axes has not been implemented yet.")
+
+    return fig
 
 
 def make_best_plot_for_metric(
@@ -102,9 +146,6 @@ def make_best_plot_for_metric(
             color=Colors.Vibrant.get(i),
             label=exps[0].optim.equivalent_definition(),
         )
-
-    def flatten(list_of_lists):
-        return [item for sublist in list_of_lists for item in sublist]
 
     reduced_exp_data = {
         exp: data

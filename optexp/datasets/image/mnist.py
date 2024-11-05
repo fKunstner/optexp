@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Optional
 
 import torch
@@ -32,6 +33,7 @@ class MNIST(Dataset, HasClassCounts, Downloadable, InMemory):
             return 10_000
         raise ValueError(f"Invalid tr_va: {split}")
 
+    @lru_cache()
     def class_counts(self, split: Split) -> torch.Tensor:
         return torch.bincount(self._get_dataset(split).targets)
 

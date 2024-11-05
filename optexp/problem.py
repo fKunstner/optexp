@@ -4,7 +4,7 @@ from attrs import field, frozen
 
 from optexp.component import Component
 from optexp.datasets.dataset import Dataset
-from optexp.metrics.metric import Metric
+from optexp.metrics.metric import LossLikeMetric, Metric
 from optexp.models.model import Model
 from optexp.pipes.pipe import DataPipe, TensorDataPipe
 from optexp.runner.init_callback import InitCallback
@@ -31,7 +31,7 @@ class Problem(Component):
     model: Model
     dataset: Dataset
     batch_size: int
-    lossfunc: Metric
+    lossfunc: LossLikeMetric
     metrics: Iterable[Metric] = field(converter=to_frozenset)
     datapipe: DataPipe = TensorDataPipe()
     init_callback: Optional[InitCallback] = None

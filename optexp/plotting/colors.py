@@ -1,5 +1,7 @@
 from typing import List, Sequence
 
+import matplotlib
+
 
 def rgb_to_unit(xs):
     """Convert a list of RGB numbers [1, 255] to a list of unit [0, 1]"""
@@ -43,3 +45,7 @@ class Colors:
         teal = rgb_to_unit([0, 153, 136])
         grey = rgb_to_unit([187, 187, 187])
         as_list = [orange, blue, cyan, magenta, red, teal, grey]
+
+    @staticmethod
+    def viridis(i, num_colors):
+        return matplotlib.cm.get_cmap("viridis")(i / (num_colors - 1))

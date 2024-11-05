@@ -26,12 +26,6 @@ class DataPipe(Component, ABC):
         return self.forward(data, model)
 
     @abstractmethod
-    def compute_loss(
-        self, data, model, lossfunc, additional_info: AdditionalInfo
-    ) -> Tuple[Tensor, Tensor]:
-        raise NotImplementedError()
-
-    @abstractmethod
     def compute_metric(
         self, data, model, metric: LossLikeMetric, additional_info: AdditionalInfo
     ) -> Tuple[Tensor, Tensor]:
@@ -65,12 +59,6 @@ class TensorDataPipe(DataPipe):
     ) -> Tuple[Tensor, Tensor]:
         forward = self.forward_or_cache(data, model, additional_info.cached_forward)
         return metric(forward, data[1], exp_info(additional_info))
-
-    def compute_loss(
-        self, data, model, lossfunc, additional_info: AdditionalInfo
-    ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, additional_info.cached_forward)
-        return lossfunc(forward, data[1])
 
 
 class SequenceDataPipe(DataPipe):
@@ -110,12 +98,6 @@ class SequenceDataPipe(DataPipe):
             data[1].reshape(-1),
             exp_info(additional_info),
         )
-
-    def compute_loss(
-        self, data, model, lossfunc, additional_info: AdditionalInfo
-    ) -> Tuple[Tensor, Tensor]:
-        forward = self.forward_or_cache(data, model, additional_info.cached_forward)
-        return lossfunc(forward.reshape(-1, forward.shape[2]), data[1].reshape(-1))
 
 
 def get_mask(data, additional_info):
@@ -157,10 +139,3 @@ class GraphDataPipe(DataPipe):
                 data, mask, model_out[mask], data.y[mask], exp_info(additional_info)
             )
         return metric(model_out[mask], data.y[mask], exp_info(additional_info))
-
-    def compute_loss(
-        self, data, model, lossfunc, additional_info: AdditionalInfo
-    ) -> Tuple[Tensor, Tensor]:
-        model_out = self.forward_or_cache(data, model, additional_info.cached_forward)
-        mask = get_mask(data, additional_info)
-        return lossfunc(model_out[mask], data.y[mask])

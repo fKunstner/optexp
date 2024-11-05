@@ -5,6 +5,7 @@ import torch
 from attr import frozen
 
 from optexp.component import Component
+from optexp.datasets.dataset import Split
 from optexp.datastructures import ExpInfo
 
 
@@ -23,6 +24,10 @@ class Metric(Component, ABC):
     @abstractmethod
     def is_scalar(self) -> bool:
         raise NotImplementedError
+
+    def key(self, split: Split) -> str:
+        sanitized_key = self.equivalent_definition().replace("()", "")
+        return f"{split}_{sanitized_key}"
 
 
 class LossLikeMetric(Metric, ABC):

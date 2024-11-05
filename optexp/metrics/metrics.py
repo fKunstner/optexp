@@ -112,7 +112,7 @@ def _split_frequencies_by_groups(sorted_labels, freq_sorted, n_splits):
 
 
 @frozen
-class PerClassMetric(LossLikeMetric):
+class PerClass(LossLikeMetric):
     metric: LossLikeMetric
     groups: int = 10
 
@@ -137,7 +137,8 @@ class PerClassMetric(LossLikeMetric):
 
         class_counts = dataset.class_counts("tr")
         out_shape = exp_info.exp.problem.dataset.model_output_shape(inputs.shape[0])
-        num_classes = out_shape[1]
+        num_classes = out_shape[-1]
+
         assert class_counts.numel() == num_classes
         assert len(class_counts.shape) == 1
 

@@ -12,6 +12,28 @@ from optexp.optim import Optimizer
 from optexp.problem import Problem
 
 
+def infer_metric_key(
+    split, metric: Metric, exp_data: Dict[Experiment, DataFrame]
+) -> str:
+    """For backwards compatibillity.
+
+    Metric keys where initially "{split}_{metric.__class__.__name__}",
+    but are now "{split}_{str(metric)}" to allow for metrics with arguments.
+
+    This function infers the metric key from the experiment keys.
+    """
+    old_key = f"{split}_{metric.__class__.__name__}"
+    new_key = f"{split}_{str(metric)}"
+
+    first_df = next(iter(exp_data.values()))
+
+    if old_key in first_df.keys():
+        return old_key
+    if new_key in first_df.keys():
+        return new_key
+    raise ValueError(f"Could not find metric key for {metric} in {exp_data.keys()}")
+
+
 def ensure_all_exps_have_same_problem(exps):
     problem = exps[0].problem
     if not all(exp.problem == problem for exp in exps):
@@ -305,3 +327,7 @@ def hack_steps_for_logscale(steps):
     """
     steps[steps < 1] = 0.1
     return steps
+
+
+def flatten(list_of_lists):
+    return [item for sublist in list_of_lists for item in sublist]
