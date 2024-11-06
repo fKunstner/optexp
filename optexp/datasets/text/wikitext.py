@@ -1,6 +1,7 @@
 import os
 import shutil
 from abc import abstractmethod
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -132,17 +133,20 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
             }
         return info
 
+    @lru_cache()
     def get_num_samples(self, split: Split) -> int:
         sequences, _ = self.get_data_matrices(split)
         return sequences.shape[0]
 
+    @lru_cache()
     def get_num_tokens(self, split: Split) -> int:
         sequences, _ = self.get_data_matrices(split)
         return sequences.numel()
 
+    @lru_cache()
     def class_counts(self, split: Split) -> torch.Tensor:
         _, targets = self.get_data_matrices(split)
-        return torch.bincount(targets.view(-1))
+        return torch.bincount(targets.view(-1), minlength=self.tokenizer.vocab_size)
 
     def get_dataset(self, split: Split) -> torch.utils.data.Dataset:
         sequences, targets = self.get_data_matrices(split)
