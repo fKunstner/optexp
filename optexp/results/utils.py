@@ -64,13 +64,16 @@ def should_convert_column_to_numpy(series: pd.Series):
 
     more_than_one_entry = len(series) > 1
     if more_than_one_entry:
-        entry_to_check = series[1]
+        first_non_none_idx_except_first = 0
+        for i in range(1, len(series)):
+            if series[i] is not None:
+                first_non_none_idx_except_first = i
+                break
+        entry = series[first_non_none_idx_except_first]
     else:
-        entry_to_check = series[0]
+        entry = series[0]
 
-    return is_string_repr_of_array(entry_to_check) or is_list_of_float_like(
-        entry_to_check
-    )
+    return is_string_repr_of_array(entry) or is_list_of_float_like(entry)
 
 
 def numpyfy(df: pd.DataFrame) -> pd.DataFrame:
