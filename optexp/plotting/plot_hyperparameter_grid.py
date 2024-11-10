@@ -57,6 +57,7 @@ def plot_optim_hyperparam_grids(
             continue
         key = f"{tr_va}_{metric.__class__.__name__}"
         fig = make_step_size_grid_for_metric(exps_data, hp, metric, key, log_x_y)
+        fig.tight_layout()
         save_and_close(
             fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
@@ -98,9 +99,10 @@ def make_step_size_grid_for_metric(
     set_limits(ax, x_y="x", limits=(min(hp_values), max(hp_values)), log=log_x_y[0])
     set_scale(ax, log_x_y)
 
-    ax.set_title(f"Grid for {metric_key}")
+    metric_name = metric_key[:2] + " " + metric.plot_name()
+    ax.set_title(f"Grid for {metric_name}")
     ax.set_xlabel(hp)
-    ax.set_ylabel(metric_key)
+    ax.set_ylabel(metric_name)
     ax.legend()
 
     return fig

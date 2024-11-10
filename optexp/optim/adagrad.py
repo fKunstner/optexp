@@ -26,3 +26,11 @@ class Adagrad(Optimizer, Regularizable):
 
     def regularizer_loss(self, model: torch.nn.Module) -> torch.Tensor:
         return self.decay_strategy.regularizer_loss(model, self.weight_decay)
+
+    def plot_name(self) -> str:
+        attributes = []
+        if self.lr is not None and self.lr != 0:
+            attributes.append(rf"$\alpha={self.lr:.3g}$")
+        if self.weight_decay is not None and self.weight_decay != 0:
+            attributes.append(rf"$\lambda={self.weight_decay:.3g}")
+        return "AdaGrad (" + " ".join(attributes) + ")"

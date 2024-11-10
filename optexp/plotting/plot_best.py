@@ -73,6 +73,7 @@ def plot_metrics_over_time_for_best(
             fig = make_best_plot_for_non_scalar_metric(
                 best_exps_per_group, exps_data, metric, key, log_x_y
             )
+        fig.tight_layout()
         save_and_close(
             fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
@@ -114,7 +115,7 @@ def make_best_plot_for_non_scalar_metric(
                 color=Colors.viridis(j, n_series),
                 label=exps[0].optim.equivalent_definition(),
             )
-        axes[0][i].set_title(opt.equivalent_definition())
+        axes[0][i].set_title(opt.plot_name())
 
     reduced_exp_data = {
         exp: data
@@ -139,7 +140,7 @@ def make_best_plot_for_non_scalar_metric(
         )
         set_scale(ax, log_x_y)
         ax.set_xlabel("Steps")
-        ax.set_ylabel(metric_key)
+        ax.set_ylabel(metric_key[:2] + " " + metric.plot_name())
 
     return fig
 
@@ -194,9 +195,10 @@ def make_best_plot_for_metric(
     )
     set_scale(ax, log_x_y)
 
-    ax.set_title(f"Grid for {metric_key}")
+    metric_name = metric_key[:2] + " " + metric.plot_name()
+    ax.set_title(f"Grid for {metric_name}")
     ax.set_xlabel("Steps")
-    ax.set_ylabel(metric_key)
+    ax.set_ylabel(metric_name)
     ax.legend()
 
     return fig

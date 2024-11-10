@@ -51,6 +51,18 @@ class Adam(Optimizer, Regularizable):
             amsgrad=self.amsgrad,
         )
 
+    def plot_name(self) -> str:
+        attributes = []
+        if self.lr is not None and self.lr != 0:
+            attributes.append(rf"$\alpha={self.lr:.3g}$")
+        if self.beta1 is not None:
+            attributes.append(rf"$\beta_1={self.beta1:.3g}")
+        if self.beta2 is not None:
+            attributes.append(rf"$\beta_2={self.beta2:.3g}")
+        if self.weight_decay is not None and self.weight_decay != 0:
+            attributes.append(rf"$\lambda={self.weight_decay:.3g}")
+        return self.__class__.__name__ + " (" + " ".join(attributes) + ")"
+
 
 @frozen
 class AdamW(Adam, Regularizable):

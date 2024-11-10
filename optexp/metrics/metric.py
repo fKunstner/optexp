@@ -29,6 +29,9 @@ class Metric(Component, ABC):
         sanitized_key = self.equivalent_definition().replace("()", "")
         return f"{split}_{sanitized_key}"
 
+    def plot_name(self) -> str:
+        return self.__class__.__name__
+
 
 class LossLikeMetric(Metric, ABC):
     """Abstract base class for loss-like metrics, which take inputs and labels."""
