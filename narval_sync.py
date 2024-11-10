@@ -1,7 +1,8 @@
 import os
 import subprocess
-from tqdm import tqdm
 from argparse import ArgumentParser
+
+from tqdm import tqdm
 
 
 def main(log_folder):
@@ -18,9 +19,11 @@ def main(log_folder):
                     sync_line = line.strip()
                     break
             if sync_line:
-                cmd = sync_line[sync_line.find("wandb"):].split()
+                cmd = sync_line[sync_line.find("wandb") :].split()
                 exp_folder = cmd[-1].split("/")[-1]
-                if os.path.exists(f"/home/alanmil/optexp/experiments/wandb/{exp_folder}/run-{exp_folder.split('-')[-1]}.wandb.synced"):
+                if os.path.exists(
+                    f"/home/alanmil/optexp/experiments/wandb/{exp_folder}/run-{exp_folder.split('-')[-1]}.wandb.synced"
+                ):
                     continue
                 else:
                     try:
