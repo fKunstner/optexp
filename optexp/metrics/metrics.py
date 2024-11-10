@@ -1,3 +1,4 @@
+import warnings
 from typing import Tuple
 
 import torch
@@ -156,3 +157,61 @@ class PerClass(LossLikeMetric):
         counts_per_group = torch.stack([torch.sum(counts[g]) for g in groups])
 
         return losses_per_group, counts_per_group
+
+    def plot_name(self) -> str:
+        return self.metric.plot_name() + " Per Class"
+
+
+class CrossEntropyPerClass(LossLikeMetric):
+    """Cross entropy loss per class.
+
+    Can result in large logs on problems with many classes.
+    """
+
+    def __call__(self, inputs, labels, exp_info: ExpInfo):
+        warnings.warn(
+            "CrossEntropyPerClass is deprecated. "
+            "Use PerClass(CrossEntropy()) instead for new experiments."
+        )
+        num_classes = inputs.shape[1]
+        losses = cross_entropy(inputs, labels, reduction="none")
+        return _groupby_sum(losses, labels, num_classes)
+
+    def smaller_is_better(self) -> bool:
+        return True
+
+    def is_scalar(self):
+        return False
+
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return CrossEntropy().unreduced_call(inputs, labels)
+
+
+class AccuracyPerClass(LossLikeMetric):
+    """Accuracy per class.
+
+    Can result in large logs on problems with many classes.
+    """
+
+    def __call__(self, inputs, labels, exp_info: ExpInfo):
+        warnings.warn(
+            "AccuracyPerClass is deprecated. "
+            "Use PerClass(Accuracy()) instead for new experiments."
+        )
+        num_classes = inputs.shape[1]
+        classes = torch.argmax(inputs, dim=1)
+        accuracy_per_sample = (classes == labels).float()
+        return _groupby_sum(accuracy_per_sample, labels, num_classes)
+
+    def smaller_is_better(self) -> bool:
+        return True
+
+    def is_scalar(self):
+        return False
+
+    def unreduced_call(
+        self, inputs: torch.Tensor, labels: torch.Tensor
+    ) -> torch.Tensor:
+        return Accuracy().unreduced_call(inputs, labels)
