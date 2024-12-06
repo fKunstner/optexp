@@ -300,6 +300,11 @@ def set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_y):
         low_vals = init_values
         high_vals = end_values
 
+    if isinstance(low_vals, list):
+        low_vals = np.stack(low_vals).flatten()
+    if isinstance(high_vals, list):
+        high_vals = np.stack(high_vals).flatten()
+
     data_range = (
         np.nanmin(low_vals),
         np.nanmax(high_vals),
