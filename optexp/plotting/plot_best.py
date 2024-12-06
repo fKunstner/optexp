@@ -73,7 +73,7 @@ def plot_metrics_over_time_for_best(
             fig = make_best_plot_for_non_scalar_metric(
                 best_exps_per_group, exps_data, metric, key, log_x_y
             )
-        fig.tight_layout()
+        fig.tight_layout(pad=0)
         save_and_close(
             fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
@@ -88,7 +88,7 @@ def make_best_plot_for_non_scalar_metric(
 ) -> plt.Figure:
 
     n_groups = len(best_exps_per_group)
-    fig, axes = make_axes(plt, rel_width=1.0, nrows=1, ncols=n_groups)
+    fig, axes = make_axes(plt, rel_width=2.0, nrows=1, ncols=n_groups)
     if n_groups == 1:
         axes = [[axes]]
 
@@ -140,8 +140,7 @@ def make_best_plot_for_non_scalar_metric(
         )
         set_scale(ax, log_x_y)
         ax.set_xlabel("Steps")
-        ax.set_ylabel(metric_key[:2] + " " + metric.plot_name())
-
+    axes[0][0].set_ylabel(metric_key[:2] + " " + metric.plot_name())
     return fig
 
 
