@@ -3,8 +3,9 @@ import os
 import sys
 from pathlib import Path
 from shutil import rmtree
-from typing import List, Optional
+from typing import Dict, List, Optional
 
+from attr import frozen
 from tqdm import tqdm
 
 from optexp.config import get_logger, use_wandb_config
@@ -23,36 +24,86 @@ from optexp.runner.slurm.slurm_config import SlurmConfig
 from optexp.utils import remove_duplicate_exps
 
 
+@frozen
+class ExpGroup:
+    """A group of experiments to run together with a shared SlurmConfig."""
+
+    exps: List[Experiment]
+    slurm_config: Optional[SlurmConfig] = None
+
+
 def cli(
-    experiments: List[Experiment],
+    experiments: List[Experiment] | Dict[str, ExpGroup],
     slurm_config: Optional[SlurmConfig] = None,
     python_file: Optional[Path] = None,
 ) -> None:
     """Command line interface for running experiments.
 
+    If the experiment file contains only one "group" of experiments,
+        experiments is expected to be a list of Experiment objects
+        to be run with the given SlurmConfig.
+
+    If the experiment file contains multiple groups of experiments,
+        experiments is expected to be a dictionary of ExpGroup objects
+        containing the list of experiment and slurmconfig to run them with,
+        indexed by group name.
+
     Args:
-        experiments: List of experiments to run
+        experiments: List of experiments to run or a dictionary of groups to experiments.
         slurm_config: Configuration to use for running experiments on Slurm
         python_file: Path to the python file to run the experiments from.
             Defaults to the file that called this function, sys.argv[0].
     """
-    experiments = remove_duplicate_exps(experiments)
 
+    exp_groups: Dict[str, ExpGroup] = (
+        experiments
+        if isinstance(experiments, dict)
+        else {
+            experiments[0].group: ExpGroup(exps=experiments, slurm_config=slurm_config)
+        }
+    )
+
+    for group, exp_group in exp_groups.items():
+        if not all(exp.group == group for exp in exp_group.exps):
+            groupnames_in_exps = {exp.group for exp in exp_group.exps}
+            raise ValueError(
+                f"All experiments in group {group} must have the same group name. "
+                f"Got {groupnames_in_exps} in group {group}."
+            )
+
+    available_groups = list(exp_groups.keys())
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "-g",
+        "--group",
+        type=str,
+        help="Group to run experiments from",
+        choices=available_groups,
+        default=None,
+    )
+    args = make_subparsers(parser).parse_args()
+
+    groups_to_run = [args.group] if args.group is not None else available_groups
+    for group_to_run in groups_to_run:
+        print("Running group", group_to_run)
+        exp_group = experiments[group_to_run]
+        args.func(
+            args,
+            experiments=remove_duplicate_exps(exp_group.exps),
+            group=group_to_run,
+            slurm_config=exp_group.slurm_config,
+            python_file=python_file,
+        )
+
+
+def make_subparsers(parser):
     subparsers = parser.add_subparsers(required=True)
     make_run_parser(subparsers)
     make_check_parser(subparsers)
     make_download_parser(subparsers)
     make_prepare_parser(subparsers)
     make_plot_parser(subparsers)
-
-    args = parser.parse_args()
-    args.func(
-        args,
-        experiments=experiments,
-        slurm_config=slurm_config,
-        python_file=python_file,
-    )
+    return parser
 
 
 def make_run_parser(subparsers):
@@ -121,15 +172,18 @@ def make_run_parser(subparsers):
     def run_handler(
         args,
         experiments: List[Experiment],
+        group: str,
         slurm_config: Optional[SlurmConfig] = None,
         python_file: Optional[Path] = None,
     ):
 
         def resolve(should_enable: Optional[bool], should_disable) -> Optional[bool]:
-            if should_enable is None and should_disable is None:
-                return None
             if should_enable and should_disable:
                 raise ValueError("Cannot both enable and disable a flag")
+            if should_enable is None:
+                if should_disable is None:
+                    return None
+                return not should_disable
             return should_enable
 
         with use_wandb_config(
@@ -155,6 +209,7 @@ def make_run_parser(subparsers):
                 slurm_config = validate_slurm_config(slurm_config)
                 run_slurm(
                     experiments,
+                    group,
                     slurm_config,
                     force_rerun=args.force_rerun,
                     python_file=python_file,
@@ -217,16 +272,14 @@ def make_plot_parser(subparsers):
     def plot_handler(
         args,
         experiments: List[Experiment],
+        group: str,
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
         python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
         if args.grid:
             folder_name = args.folder
             if folder_name is None:
-                group0 = experiments[0].group
-                if not all(exp.group == group0 for exp in experiments):
-                    raise ValueError("All experiments must have the same group name")
-                folder_name = group0
+                folder_name = group
 
             plot_optim_hyperparam_grids(
                 experiments,
@@ -237,10 +290,7 @@ def make_plot_parser(subparsers):
         if args.best:
             folder_name = args.folder
             if folder_name is None:
-                group0 = experiments[0].group
-                if not all(exp.group == group0 for exp in experiments):
-                    raise ValueError("All experiments must have the same group name")
-                folder_name = group0
+                folder_name = group
                 if args.regularized and args.best_metric is not None:
                     raise ValueError(
                         f"Can only regularize tr_CrossEntropy loss. "
@@ -269,6 +319,7 @@ def make_prepare_parser(subparsers):
     def prepare_handler(
         args,  # pylint: disable=unused-argument
         experiments: List[Experiment],
+        group: str,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
         python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
@@ -291,6 +342,7 @@ def make_download_parser(subparsers):
     def download_handler(
         args,
         experiments: List[Experiment],
+        group: str,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
         python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
@@ -313,6 +365,7 @@ def make_check_parser(subparsers):
     def check_handler(
         args,  # pylint: disable=unused-argument
         experiments: List[Experiment],
+        group: str,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
         python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
@@ -374,6 +427,7 @@ def run_locally(experiments: List[Experiment], force_rerun: bool) -> None:
 
 def run_slurm(
     experiments: List[Experiment],
+    group: str,
     slurm_config: SlurmConfig,
     force_rerun: bool,
     python_file: Optional[Path] = None,
@@ -397,11 +451,12 @@ def run_slurm(
 
     contents = make_jobarray_file_contents(
         experiment_file=path_to_python_script,
+        group=group,
         should_run=should_run,
         slurm_config=slurm_config,
+        force_rerun=force_rerun,
     )
 
-    group = experiments[0].group
     tmp_filename = f"tmp_{group}.sh"
     print(f"  Saving sbatch file in {tmp_filename}")
     with open(tmp_filename, "w+", encoding="utf-8") as file:
