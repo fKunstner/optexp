@@ -55,10 +55,10 @@ def create_screen_file(
 
     def make_screen_command(idx, groups):
         name = f"{python_file.stem}_{idx}"
-        return ";".join(
+        return "; ".join(
             [
-                f"screen -dm -S {name}",
-                f"screen -S {name} -X stuff {make_python_calls(groups)}\n\r",
+                f"screen -dmS {name}",
+                f"screen -S {name} -X stuff {make_python_calls(groups)}\\n\\r",
             ]
         )
 
