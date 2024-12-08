@@ -134,7 +134,13 @@ def get_hash_directory(base_directory: Path, object_hash: str, unique_id: str) -
         with mapping_file.open("w") as f:
             json.dump({}, f)
 
-    mapping = json.loads(mapping_file.read_text())
+    try:
+        mapping = json.loads(mapping_file.read_text())
+    except json.JSONDecodeError:
+        raise ValueError(
+            f"Could not decode mapping file at {mapping_file}. Might be corrupted."
+        )
+
     if unique_id in mapping:
         hash_dir = hash_basedir / mapping[unique_id]
     else:
