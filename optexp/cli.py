@@ -276,6 +276,11 @@ def make_plot_parser(subparsers):
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
         python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
+        if not any([args.grid, args.best]):
+            print("Plotting both grid and best")
+            args.grid = True
+            args.best = True
+
         if args.grid:
             folder_name = args.folder
             if folder_name is None:
@@ -305,8 +310,6 @@ def make_plot_parser(subparsers):
                 step=args.step,
                 metric_key=args.best_metric,
             )
-        if not any([args.grid, args.best]):
-            plot_parser.print_help()
 
     plot_parser.set_defaults(func=plot_handler)
 
