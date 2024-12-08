@@ -54,7 +54,13 @@ def create_screen_file(
         )
 
     def make_screen_command(idx, groups):
-        return f"screen -S {python_file.stem}_{idx} -d -m {make_python_calls(groups)}"
+        name = f"{python_file.stem}_{idx}"
+        return ";".join(
+            [
+                f"screen -dm -S {name}",
+                f"screen -S {name} -X stuff {make_python_calls(groups)}\n",
+            ]
+        )
 
     with open(screen_filename, "w", encoding="utf-8") as file:
         file.write("#!/bin/bash\n")
