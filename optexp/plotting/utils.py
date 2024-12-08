@@ -153,13 +153,18 @@ def set_limits(
 
     if log:
         if limits[0] == 0:
-            limits = (1, limits[1])
+            warnings.warn(
+                "Attempting to set limits to log scale with 0 in the range. "
+                "Aborting, leaving limits unchanged."
+            )
+            return
 
         delta = np.log10(limits[1]) - np.log10(limits[0])
         if np.isclose(factor, 1.0):
             mult_factor = 1
         else:
             mult_factor = 10 ** (delta / (100 * (factor - 1)))
+
         ax_set_limits([limits[0] / mult_factor, limits[1] * mult_factor])
     else:
         delta = limits[1] - limits[0]
@@ -309,8 +314,11 @@ def set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_y):
         np.nanmin(low_vals),
         np.nanmax(high_vals),
     )
-    if data_range[0] <= 0 and log_y:
-        data_range = (np.nanmin([val for val in low_vals if val > 0]), data_range[1])
+    if log_y and data_range[0] <= 0:
+        data_range = (
+            np.nanmin([val for val in low_vals if val >= 0]),
+            data_range[1],
+        )
 
     ax.axhline(
         np.median(init_values), color="black", linestyle="--", label="median init"
@@ -327,8 +335,7 @@ def set_scale(ax, log_x_y):
 
 def hack_steps_for_logscale(steps):
     """
-    Assuming steps is an array of non-negative steps.
-    If the minimum step is 0, replace it with 0.1.
+    Replaces values smaller than 1 with 0.1 so that they can be seen in a log-x plot
     """
     steps[steps < 1] = 0.1
     return steps
