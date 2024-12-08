@@ -32,6 +32,36 @@ class ExpGroup:
     slurm_config: Optional[SlurmConfig] = None
 
 
+def create_screen_file(
+    exp_groups: Dict[str, ExpGroup],
+    screen_number: int,
+    python_file: Path,
+):
+    """Create a screen file to run experiments in parallel locally."""
+    screen_filename = f"run_parallel_{python_file.name}.sh"
+
+    groups_per_screen: List[List[str]] = [[] for _ in range(screen_number)]
+    for i, group in enumerate(exp_groups.keys()):
+        groups_per_screen[i % screen_number].append(group)
+
+    def make_python_calls(groups):
+        return (
+            '"'
+            + "; ".join(
+                [f"python {python_file} -g {group} run --local" for group in groups]
+            )
+            + '"'
+        )
+
+    def make_screen_command(idx, groups):
+        return f"screen -S {python_file.stem}_{idx} -d -m {make_python_calls(groups)}"
+
+    with open(screen_filename, "w", encoding="utf-8") as file:
+        file.write("#!/bin/bash\n")
+        for i, groups in enumerate(groups_per_screen):
+            file.write(make_screen_command(i, groups) + "\n")
+
+
 def cli(
     experiments: List[Experiment] | Dict[str, ExpGroup],
     slurm_config: Optional[SlurmConfig] = None,
@@ -81,7 +111,25 @@ def cli(
         choices=available_groups,
         default=None,
     )
+    parser.add_argument(
+        "--screen",
+        type=int,
+        help="Create screen file to run experiments in parallel locally",
+        default=None,
+    )
     args = make_subparsers(parser).parse_args()
+
+    path_to_python_script = (
+        python_file if python_file is not None else Path(sys.argv[0]).resolve()
+    )
+
+    if args.screen is not None:
+        create_screen_file(exp_groups, args.screen, path_to_python_script)
+        return
+
+    if args.func is None:
+        parser.print_help()
+        return
 
     groups_to_run = [args.group] if args.group is not None else available_groups
     for group_to_run in groups_to_run:
@@ -92,12 +140,12 @@ def cli(
             experiments=remove_duplicate_exps(exp_group.exps),
             group=group_to_run,
             slurm_config=exp_group.slurm_config,
-            python_file=python_file,
+            python_file=path_to_python_script,
         )
 
 
 def make_subparsers(parser):
-    subparsers = parser.add_subparsers(required=True)
+    subparsers = parser.add_subparsers()
     make_run_parser(subparsers)
     make_check_parser(subparsers)
     make_download_parser(subparsers)
@@ -173,8 +221,8 @@ def make_run_parser(subparsers):
         args,
         experiments: List[Experiment],
         group: str,
+        python_file: Path,
         slurm_config: Optional[SlurmConfig] = None,
-        python_file: Optional[Path] = None,
     ):
 
         def resolve(should_enable: Optional[bool], should_disable) -> Optional[bool]:
@@ -273,8 +321,8 @@ def make_plot_parser(subparsers):
         args,
         experiments: List[Experiment],
         group: str,
+        python_file: Path,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
         if not any([args.grid, args.best]):
             print("Plotting both grid and best")
@@ -323,8 +371,8 @@ def make_prepare_parser(subparsers):
         args,  # pylint: disable=unused-argument
         experiments: List[Experiment],
         group: str,  # pylint: disable=unused-argument
+        python_file: Path,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
         prepare(experiments)
 
@@ -346,8 +394,8 @@ def make_download_parser(subparsers):
         args,
         experiments: List[Experiment],
         group: str,  # pylint: disable=unused-argument
+        python_file: Path,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
         if args.clear:
             clear_downloaded_data(experiments)
@@ -369,8 +417,8 @@ def make_check_parser(subparsers):
         args,  # pylint: disable=unused-argument
         experiments: List[Experiment],
         group: str,  # pylint: disable=unused-argument
+        python_file: Path,  # pylint: disable=unused-argument
         slurm_config: Optional[SlurmConfig] = None,  # pylint: disable=unused-argument
-        python_file: Optional[Path] = None,  # pylint: disable=unused-argument
     ):
         report(experiments, None)
         return 0
@@ -433,16 +481,12 @@ def run_slurm(
     group: str,
     slurm_config: SlurmConfig,
     force_rerun: bool,
-    python_file: Optional[Path] = None,
+    python_file: Path,
 ) -> None:
     """Run experiments on Slurm."""
     get_logger().info(
         f"Preparing experiments to run {len(experiments)} experiments on Slurm"
     )
-    if python_file is None:
-        path_to_python_script = Path(sys.argv[0]).resolve()
-    else:
-        path_to_python_script = python_file
 
     if not force_rerun:
         print("  Checking which experiments have to run")
@@ -453,7 +497,7 @@ def run_slurm(
         should_run = [True for _ in experiments]
 
     contents = make_jobarray_file_contents(
-        experiment_file=path_to_python_script,
+        experiment_file=python_file,
         group=group,
         should_run=should_run,
         slurm_config=slurm_config,
