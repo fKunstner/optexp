@@ -58,7 +58,7 @@ def create_screen_file(
         return ";".join(
             [
                 f"screen -dm -S {name}",
-                f"screen -S {name} -X stuff {make_python_calls(groups)}\n",
+                f"screen -S {name} -X stuff {make_python_calls(groups)}\n\r",
             ]
         )
 
