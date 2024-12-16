@@ -127,7 +127,7 @@ def get_hp_and_metrics_at_end_per_hp(
         val = getattr(exp.optim, hp)
         data = exp_data[metric_key].iloc[-1]
         if regularized:
-            data += exp_data["regularization"].iloc[-1]
+            data += 0.5 * exp_data["regularization"].iloc[-1]
         metrics_at_end_for_hp[val].append(data)
     return hp_values, metrics_at_end_for_hp
 
@@ -269,6 +269,12 @@ def get_best_hp(
     )
 
     def worst_case(values_at_end: Iterable[float]):
+        for i, v in enumerate(values_at_end):
+            if np.isnan(v):
+                if smaller_better:
+                    values_at_end[i] = np.inf
+                else:
+                    values_at_end[i] = -1 * np.inf
         if smaller_better:
             return max(values_at_end)
         return min(values_at_end)

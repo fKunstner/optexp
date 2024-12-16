@@ -50,7 +50,7 @@ class CrossEntropy(LossLikeMetric):
 class Accuracy(LossLikeMetric):
 
     def smaller_is_better(self) -> bool:
-        return True
+        return False
 
     def is_scalar(self) -> bool:
         return True
