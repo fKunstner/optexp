@@ -81,7 +81,7 @@ class SequenceDataPipe(DataPipe):
             raise ValueError(
                 "Unknown data type. "
                 "Expected tuple[Tensor, Tensor] or list[Tensor] containing long for sequence data "
-                f"but tot {type(data)}. "
+                f"but got {type(data)}. "
                 "Did you select the correct DataPipe?"
             )
 

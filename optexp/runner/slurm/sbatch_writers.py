@@ -39,7 +39,9 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
 
 
 def make_jobarray_content(
-    run_exp_by_idx_command: str, should_run: List[bool], jobs_per_node: int
+    run_exp_by_idx_command: str,
+    should_run: List[bool],
+    jobs_per_node: int,
 ):
     """Creates the content of a jobarray sbatch file for Slurm.
 
@@ -49,43 +51,44 @@ def make_jobarray_content(
         jobs_per_node: How many experiments to run (in sequence) on a slurm node
     """
 
-    bash_script_idx_to_exp_script_idx = []
-    for i, _should_run in enumerate(should_run):
-        if _should_run:
-            bash_script_idx_to_exp_script_idx.append(i)
+    job_idx_to_exp_idx = [
+        i for i, i_should_run in enumerate(should_run) if i_should_run
+    ]
 
-    commands_for_each_experiment = []
+    commands = []
 
-    # for bash_script_idx, exp_script_idx in enumerate(bash_script_idx_to_exp_script_idx):
-    n_nodes_required = math.ceil(len(bash_script_idx_to_exp_script_idx) / jobs_per_node)
-    for bash_script_idx in range(n_nodes_required):
+    n_nodes_required = math.ceil(len(job_idx_to_exp_idx) / jobs_per_node)
+    for job_idx in range(n_nodes_required):
         for _ in range(jobs_per_node):
-            if len(bash_script_idx_to_exp_script_idx) > 0:
-                commands_for_each_experiment.append(
+            if len(job_idx_to_exp_idx) > 0:
+                commands.append(
                     textwrap.dedent(
                         f"""
-                        if [ $SLURM_ARRAY_TASK_ID -eq {bash_script_idx} ]
+                        if [ $SLURM_ARRAY_TASK_ID -eq {job_idx} ]
                         then
-                            {run_exp_by_idx_command} {bash_script_idx_to_exp_script_idx.pop(0)}
+                            {run_exp_by_idx_command} {job_idx_to_exp_idx.pop(0)}
                         fi
                         """
                     )
                 )
 
-    return "".join(commands_for_each_experiment)
+    return "".join(commands)
 
 
 def make_jobarray_file_contents(
     experiment_file: Path,
+    group: str,
     should_run: List[bool],
     slurm_config: SlurmConfig,
+    force_rerun: bool = False,
 ):
     """Creates a jobarray sbatch file for Slurm."""
     n_jobs = math.ceil(sum(should_run) / slurm_config.jobs_per_node)
     header = make_sbatch_header(slurm_config=slurm_config, n_jobs=n_jobs)
-
+    force_flag = "-f" if force_rerun else ""
+    command = f"python {experiment_file} -g {group} run {force_flag} --single"
     body = make_jobarray_content(
-        run_exp_by_idx_command=f"python {experiment_file} run --single",
+        run_exp_by_idx_command=command,
         should_run=should_run,
         jobs_per_node=slurm_config.jobs_per_node,
     )

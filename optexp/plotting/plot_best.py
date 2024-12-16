@@ -73,7 +73,7 @@ def plot_metrics_over_time_for_best(
             fig = make_best_plot_for_non_scalar_metric(
                 best_exps_per_group, exps_data, metric, key, log_x_y
             )
-        fig.tight_layout()
+        fig.tight_layout(pad=0)
         save_and_close(
             fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
@@ -88,14 +88,16 @@ def make_best_plot_for_non_scalar_metric(
 ) -> plt.Figure:
 
     n_groups = len(best_exps_per_group)
-    fig, axes = make_axes(plt, rel_width=1.0, nrows=1, ncols=n_groups)
+    fig, axes = make_axes(plt, rel_width=2.0, nrows=1, ncols=n_groups)
     if n_groups == 1:
         axes = [[axes]]
 
+    observed_steps = []
     for i, (opt, exps) in enumerate(best_exps_per_group.items()):
         reduced_dfs = [exps_data[exp][["step", metric_key]].dropna() for exp in exps]
         steps = np.array(list(reduced_dfs[0]["step"]), dtype=float)
         steps = hack_steps_for_logscale(steps)
+        observed_steps.append(steps)
         values = np.stack([np.stack(df[metric_key].to_numpy()) for df in reduced_dfs])
 
         # values : [n_exps, n_steps, n_series]
@@ -123,26 +125,23 @@ def make_best_plot_for_non_scalar_metric(
         if exp in flatten(best_exps_per_group.values())
     }
 
-    min_and_max_step_values = (
-        min(data["step"].min() for exp, data in exps_data.items()),
-        max(data["step"].max() for exp, data in exps_data.items()),
-    )
+    xrange = min_and_max_step_values(observed_steps)
     for ax in flatten(axes):
         set_ylimits_to_fit_data_range(
             ax, reduced_exp_data, metric, metric_key, log_x_y[1]
         )
-        set_limits(
-            ax,
-            x_y="x",
-            limits=min_and_max_step_values,
-            log=log_x_y[0],
-            factor=1.0,
-        )
+        set_limits(ax, x_y="x", limits=xrange, log=log_x_y[0], factor=1.0)
         set_scale(ax, log_x_y)
         ax.set_xlabel("Steps")
-        ax.set_ylabel(metric_key[:2] + " " + metric.plot_name())
-
+    axes[0][0].set_ylabel(metric_key[:2] + " " + metric.plot_name())
     return fig
+
+
+def min_and_max_step_values(observed_steps: List[np.ndarray]) -> Tuple[float, float]:
+    return (
+        min(steps.min() for steps in observed_steps),
+        max(steps.max() for steps in observed_steps),
+    )
 
 
 def make_best_plot_for_metric(
@@ -154,10 +153,12 @@ def make_best_plot_for_metric(
 ) -> plt.Figure:
     fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
+    observed_steps = []
     for i, (_, exps) in enumerate(best_exps_per_group.items()):
         reduced_dfs = [exps_data[exp][["step", metric_key]].dropna() for exp in exps]
         steps = np.array(list(reduced_dfs[0]["step"]), dtype=float)
         steps = hack_steps_for_logscale(steps)
+        observed_steps.append(steps)
         values = np.stack([df[metric_key] for df in reduced_dfs])
 
         ax.fill_between(
@@ -182,14 +183,10 @@ def make_best_plot_for_metric(
 
     set_ylimits_to_fit_data_range(ax, reduced_exp_data, metric, metric_key, log_x_y[1])
 
-    min_and_max_step_values = (
-        min(data["step"].min() for exp, data in exps_data.items()),
-        max(data["step"].max() for exp, data in exps_data.items()),
-    )
     set_limits(
         ax,
         x_y="x",
-        limits=min_and_max_step_values,
+        limits=min_and_max_step_values(observed_steps),
         log=log_x_y[0],
         factor=1.0,
     )

@@ -32,5 +32,5 @@ class Adagrad(Optimizer, Regularizable):
         if self.lr is not None and self.lr != 0:
             attributes.append(rf"$\alpha={self.lr:.3g}$")
         if self.weight_decay is not None and self.weight_decay != 0:
-            attributes.append(rf"$\lambda={self.weight_decay:.3g}")
+            attributes.append(rf"$\lambda={self.weight_decay:.3g}$")
         return "AdaGrad (" + " ".join(attributes) + ")"
