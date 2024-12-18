@@ -140,7 +140,7 @@ def cli(
     groups_to_run = [args.group] if args.group is not None else available_groups
     for group_to_run in groups_to_run:
         print("Running group", group_to_run)
-        exp_group = experiments[group_to_run]
+        exp_group = exp_groups[group_to_run]
         args.func(
             args,
             experiments=remove_duplicate_exps(exp_group.exps),

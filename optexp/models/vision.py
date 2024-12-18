@@ -97,3 +97,11 @@ class ResNet(Model):
         validate_image_data(input_shape, output_shape)
         resnet_x = getattr(torchvision.models, f"resnet{self.size}")
         return resnet_x(num_classes=output_shape[0])
+
+
+class SimpleViT(Model):
+
+    def load_model(
+        self, input_shape: torch.Size, output_shape: torch.Size
+    ) -> torch.nn.Module:
+        pass
