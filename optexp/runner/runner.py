@@ -246,6 +246,7 @@ def evaluate(
             cached_forward = exp.problem.datapipe.forward(batch, model)
             additional_info = AdditionalInfo(split, exp, exp_state, cached_forward)
             for metric in losslike_metrics:
+                #  out of mem here
                 loss, weight = exp.problem.datapipe.compute_metric(
                     data=batch,
                     model=model,

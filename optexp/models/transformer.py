@@ -14,8 +14,6 @@ class Transformer(Model):
     n_layers: int
     n_head: int
     d_model: int
-    sequence_length: int
-    # n_class: int
     d_mlp: int | None = None
 
     p_residual_dropout: float = 0.1
@@ -34,8 +32,8 @@ class Transformer(Model):
             self.n_head,
             self.d_model,
             self.d_mlp,
-            self.sequence_length,
-            output_shape,
+            output_shape[1],
+            output_shape[2],
             self.p_residual_dropout,
             self.p_attention_dropout,
             self.p_embedding_dropout,
@@ -70,7 +68,7 @@ class BaseTransformer(torch.nn.Module):
 
         self.is_autoregressive = is_autoregressive
 
-        positional_encodings = self.get_positional_embeddings(d_model, sequence_length)
+        positional_encodings = self.get_positional_encodings(d_model, sequence_length)
         self.register_buffer("positional_encodings", positional_encodings)
         self.embeddings = self.get_embedding_layer(d_model, n_class)
         self.embedding_dropout = torch.nn.Dropout(p_embedding_dropout)
@@ -79,8 +77,9 @@ class BaseTransformer(torch.nn.Module):
         encoder_layer = self.get_encoder_layer(
             d_model, n_head, d_mlp, p_residual_dropout, p_attention_dropout
         )
+        self.final_norm = torch.nn.LayerNorm(d_model) if final_ln else None
         self.encoder = torch.nn.TransformerEncoder(
-            encoder_layer, num_layers=n_layers, norm=final_ln
+            encoder_layer, num_layers=n_layers, norm=self.final_norm
         )
 
     def get_encoder_layer(
@@ -96,9 +95,21 @@ class BaseTransformer(torch.nn.Module):
         mlp = self.get_fully_connected_block(d_model, d_mlp, p_residual_dropout)
 
         class EncoderLayer(torch.nn.Module):
-            def forward(self, x):
-                x = x + attn(norm1(x))
-                x = x + mlp(norm2(x))
+
+            def __init__(self):
+                super().__init__()
+                self.norm1 = norm1
+                self.self_attn = attn
+                self.norm2 = norm2
+                self.mlp = mlp
+
+            def forward(self, x, src_mask=None, **kwargs):
+                x = self.norm1(x)
+                x = (
+                    x
+                    + self.self_attn(x, x, x, attn_mask=src_mask, need_weights=False)[0]
+                )
+                x = x + self.mlp(self.norm2(x))
                 return x
 
         return EncoderLayer()
@@ -107,7 +118,7 @@ class BaseTransformer(torch.nn.Module):
         return torch.nn.LayerNorm(d_model), torch.nn.LayerNorm(d_model)
 
     def get_attention_block(self, d_model: int, n_head: int, p_drop: float):
-        return torch.nn.MultiheadAttention(d_model, n_head, p_drop)
+        return torch.nn.MultiheadAttention(d_model, n_head, p_drop, batch_first=True)
 
     def get_fully_connected_block(
         self, d_model: int, d_mlp: int, p_drop: float
@@ -118,7 +129,7 @@ class BaseTransformer(torch.nn.Module):
         dropout = torch.nn.Dropout(p_drop)
         return torch.nn.Sequential(lin1, activation, lin2, dropout)
 
-    def get_positional_embeddings(self, d_model: int, sequence_length: int):
+    def get_positional_encodings(self, d_model: int, sequence_length: int):
         position = torch.arange(sequence_length).unsqueeze(1)
         div_term = torch.exp(
             torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model)
@@ -126,6 +137,7 @@ class BaseTransformer(torch.nn.Module):
         pe = torch.zeros(sequence_length, 1, d_model)
         pe[:, 0, 0::2] = torch.sin(position * div_term)
         pe[:, 0, 1::2] = torch.cos(position * div_term)
+        pe = pe.transpose(0, 1)
         return pe
 
     def get_prediction_layer(self, d_model: int, n_class: int):
@@ -148,9 +160,9 @@ class BaseTransformer(torch.nn.Module):
     # TODO valudate which index goes where
     def forward(self, x):
         x = self.embedding_dropout(
-            self.embeddings(x) + self.positional_embeddings[: x.shape[0]]
+            self.embeddings(x) + self.positional_encodings  # [:, x.shape[1]]
         )
-        mask = self.get_attention_mask(x.shape[0])
-        x = self.encoder(x, mask=mask, is_causal=self.is_autoregressive)
+        mask = self.get_attention_mask(x.shape[1]).to(x.device)
+        x = self.encoder(x, mask=mask)
         x = self.prediction_layer(x)
         return x
