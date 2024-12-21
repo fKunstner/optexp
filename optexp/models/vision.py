@@ -104,4 +104,4 @@ class SimpleViT(Model):
     def load_model(
         self, input_shape: torch.Size, output_shape: torch.Size
     ) -> torch.nn.Module:
-        pass
+        raise NotImplementedError

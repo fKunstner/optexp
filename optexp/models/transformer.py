@@ -1,11 +1,12 @@
 import math
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 from attrs import frozen
 
-from optexp.models.model import Model
 from optexp.models.initiliazation import InitializationStrategy
+from optexp.models.model import Model
 
 
 @frozen
@@ -14,26 +15,24 @@ class Transformer(Model):
     n_layers: int
     n_head: int
     d_model: int
-    d_mlp: int | None = None
-
+    d_mlp: Optional[int] = None
     p_residual_dropout: float = 0.1
     p_attention_dropout: float = 0.1
     p_embedding_dropout: float = 0.1
-
     is_autoregressive: bool = True
-    initialization: InitializationStrategy = None
+    initialization: Optional[InitializationStrategy] = None
 
     def load_model(
         self, input_shape: torch.Size, output_shape: torch.Size
     ) -> torch.nn.Module:
 
-        model = BaseTransformer(
+        model: torch.nn.Module = TransformerModule(
+            output_shape[1],
+            output_shape[2],
             self.n_layers,
             self.n_head,
             self.d_model,
             self.d_mlp,
-            output_shape[1],
-            output_shape[2],
             self.p_residual_dropout,
             self.p_attention_dropout,
             self.p_embedding_dropout,
@@ -46,15 +45,15 @@ class Transformer(Model):
         return model
 
 
-class BaseTransformer(torch.nn.Module):
+class TransformerModule(torch.nn.Module):
     def __init__(
         self,
+        sequence_length: int,
+        n_class: int,
         n_layers: int,
         n_head: int,
         d_model: int,
-        d_mlp: int,
-        sequence_length: int,
-        n_class: int,
+        d_mlp: Optional[int] = None,
         p_residual_dropout: float = 0.1,
         p_attention_dropout: float = 0.1,
         p_embedding_dropout: float = 0.1,

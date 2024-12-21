@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+
 import torch.nn
+
 from optexp.component import Component
 
 
@@ -16,8 +18,7 @@ class DefaultInitialization(InitializationStrategy):
         return model
 
 
-# TODO
 class TransformerInitialization(InitializationStrategy):
 
     def initialize(self, model: torch.nn.Module) -> torch.nn.Module:
-        pass
+        raise NotImplementedError  # TODO
