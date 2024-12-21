@@ -18,25 +18,6 @@ from optexp.datasets.text.tokenizers import BPETokenizer, Tokenizer
 from optexp.datasets.utils import ListDataset
 
 
-def tokens_to_sequences_and_targets(
-    tokens: torch.Tensor, sequence_len: int
-) -> tuple[torch.Tensor, torch.Tensor]:
-    n_tokens = tokens.size()[0]
-    n_sequences = n_tokens // sequence_len
-
-    last_target_is_incomplete = n_tokens < (n_sequences * sequence_len) + 1
-    if last_target_is_incomplete:
-        n_sequences -= 1
-
-    sequences_mat = tokens[0 : n_sequences * sequence_len]
-    targets_mat = tokens[1 : n_sequences * sequence_len + 1]
-
-    sequences_mat = sequences_mat.view(n_sequences, sequence_len)
-    targets_mat = targets_mat.view(n_sequences, sequence_len)
-
-    return sequences_mat, targets_mat
-
-
 class WTFiles:
     _TXT_FILES: Dict[Split, str] = {
         "te": "wiki.test",
@@ -98,12 +79,105 @@ class Truncate(Component):
 
 
 @frozen
+class LanguageTask(Component):
+    def tokens_to_sequences_and_targets(
+        self, tokens: torch.Tensor, sequence_len: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        raise NotImplementedError
+
+
+@frozen
+class PredictNextToken(LanguageTask):
+    """
+    The format of the data matrices is as follows:
+    sequences_mat: (n_sequences, sequence_len)
+    targets_mat: (n_sequences, sequence_len)
+
+    For each sequence, the targets are the next token in the sequence. Eg;
+
+        Tokens: [0,1,2,3,4,5]
+
+        sequences_mat = [
+            [0,1],
+            [2,3],
+        ]
+        targets_mat = [
+            [1,2],
+            [3,4],
+        ]
+    """
+
+    def tokens_to_sequences_and_targets(
+        self, tokens: torch.Tensor, sequence_len: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        n_tokens = tokens.size()[0]
+        n_sequences = n_tokens // sequence_len
+
+        last_target_is_incomplete = n_tokens < (n_sequences * sequence_len) + 1
+        if last_target_is_incomplete:
+            n_sequences -= 1
+
+        sequences_mat = tokens[0 : n_sequences * sequence_len]
+        targets_mat = tokens[1 : n_sequences * sequence_len + 1]
+
+        sequences_mat = sequences_mat.view(n_sequences, sequence_len)
+        targets_mat = targets_mat.view(n_sequences, sequence_len)
+
+        return sequences_mat, targets_mat
+
+
+@frozen
+class PredictMiddleToken(LanguageTask):
+    """
+    The format of the data matrices is as follows:
+    sequences_mat: (n_sequences, sequence_len)
+    targets_mat: (n_sequences)
+
+    For each sequence, the targets is the token in the middle of the sequence
+
+        Tokens: [0,1,2,3,4,5]
+
+        sequences_mat = [
+            [0,1,2],
+            [3,4,5],
+        ]
+        targets_mat = [
+            1,
+            4,
+        ]
+    """
+
+    def tokens_to_sequences_and_targets(
+        self, tokens: torch.Tensor, sequence_len: int
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        n_tokens = tokens.size()[0]
+        n_sequences = n_tokens // sequence_len
+
+        last_target_is_incomplete = n_tokens < (n_sequences * sequence_len) + 1
+        if last_target_is_incomplete:
+            n_sequences -= 1
+
+        sequences_mat = tokens[0 : n_sequences * sequence_len]
+        sequences_mat = sequences_mat.view(n_sequences, sequence_len)
+
+        raise NotImplementedError
+
+
+@frozen
 class WikiTextBase(Dataset, HasClassCounts, Downloadable):
 
     sequence_length: int = 1024
     raw: bool = False
     tokenizer: Tokenizer = BPETokenizer(vocab_size=50257)
     truncate: Truncate = Truncate()
+    task: LanguageTask = PredictNextToken()
+
+    def __post_init__(self):
+        if isinstance(self.task, PredictMiddleToken):
+            if self.sequence_length % 2 == 0:
+                raise ValueError(
+                    "When using PredictMiddleToken, sequence_length must be odd."
+                )
 
     def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
         return DataLoader(
@@ -165,7 +239,7 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
     def get_data_matrices(
         self, split: Split, truncate=True
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        x, y = tokens_to_sequences_and_targets(
+        x, y = self.task.tokens_to_sequences_and_targets(
             self.get_tokens(split), self.sequence_length
         )
 
