@@ -1,6 +1,5 @@
 import torch
 from attr import frozen
-from numpy.lib.stride_tricks import as_strided, sliding_window_view
 
 from optexp.component import Component
 
@@ -99,16 +98,12 @@ class PredictMiddleToken(LanguageTask):
             3,
             4,
         ]
-    
     """
 
     def generate_subsequences(
         self, tokens: torch.Tensor, sequence_len: int
     ) -> torch.Tensor:
-        if self.allow_overlap:
-            return tokens.unfold(0, sequence_len, 1)
-        else:
-            return tokens.unfold(0, sequence_len, sequence_len)
+        return tokens.unfold(0, sequence_len, 1 if self.allow_overlap else sequence_len)
 
     def tokens_to_sequences_and_targets(
         self, tokens: torch.Tensor, sequence_len: int
