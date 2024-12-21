@@ -273,7 +273,7 @@ def get_best_hp(
         group_exps_data, hp, regularized, metric_key
     )
 
-    def worst_case(values_at_end: Iterable[float]):
+    def worst_case(values_at_end: List[float]):
         for i, v in enumerate(values_at_end):
             if np.isnan(v):
                 if smaller_better:
