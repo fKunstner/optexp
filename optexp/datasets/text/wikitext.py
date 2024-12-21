@@ -14,8 +14,13 @@ from torch.utils.data import DataLoader
 from optexp.component import Component
 from optexp.config import Config
 from optexp.datasets.dataset import Dataset, Downloadable, HasClassCounts, Split
+from optexp.datasets.text.language_task import (
+    LanguageTask,
+    PredictMiddleToken,
+    PredictNextToken,
+)
 from optexp.datasets.text.tokenizers import BPETokenizer, Tokenizer
-from optexp.datasets.utils import ListDataset
+from optexp.datasets.utils import ListDataset, make_dataloader
 
 
 class WTFiles:
@@ -79,91 +84,6 @@ class Truncate(Component):
 
 
 @frozen
-class LanguageTask(Component):
-    def tokens_to_sequences_and_targets(
-        self, tokens: torch.Tensor, sequence_len: int
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError
-
-
-@frozen
-class PredictNextToken(LanguageTask):
-    """
-    The format of the data matrices is as follows:
-    sequences_mat: (n_sequences, sequence_len)
-    targets_mat: (n_sequences, sequence_len)
-
-    For each sequence, the targets are the next token in the sequence. Eg;
-
-        Tokens: [0,1,2,3,4,5]
-
-        sequences_mat = [
-            [0,1],
-            [2,3],
-        ]
-        targets_mat = [
-            [1,2],
-            [3,4],
-        ]
-    """
-
-    def tokens_to_sequences_and_targets(
-        self, tokens: torch.Tensor, sequence_len: int
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        n_tokens = tokens.size()[0]
-        n_sequences = n_tokens // sequence_len
-
-        last_target_is_incomplete = n_tokens < (n_sequences * sequence_len) + 1
-        if last_target_is_incomplete:
-            n_sequences -= 1
-
-        sequences_mat = tokens[0 : n_sequences * sequence_len]
-        targets_mat = tokens[1 : n_sequences * sequence_len + 1]
-
-        sequences_mat = sequences_mat.view(n_sequences, sequence_len)
-        targets_mat = targets_mat.view(n_sequences, sequence_len)
-
-        return sequences_mat, targets_mat
-
-
-@frozen
-class PredictMiddleToken(LanguageTask):
-    """
-    The format of the data matrices is as follows:
-    sequences_mat: (n_sequences, sequence_len)
-    targets_mat: (n_sequences)
-
-    For each sequence, the targets is the token in the middle of the sequence
-
-        Tokens: [0,1,2,3,4,5]
-
-        sequences_mat = [
-            [0,1,2],
-            [3,4,5],
-        ]
-        targets_mat = [
-            1,
-            4,
-        ]
-    """
-
-    def tokens_to_sequences_and_targets(
-        self, tokens: torch.Tensor, sequence_len: int
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        n_tokens = tokens.size()[0]
-        n_sequences = n_tokens // sequence_len
-
-        last_target_is_incomplete = n_tokens < (n_sequences * sequence_len) + 1
-        if last_target_is_incomplete:
-            n_sequences -= 1
-
-        sequences_mat = tokens[0 : n_sequences * sequence_len]
-        sequences_mat = sequences_mat.view(n_sequences, sequence_len)
-
-        raise NotImplementedError
-
-
-@frozen
 class WikiTextBase(Dataset, HasClassCounts, Downloadable):
 
     sequence_length: int = 1024
@@ -180,14 +100,7 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
                 )
 
     def get_dataloader(self, b: int, split: Split, num_workers: int) -> DataLoader:
-        return DataLoader(
-            self.get_dataset(split),
-            batch_size=b,
-            shuffle=False,
-            num_workers=num_workers,
-            drop_last=False,
-            pin_memory=True,
-        )
+        return make_dataloader(self.get_dataset(split), b, num_workers)
 
     def data_input_shape(self, batch_size: int) -> torch.Size:
         return torch.Size([batch_size, self.sequence_length])
