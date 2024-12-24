@@ -35,13 +35,13 @@ def sync():
         subprocess.run(f"wandb sync {folder_to_sync}", shell=True, check=False)
 
         # filename format: offline-run-YYYYMMDD_HHMMSS-runid
-        offline, run, date, id = file.name.split("-")
+        _offline, _run, _date, run_id = file.name.split("-")
 
         try:
             WandbAPI.get_handler().run(
                 entity=Config.get_wandb_entity(),
                 project=Config.get_wandb_project(),
-                run_id=id,
+                run_id=run_id,
             )
         except ValueError as e:
             print("Syncing failed for", file.name, e)
