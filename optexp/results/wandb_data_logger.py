@@ -1,3 +1,4 @@
+import json
 import subprocess
 from pathlib import Path
 from typing import Optional
@@ -37,6 +38,7 @@ class WandbDataLogger(DataLogger):
         if Config.get_wandb_key() is None:
             raise ValueError("WandB API key not set.")
 
+        self.experiment = experiment
         self.run = wandb.init(
             project=Config.get_wandb_project(),
             entity=Config.get_wandb_entity(),
@@ -99,6 +101,19 @@ class WandbDataLogger(DataLogger):
             else:
                 get_logger().info("Not uploading run to wandb. To sync manually, run")
                 get_logger().info(f"    {self._sync_command()}")
+                self.save_info_for_syncing()
+
+    def save_info_for_syncing(self):
+        info = {
+            "exp": self.experiment.equivalent_definition(),
+            "exp_hash": self.experiment.equivalent_hash(),
+            "folder": self._run_directory(),
+        }
+        basepath = Config.get_workspace_directory() / "syncing" / "to_sync"
+        basepath.mkdir(parents=True, exist_ok=True)
+        filename = self._run_directory().name + ".json"
+        with open(basepath / filename, "w", encoding="utf-8") as f:
+            json.dump(info, f)
 
     def _run_directory(self):
         return Path(self.run.dir).parent
