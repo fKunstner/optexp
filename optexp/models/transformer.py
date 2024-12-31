@@ -145,7 +145,7 @@ class TransformerModule(torch.nn.Module):
     def get_embedding_layer(self, d_model: int, n_class: int):
         return torch.nn.Embedding(n_class, d_model)
 
-    def get_attention_mask(self, sequence_length):
+    def get_attention_mask(self, sequence_length: int):
         mask = (
             torch.triu(torch.ones(sequence_length, sequence_length)) == 1
         ).transpose(0, 1)
@@ -159,7 +159,7 @@ class TransformerModule(torch.nn.Module):
     # TODO valudate which index goes where
     def forward(self, x):
         x = self.embedding_dropout(
-            self.embeddings(x) + self.positional_encodings  # [:, x.shape[1]]
+            self.embeddings(x) + self.positional_encodings[:, : x.shape[1]]
         )
         mask = self.get_attention_mask(x.shape[1]).to(x.device)
         x = self.encoder(x, mask=mask)
