@@ -1,3 +1,4 @@
+import math
 from abc import ABC, abstractmethod
 
 import torch.nn
@@ -18,7 +19,28 @@ class DefaultInitialization(InitializationStrategy):
         return model
 
 
-class TransformerInitialization(InitializationStrategy):
+# mostly stolen from https://github.com/karpathy/nanoGPT/blob/master/model.py
+class GPT2Initialization(InitializationStrategy):
 
     def initialize(self, model: torch.nn.Module) -> torch.nn.Module:
-        raise NotImplementedError  # TODO
+
+        if not hasattr(model, "n_layers"):
+            raise ValueError(
+                "GPT2 Initialization requires model to have attribute n_layers!"
+            )
+        n_layers = getattr(model, "n_layers")
+
+        def init_weights(module: torch.nn.Module):
+            if isinstance(module, torch.nn.Linear):
+                torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+                if module.bias is not None:
+                    torch.nn.init.zeros_(module.bias)
+            elif isinstance(module, torch.nn.Embedding):
+                torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
+        model.apply(init_weights)
+
+        for pn, p in model.named_parameters():
+            if pn.endswith("c_proj.weight"):
+                torch.nn.init.normal_(p, mean=0.0, std=0.02 / math.sqrt(2 * n_layers))
+        return model
