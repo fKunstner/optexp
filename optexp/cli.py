@@ -133,7 +133,7 @@ def cli(
         create_screen_file(exp_groups, args.screen, path_to_python_script)
         return
 
-    if args.func is None:
+    if getattr(args, "func", None) is None:
         parser.print_help()
         return
 
