@@ -55,7 +55,8 @@ class ExperimentState:
     _current_training_dataloader = None
     iteration_counter: IterationCounter = field(default_factory=IterationCounter)
 
-    def get_batch(self):
+    # TODO is this the best way to fix gradient accumulation?
+    def get_batch(self, is_accumulating: bool = False):
         if self._current_training_dataloader is None:
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
             self.iteration_counter.start()
@@ -67,6 +68,7 @@ class ExperimentState:
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
             data = next(self._current_training_dataloader)
         finally:
-            self.iteration_counter.next_iter()
+            if not is_accumulating:
+                self.iteration_counter.next_iter()
 
         return data

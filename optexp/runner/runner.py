@@ -284,7 +284,7 @@ def training_step(
             is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
             with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
                 loss, weight = exp.problem.datapipe.compute_metric(
-                    data=exp_state.get_batch(),
+                    data=exp_state.get_batch(is_accumulating=is_accumulating),
                     model=exp_state.model,
                     metric=exp.problem.lossfunc,
                     additional_info=AdditionalInfo("tr", exp, exp_state),
