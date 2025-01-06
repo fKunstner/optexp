@@ -230,7 +230,7 @@ class SimpleViTModule(TransformerModule):
                 self.patch_height = patch_height
                 self.patch_width = patch_width
 
-            # TODO this would be much  more readable with einops rearrange but that adds a dependencys
+            # TODO this would be much  more readable with einops rearrange but that adds a dependency
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 b, c, img_h, img_w = x.shape
 

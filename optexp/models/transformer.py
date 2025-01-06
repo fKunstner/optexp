@@ -5,7 +5,7 @@ from typing import Optional
 import torch
 from attrs import frozen
 
-from optexp.models.initiliazation import InitializationStrategy
+from optexp.models.initiliazation import InitializationStrategy, GPT2Initialization
 from optexp.models.model import Model
 
 
@@ -76,9 +76,9 @@ class TransformerModule(torch.nn.Module):
         encoder_layer = self.get_encoder_layer(
             d_model, n_head, d_mlp, p_residual_dropout, p_attention_dropout
         )
-        self.final_norm = torch.nn.LayerNorm(d_model) if final_ln else None
+        final_norm = torch.nn.LayerNorm(d_model) if final_ln else None
         self.encoder = torch.nn.TransformerEncoder(
-            encoder_layer, num_layers=n_layers, norm=self.final_norm
+            encoder_layer, num_layers=n_layers, norm=final_norm
         )
 
     def get_encoder_layer(
@@ -119,11 +119,14 @@ class TransformerModule(torch.nn.Module):
     def get_attention_block(self, d_model: int, n_head: int, p_drop: float):
         return torch.nn.MultiheadAttention(d_model, n_head, p_drop, batch_first=True)
 
+    def get_activation(self):
+        return torch.nn.GELU(approximate="tanh")
+
     def get_fully_connected_block(
         self, d_model: int, d_mlp: int, p_drop: float
     ) -> torch.nn.Module:
         lin1 = torch.nn.Linear(d_model, d_mlp)
-        activation = torch.nn.GELU(approximate="tanh")
+        activation = self.get_activation()
         lin2 = torch.nn.Linear(d_mlp, d_model)
         dropout = torch.nn.Dropout(p_drop)
         return torch.nn.Sequential(lin1, activation, lin2, dropout)
@@ -165,3 +168,16 @@ class TransformerModule(torch.nn.Module):
         x = self.encoder(x, mask=mask)
         x = self.prediction_layer(x)
         return x
+
+
+@frozen
+class GPT2Small(Transformer):
+    n_layers: int = 12
+    n_head: int = 12
+    d_model: int = 768
+    d_mlp: Optional[int] = None
+    p_residual_dropout: float = 0.1
+    p_attention_dropout: float = 0.1
+    p_embedding_dropout: float = 0.1
+    is_autoregressive: bool = True
+    initialization: Optional[InitializationStrategy] = GPT2Initialization()

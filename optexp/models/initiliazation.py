@@ -23,12 +23,9 @@ class DefaultInitialization(InitializationStrategy):
 class GPT2Initialization(InitializationStrategy):
 
     def initialize(self, model: torch.nn.Module) -> torch.nn.Module:
-
-        if not hasattr(model, "n_layers"):
-            raise ValueError(
-                "GPT2 Initialization requires model to have attribute n_layers!"
-            )
-        n_layers = getattr(model, "n_layers")
+        if not hasattr(model, "encoder"):
+            raise ValueError("GPT2 Initialization requires model to have an encoder!")
+        n_layers = getattr(model.encoder, "num_layers")
 
         def init_weights(module: torch.nn.Module):
             if isinstance(module, torch.nn.Linear):
