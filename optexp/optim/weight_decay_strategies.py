@@ -33,3 +33,33 @@ class NoDecayOnBias(WeightDecayStrategy):
                 "weight_decay": 0.0,
             },
         ]
+
+
+class GPT2WeightDecay(WeightDecayStrategy):
+    """
+    Applies on weight decay on  matrices but not vectors.
+
+    Bias vectors and  Normalization Layers do not have weight decay but linear layers  do.
+    """
+
+    def make_param_groups(
+        self, model: Module, weight_decay: float
+    ) -> List[Dict[str, Union[Iterable[Parameter], float]]]:
+        return [
+            {
+                "params": (
+                    p
+                    for n, p in model.named_parameters()
+                    if p.dim() >= 2 and p.requires_grad
+                ),
+                "weight_decay": weight_decay,
+            },
+            {
+                "params": (
+                    p
+                    for n, p in model.named_parameters()
+                    if p.dim() < 2 and p.requires_grad
+                ),
+                "weight_decay": 0.0,
+            },
+        ]
