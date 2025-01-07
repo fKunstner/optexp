@@ -30,7 +30,7 @@ experiments = [
         group="testing",
         optim=Adam(lr=lr, weight_decay=1e-5, decay_strategy=GPT2WeightDecay()),
         steps=10000,  #
-        eval_every=1,  # Evaluate every epoch
+        eval_every=8,  # Evaluate every epoch
     )
     for lr in [10.0 ** (-9 / 2)]
 ]
