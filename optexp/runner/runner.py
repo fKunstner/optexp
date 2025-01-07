@@ -2,7 +2,6 @@ import gc
 import math
 import pprint
 import random
-from datetime import datetime
 from typing import Dict, Tuple
 
 import lightning as ptl
@@ -312,7 +311,7 @@ def training_step(
                     metric=exp.problem.lossfunc,
                     additional_info=AdditionalInfo("tr", exp, exp_state),
                 )
-                total_loss_and_count += SumAndCounter(loss.detach(), weight)
+                total_loss_and_count += SumAndCounter(loss.detach(), weight.detach())
                 fabric.backward(loss)
 
         tot_loss, tot_count = total_loss_and_count.reduce(fabric)
@@ -324,5 +323,5 @@ def training_step(
         train_loss = (tot_loss / tot_count).cpu().item()
         exp_state.optimizer.step()
         exp_state.step()
-
+        exp_state.optimizer.zero_grad()
         return train_loss, exp_state
