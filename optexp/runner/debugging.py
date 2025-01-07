@@ -8,6 +8,13 @@ TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
 MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT: int = 100000
 
 
+def trace_handler(prof: torch.profiler.profile):
+    timestamp = datetime.datetime.now().strftime(TIME_FORMAT_STR)
+    file_prefix = f"localhost_{timestamp}"
+    prof.export_chrome_trace(f"{file_prefix}.json.gz")
+    prof.export_memory_timeline(f"{file_prefix}.html", device="cuda:0")
+
+
 def start_record_memory_history() -> None:
     if not torch.cuda.is_available():
         print("CUDA unavailable. Not recording memory history")

@@ -22,6 +22,7 @@ from optexp.runner.debugging import (
     export_memory_snapshot,
     start_record_memory_history,
     stop_record_memory_history,
+    trace_handler,
 )
 from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0, tqdm
@@ -44,11 +45,15 @@ def run_experiment(
     """
 
     if run_profiler:
+
         with profile(
             activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
+            schedule=torch.profiler.schedule(wait=0, warmup=0, active=6, repeat=1),
             record_shapes=True,
             profile_memory=True,
             use_cuda=True,
+            with_stack=True,
+            on_trace_ready=trace_handler,
         ) as prof:
             exp_state = run(exp)
         prof.export_chrome_trace("trace.json")
