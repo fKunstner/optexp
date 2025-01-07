@@ -11,17 +11,17 @@ def test_interaction_counters_are_independent():
     ic2 = IterationCounter()
 
     ic1.start()
-    ic1.next_iter()
-    ic1.next_iter()
-    ic1.next_iter()
+    ic1.next_microbatch()
+    ic1.next_microbatch()
+    ic1.next_microbatch()
     ic1.next_epoch()
-    ic1.next_iter()
-    ic1.next_iter()
-    ic1.next_iter()
+    ic1.next_microbatch()
+    ic1.next_microbatch()
+    ic1.next_microbatch()
 
     assert ic2.epoch == 0
-    assert ic2.step == 0
-    assert ic2.step_within_epoch == 0
+    assert ic2.microbatches == 0
+    assert ic2.microbatches_within_epoch == 0
 
 
 def test_expstate_with_dataloader_1_batch_per_epoch():
@@ -33,22 +33,22 @@ def test_expstate_with_dataloader_1_batch_per_epoch():
     )
 
     assert es.iteration_counter.epoch == 0
-    assert es.iteration_counter.step == 0
-    assert es.iteration_counter.step_within_epoch == 0
+    assert es.iteration_counter.microbatches == 0
+    assert es.iteration_counter.microbatches_within_epoch == 0
 
     i = 0
     for iter in range(1, 5):
-        data = es.get_batch()
+        data = es.get_microbatch()
         i += 1
         print(es.iteration_counter)
         assert es.iteration_counter.epoch == i
-        assert es.iteration_counter.step == i
-        assert es.iteration_counter.step_within_epoch == 1
+        assert es.iteration_counter.microbatches == i
+        assert es.iteration_counter.microbatches_within_epoch == 1
 
     new_es = ExperimentState(2, 2, 2, 2)  # type: ignore
     assert new_es.iteration_counter.epoch == 0
-    assert new_es.iteration_counter.step == 0
-    assert new_es.iteration_counter.step_within_epoch == 0
+    assert new_es.iteration_counter.microbatches == 0
+    assert new_es.iteration_counter.microbatches_within_epoch == 0
 
 
 def test_expstate_with_dataloader_3_batch_per_epoch():
@@ -60,19 +60,21 @@ def test_expstate_with_dataloader_3_batch_per_epoch():
     )
 
     assert es.iteration_counter.epoch == 0
-    assert es.iteration_counter.step == 0
-    assert es.iteration_counter.step_within_epoch == 0
+    assert es.iteration_counter.microbatches == 0
+    assert es.iteration_counter.microbatches_within_epoch == 0
 
     i = 0
     for iter in range(1, 10):
-        data = es.get_batch()
+        data = es.get_microbatch()
         i += 1
         assert es.iteration_counter.epoch == math.ceil(i / 3)
-        assert es.iteration_counter.step == i
+        assert es.iteration_counter.microbatches == i
         expected_step_within_epoch = i % 3 if i % 3 != 0 else 3
-        assert es.iteration_counter.step_within_epoch == expected_step_within_epoch
+        assert (
+            es.iteration_counter.microbatches_within_epoch == expected_step_within_epoch
+        )
 
     new_es = ExperimentState(2, 2, 2, 2)  # type: ignore
     assert new_es.iteration_counter.epoch == 0
-    assert new_es.iteration_counter.step == 0
-    assert new_es.iteration_counter.step_within_epoch == 0
+    assert new_es.iteration_counter.microbatches == 0
+    assert new_es.iteration_counter.microbatches_within_epoch == 0

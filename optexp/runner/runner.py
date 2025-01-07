@@ -121,8 +121,10 @@ def run(exp: Experiment) -> ExperimentState:
 def current_time(exp_state):
     return {
         "epoch": exp_state.iteration_counter.epoch,
-        "step": exp_state.iteration_counter.step,
-        "step_within_epoch": exp_state.iteration_counter.step_within_epoch,
+        "step": exp_state.iteration_counter.steps,
+        "step_within_epoch": exp_state.iteration_counter.steps_within_epoch,
+        "mb": exp_state.iteration_counter.microbatches,
+        "mb_within_epoch": exp_state.iteration_counter.microbatches_within_epoch,
     }
 
 
@@ -260,8 +262,8 @@ def evaluate(
                 running_sum = SumAndCounter(loss.detach(), weight.detach())
                 running_sum_metrics[metric] += running_sum
 
-                gc.collect()
-                torch.cuda.empty_cache()
+                # gc.collect()
+                # torch.cuda.empty_cache()
 
         reduced_results = {
             k: v.reduce_and_divide(fabric) for k, v in running_sum_metrics.items()
@@ -284,7 +286,7 @@ def training_step(
             is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
             with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
                 loss, weight = exp.problem.datapipe.compute_metric(
-                    data=exp_state.get_batch(),
+                    data=exp_state.get_microbatch(),
                     model=exp_state.model,
                     metric=exp.problem.lossfunc,
                     additional_info=AdditionalInfo("tr", exp, exp_state),
@@ -300,5 +302,6 @@ def training_step(
 
         train_loss = (tot_loss / tot_count).cpu().item()
         exp_state.optimizer.step()
+        exp_state.step()
 
         return train_loss, exp_state

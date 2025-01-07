@@ -11,21 +11,30 @@ from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo
 @dataclass
 class IterationCounter:
     epoch: int = 0
-    step: int = 0
-    step_within_epoch: int = 0
+    microbatches: int = 0
+    microbatches_within_epoch: int = 0
+    steps: int = 0
+    steps_within_epoch: int = 0
 
     def start(self):
-        self.step = 0
-        self.step_within_epoch = 0
+        self.microbatches = 0
+        self.microbatches_within_epoch = 0
+        self.steps = 0
+        self.steps_within_epoch = 0
         self.epoch = 1
 
-    def next_iter(self):
-        self.step += 1
-        self.step_within_epoch += 1
+    def next_microbatch(self):
+        self.microbatches += 1
+        self.microbatches_within_epoch += 1
+
+    def step(self):
+        self.steps += 1
+        self.steps_within_epoch += 1
 
     def next_epoch(self):
         self.epoch += 1
-        self.step_within_epoch = 0
+        self.microbatches_within_epoch = 0
+        self.steps_within_epoch = 0
 
 
 @dataclass
@@ -55,7 +64,7 @@ class ExperimentState:
     _current_training_dataloader = None
     iteration_counter: IterationCounter = field(default_factory=IterationCounter)
 
-    def get_batch(self):
+    def get_microbatch(self):
         if self._current_training_dataloader is None:
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
             self.iteration_counter.start()
@@ -67,6 +76,9 @@ class ExperimentState:
             self._current_training_dataloader = iter(self.dataloaders.tr_tr)
             data = next(self._current_training_dataloader)
         finally:
-            self.iteration_counter.next_iter()
+            self.iteration_counter.next_microbatch()
 
         return data
+
+    def step(self):
+        self.iteration_counter.step()
