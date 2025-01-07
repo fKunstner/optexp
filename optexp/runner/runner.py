@@ -2,6 +2,7 @@ import gc
 import math
 import pprint
 import random
+from datetime import datetime
 from typing import Dict, Tuple
 
 import lightning as ptl
@@ -17,13 +18,20 @@ from optexp.metrics.metric import LossLikeMetric, Metric
 from optexp.optim.optimizer import Regularizable
 from optexp.results.data_logger import DataLogger, DummyDataLogger
 from optexp.results.main_data_logger import MainDataLogger
+from optexp.runner.debugging import (
+    export_memory_snapshot,
+    start_record_memory_history,
+    stop_record_memory_history,
+)
 from optexp.runner.exp_state import DataLoaders, ExperimentState
 from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0, tqdm
 
 MetricsDict = Dict[str, float | list[float]]
 
 
-def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentState:
+def run_experiment(
+    exp: Experiment, run_profiler: bool = False, run_memory_history: bool = False
+) -> ExperimentState:
     """Run the experiment.
 
     Initializes the problem and optimizer and optimizes the
@@ -45,6 +53,14 @@ def run_experiment(exp: Experiment, run_profiler: bool = False) -> ExperimentSta
             exp_state = run(exp)
         prof.export_chrome_trace("trace.json")
         return exp_state
+
+    if run_memory_history:
+        start_record_memory_history()
+        exp_state = run(exp)
+        export_memory_snapshot()
+        stop_record_memory_history()
+        return exp_state
+
     return run(exp)
 
 
