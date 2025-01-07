@@ -2,10 +2,12 @@ import operator
 from functools import reduce
 
 import torch
+from attr import frozen
 
 from optexp.models.model import Model, assert_batch_sizes_match
 
 
+@frozen
 class Linear(Model):
     """A linear model for regression or classification.
 
