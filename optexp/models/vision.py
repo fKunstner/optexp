@@ -4,6 +4,7 @@ from typing import Literal, Optional
 import torch
 import torch.nn.functional as F
 import torchvision
+from attr import frozen
 
 from optexp.models.initiliazation import InitializationStrategy
 from optexp.models.model import Model, assert_batch_sizes_match
@@ -23,6 +24,7 @@ def validate_image_data(input_shape, output_shape):
         )
 
 
+@frozen
 class LeNet5(Model):
     """A basic convolutional neural network for image classification from [LeCun1998]_.
 
@@ -73,6 +75,7 @@ class LeNet5(Model):
         return LeNet5Module()
 
 
+@frozen
 class ResNet(Model):
     """A deep convolutional neural network from [He2016]_.
 
@@ -102,14 +105,14 @@ class ResNet(Model):
         return resnet_x(num_classes=output_shape[0])
 
 
+@frozen
 class SimpleViT(Model):
     patch_height: int = 16
     patch_width: int = 16
-
     n_layers: int = 12
     n_head: int = 6
     d_model: int = 384
-    d_mlp: Optional[int] = 1536
+    d_mlp: int = 1536
     p_residual_dropout: float = 0.0
     p_attention_dropout: float = 0.0
     p_embedding_dropout: float = 0.0
@@ -125,7 +128,7 @@ class SimpleViT(Model):
         assert (
             height % self.patch_height == 0 and width % self.patch_width == 0
         ), "Patch Dimensions must divide Image Dimensions"
-        model = SimpleViTModule(
+        model: torch.nn.Module = SimpleViTModule(
             image_height=height,
             image_width=width,
             image_channels=channels,
@@ -190,7 +193,7 @@ class SimpleViTModule(TransformerModule):
         )
         self.register_buffer("positional_encodings", positional_encodings)
 
-    # Stolen from https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/simple_vit.py
+    # Implementation from https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/simple_vit.py
     def get_2d_positional_encodings(self, n_height: int, n_width: int, d_model: int):
         y, x = torch.meshgrid(
             torch.arange(n_height), torch.arange(n_width), indexing="ij"
@@ -230,7 +233,7 @@ class SimpleViTModule(TransformerModule):
                 self.patch_height = patch_height
                 self.patch_width = patch_width
 
-            # TODO this would be much  more readable with einops rearrange but that adds a dependency
+            # TODO this would be much more readable with einops rearrange but that adds a dependency
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 b, c, img_h, img_w = x.shape
 
