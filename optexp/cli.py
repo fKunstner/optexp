@@ -50,7 +50,7 @@ def create_screen_file(
             + "; ".join(
                 [f"python {python_file} -g {group} run --local" for group in groups]
             )
-            + '"'
+            + '\\n\\r"'
         )
 
     def make_screen_command(idx, groups):
@@ -58,7 +58,7 @@ def create_screen_file(
         return "; ".join(
             [
                 f"screen -dmS {name}",
-                f"screen -S {name} -X stuff {make_python_calls(groups)}\\n\\r",
+                f"screen -S {name} -X stuff {make_python_calls(groups)}",
             ]
         )
 
