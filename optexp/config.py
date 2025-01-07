@@ -17,6 +17,7 @@ NAME_WANDB_AUTOSYNC = "OPTEXP_WANDB_AUTOSYNC"
 NAME_WANDB_API_KEY = "WANDB_API_KEY"
 NAME_SLURM_EMAIL = "OPTEXP_SLURM_NOTIFICATION_EMAIL"
 NAME_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
+NAME_TQDM_ENABLED = "OPTEXP_TQDM_ENABLED"
 LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
@@ -108,6 +109,13 @@ class Config:
     )
     device: Literal["cpu", "cuda"] = "cuda" if torch.cuda.is_available() else "cpu"
 
+    tqdm_enabled: Optional[bool] = get_env_var(
+        NAME_TQDM_ENABLED,
+        accepted=["true", "false"],
+        default="false",
+        converter=lambda x: x.lower() == "true",
+    )
+
     @staticmethod
     def get_slurm_account() -> str:
         if Config.slurm_account is None:
@@ -177,6 +185,15 @@ class Config:
         if Config.device != "cuda":
             get_logger().warning("GPU not available, running experiments on CPU.")
         return Config.device
+
+
+@contextmanager
+def use_tqdm_config(enabled: Optional[bool] = None):
+    previous_enabled = Config.tqdm_enabled
+    if enabled is not None:
+        Config.tqdm_enabled = enabled
+    yield
+    Config.tqdm_enabled = previous_enabled
 
 
 @contextmanager

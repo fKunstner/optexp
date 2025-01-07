@@ -18,7 +18,7 @@ from optexp.optim.optimizer import Regularizable
 from optexp.results.data_logger import DataLogger, DummyDataLogger
 from optexp.results.main_data_logger import MainDataLogger
 from optexp.runner.exp_state import DataLoaders, ExperimentState
-from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0
+from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0, tqdm
 
 MetricsDict = Dict[str, float | list[float]]
 
@@ -246,7 +246,7 @@ def evaluate(
     ]
 
     with EvalMode(model), torch.no_grad():
-        for _, batch in enumerate(loader):
+        for _, batch in tqdm(enumerate(loader), total=len(loader)):
             cached_forward = exp.problem.datapipe.forward(batch, model)
             additional_info = AdditionalInfo(split, exp, exp_state, cached_forward)
             for metric in losslike_metrics:

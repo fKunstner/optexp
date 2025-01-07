@@ -6,8 +6,9 @@ import lightning as ptl
 import torch
 import torch.nn
 from torch import Tensor
+from tqdm import tqdm as _tqdm
 
-from optexp.config import get_logger
+from optexp.config import Config, get_logger
 
 
 def reduce_tensor(fabric, val: Tensor, reduce_op: str = "sum") -> Tensor:
@@ -106,3 +107,9 @@ class TrainMode:
             self.model.train()
         else:
             self.model.eval()
+
+
+def tqdm(*args, **kwargs):
+    if Config.tqdm_enabled:
+        return _tqdm(*args, **kwargs)
+    return args[0]
