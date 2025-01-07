@@ -4,7 +4,7 @@ from typing import Tuple
 import torch
 from attr import frozen
 from torch import Tensor
-from torch.nn.functional import cross_entropy, mse_loss
+from torch.nn.functional import cross_entropy, l1_loss, mse_loss
 
 from optexp.datasets.dataset import HasClassCounts
 from optexp.datastructures import ExpInfo
@@ -26,6 +26,23 @@ class MSE(LossLikeMetric):
 
     def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
         return mse_loss(inputs, labels, reduction="none")
+
+
+class MAE(LossLikeMetric):
+
+    def smaller_is_better(self) -> bool:
+        return True
+
+    def is_scalar(self) -> bool:
+        return True
+
+    def __call__(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tuple[Tensor, Tensor]:
+        return l1_loss(inputs, labels, reduction="sum"), torch.tensor(labels.numel())
+
+    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+        return l1_loss(inputs, labels, reduction="none")
 
 
 class CrossEntropy(LossLikeMetric):
