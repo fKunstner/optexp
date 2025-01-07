@@ -1,4 +1,3 @@
-import math
 from typing import Literal, Optional
 
 import torch
@@ -151,7 +150,7 @@ class SimpleViT(Model):
 
 class SimpleViTModule(TransformerModule):
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         image_height: int,
         image_width: int,
@@ -193,7 +192,8 @@ class SimpleViTModule(TransformerModule):
         )
         self.register_buffer("positional_encodings", positional_encodings)
 
-    # Implementation from https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/simple_vit.py
+    # Implementation from
+    # https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/simple_vit.py
     def get_2d_positional_encodings(self, n_height: int, n_width: int, d_model: int):
         y, x = torch.meshgrid(
             torch.arange(n_height), torch.arange(n_width), indexing="ij"

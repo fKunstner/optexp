@@ -1,15 +1,13 @@
-from typing import Literal, Optional
-
 from attrs import frozen
 
-from optexp.config import Config
-from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo, HardwareConfig
+from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo
+from optexp.hardwareconfig.manual import ManualConfig
 from optexp.hardwareconfig.utils import batchsize_mismatch_message
 from optexp.problem import Problem
 
 
 @frozen
-class StrictManualConfig(HardwareConfig):
+class StrictManualConfig(ManualConfig):
     """Manual configuration for hardware settings.
 
     If you want to use multiple devices or if the batch size is too large to fit in memory,
@@ -84,22 +82,6 @@ class StrictManualConfig(HardwareConfig):
                 ...,
             )
     """
-
-    num_devices: int = 1
-    micro_batch_size: Optional[int] = None
-    eval_micro_batch_size: Optional[int] = None
-    num_workers: int = 0
-    device: Literal["cpu", "cuda", "auto"] = "auto"
-
-    def get_num_devices(self):
-        return self.num_devices
-
-    def get_accelerator(self) -> Literal["cpu", "cuda"]:
-        if self.device == "auto":
-            return Config.get_device()
-        if self.device in ["cpu", "cuda"]:
-            return self.device  # type: ignore
-        raise ValueError(f"Unknown device {self.device}")
 
     def get_batch_size_info(self, problem: Problem) -> BatchSizeInfo:
         n_tr = problem.dataset.get_num_samples("tr")

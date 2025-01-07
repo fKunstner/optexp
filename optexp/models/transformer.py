@@ -1,11 +1,10 @@
 import math
-from dataclasses import dataclass
 from typing import Optional
 
 import torch
 from attrs import frozen
 
-from optexp.models.initiliazation import InitializationStrategy, GPT2Initialization
+from optexp.models.initiliazation import GPT2Initialization, InitializationStrategy
 from optexp.models.model import Model
 
 
@@ -46,7 +45,7 @@ class Transformer(Model):
 
 
 class TransformerModule(torch.nn.Module):
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         sequence_length: int,
         n_class: int,
@@ -102,7 +101,9 @@ class TransformerModule(torch.nn.Module):
                 self.norm2 = norm2
                 self.mlp = mlp
 
-            def forward(self, x, src_mask=None, **kwargs):
+            def forward(
+                self, x, src_mask=None, **kwargs  # pylint: disable=unused-argument
+            ):
                 x = self.norm1(x)
                 x = (
                     x
