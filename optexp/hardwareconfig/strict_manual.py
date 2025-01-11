@@ -88,11 +88,10 @@ class StrictManualConfig(ManualConfig):
         n_va = problem.dataset.get_num_samples("va")
 
         effective_bs = problem.batch_size
-        w = self.num_devices
         tr_mbs = (
             self.micro_batch_size
             if self.micro_batch_size is not None
-            else effective_bs // w
+            else effective_bs // self.num_devices
         )
         va_mbs = (
             self.eval_micro_batch_size
@@ -103,26 +102,26 @@ class StrictManualConfig(ManualConfig):
         if n_tr % effective_bs != 0:
             raise ValueError(batchsize_mismatch_message("tr", n_tr, problem))
 
-        if effective_bs % (tr_mbs * w) != 0:
+        if effective_bs % (tr_mbs * self.num_devices) != 0:
             raise ValueError(
-                "Batch size must be a multiple of micro batch size * num workers. "
+                "Batch size must be a multiple of micro batch size * num devices. "
                 f"Got batch size : {effective_bs}, "
-                f"micro batch size: {tr_mbs}, num workers: {w} (total: {w * tr_mbs})"
+                f"micro batch size: {tr_mbs}, num devices: {self.num_devices} (total: {self.num_devices * tr_mbs})"
             )
 
-        if n_va % (va_mbs * w) != 0:
+        if n_va % (va_mbs * self.num_devices) != 0:
             raise ValueError(
                 "Error in the micro batch size for evaluation dataloader. "
-                "Num workers * Micro batch size must divide number of validation samples. "
+                "Num devices * Micro batch size must divide number of validation samples. "
                 f"Got micro batch size: {va_mbs}, "
-                f"Got num_workers: {w}, "
+                f"Got num_devices: {self.num_devices}, "
                 f"number of validation samples: {n_va}"
             )
 
         return BatchSizeInfo(
             mbatchsize_tr=tr_mbs,
             mbatchsize_va=va_mbs,
-            accumulation_steps=effective_bs // (tr_mbs * w),
+            accumulation_steps=effective_bs // (tr_mbs * self.num_devices),
             workers_tr=self.num_workers,
             workers_va=self.num_workers,
         )
