@@ -3,8 +3,6 @@ import datetime
 import torch
 
 TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
-# Keep a max of 100,000 alloc/free events in the recorded history
-# leading up to the snapshot.
 MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT: int = 100000
 
 
@@ -21,7 +19,7 @@ def start_record_memory_history() -> None:
         return
 
     print("Starting snapshot record_memory_history")
-    torch.cuda.memory._record_memory_history(
+    torch.cuda.memory._record_memory_history(  # pylint: disable=protected-access
         max_entries=MAX_NUM_OF_MEM_EVENTS_PER_SNAPSHOT
     )
 
@@ -32,7 +30,9 @@ def stop_record_memory_history() -> None:
         return
 
     print("Stopping snapshot record_memory_history")
-    torch.cuda.memory._record_memory_history(enabled=None)
+    torch.cuda.memory._record_memory_history(  # pylint: disable=protected-access
+        enabled=None
+    )
 
 
 def export_memory_snapshot() -> None:
@@ -45,7 +45,9 @@ def export_memory_snapshot() -> None:
 
     try:
         print(f"Saving snapshot to local file: {file_prefix}.pickle")
-        torch.cuda.memory._dump_snapshot(f"{file_prefix}.pickle")
+        torch.cuda.memory._dump_snapshot(  # pylint: disable=protected-access
+            f"{file_prefix}.pickle"
+        )
 
     except Exception as e:
         print(f"Failed to capture memory snapshot {e}")

@@ -24,7 +24,9 @@ class MSE(LossLikeMetric):
     ) -> Tuple[Tensor, Tensor]:
         return mse_loss(inputs, labels, reduction="sum"), torch.tensor(labels.numel())
 
-    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+    def unreduced_call(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tensor:
         return mse_loss(inputs, labels, reduction="none")
 
 
@@ -41,7 +43,9 @@ class MAE(LossLikeMetric):
     ) -> Tuple[Tensor, Tensor]:
         return l1_loss(inputs, labels, reduction="sum"), torch.tensor(labels.numel())
 
-    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+    def unreduced_call(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tensor:
         return l1_loss(inputs, labels, reduction="none")
 
 
@@ -60,7 +64,9 @@ class CrossEntropy(LossLikeMetric):
             labels.numel()
         )
 
-    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+    def unreduced_call(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tensor:
         return cross_entropy(inputs, labels, reduction="none")
 
 
@@ -72,13 +78,15 @@ class Accuracy(LossLikeMetric):
     def is_scalar(self) -> bool:
         return True
 
-    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
+    def unreduced_call(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tensor:
         return torch.argmax(inputs, dim=1) == labels
 
     def __call__(
         self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
     ) -> Tuple[Tensor, Tensor]:
-        acc = self.unreduced_call(inputs, labels)
+        acc = self.unreduced_call(inputs, labels, exp_info)
         return torch.sum(acc.float()), torch.tensor(labels.numel())
 
 
@@ -140,8 +148,10 @@ class PerClass(LossLikeMetric):
     def is_scalar(self) -> bool:
         return False
 
-    def unreduced_call(self, inputs: Tensor, labels: Tensor) -> Tensor:
-        return self.metric.unreduced_call(inputs, labels)
+    def unreduced_call(
+        self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
+    ) -> Tensor:
+        return self.metric.unreduced_call(inputs, labels, exp_info)
 
     def __call__(
         self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
@@ -160,8 +170,9 @@ class PerClass(LossLikeMetric):
         assert class_counts.numel() == num_classes
         assert len(class_counts.shape) == 1
 
-        values = self.metric.unreduced_call(inputs, labels)
+        values = self.metric.unreduced_call(inputs, labels, exp_info)
         values = values.to(torch.float)
+
         sum_by_class, counts = _groupby_sum(values, labels, num_classes)
 
         sort_idx = torch.flip(class_counts.argsort(), dims=[0])
@@ -201,9 +212,9 @@ class CrossEntropyPerClass(LossLikeMetric):
         return False
 
     def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
+        self, inputs: torch.Tensor, labels: torch.Tensor, exp_info: ExpInfo
     ) -> torch.Tensor:
-        return CrossEntropy().unreduced_call(inputs, labels)
+        return CrossEntropy().unreduced_call(inputs, labels, exp_info)
 
 
 class AccuracyPerClass(LossLikeMetric):
@@ -229,6 +240,6 @@ class AccuracyPerClass(LossLikeMetric):
         return False
 
     def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
+        self, inputs: torch.Tensor, labels: torch.Tensor, exp_info: ExpInfo
     ) -> torch.Tensor:
-        return Accuracy().unreduced_call(inputs, labels)
+        return Accuracy().unreduced_call(inputs, labels, exp_info)

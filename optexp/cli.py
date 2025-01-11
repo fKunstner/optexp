@@ -44,21 +44,25 @@ def create_screen_file(
     for i, group in enumerate(exp_groups.keys()):
         groups_per_screen[i % screen_number].append(group)
 
-    def make_python_calls(groups):
-        return (
-            '"'
-            + "; ".join(
-                [f"python {python_file} -g {group} run --local" for group in groups]
-            )
-            + '\\n\\r"'
-        )
+    def make_screen_bash_file(name, groups) -> str:
+        screen_bash_filename = f"run_in_{name}.sh"
+        python_calls = [
+            f"python {python_file} -g {group} run --local" for group in groups
+        ]
+        with open(screen_bash_filename, "w", encoding="utf-8") as file:
+            file.write("#!/bin/bash\n")
+            for call in python_calls:
+                file.write(call + "\n")
+
+        return screen_bash_filename
 
     def make_screen_command(idx, groups):
         name = f"{python_file.stem}_{idx}"
+        bash_filename = make_screen_bash_file(name, groups)
         return "; ".join(
             [
                 f"screen -dmS {name}",
-                f"screen -S {name} -X stuff {make_python_calls(groups)}",
+                f'screen -S {name} -X stuff "source {bash_filename}\\n\\r"',
             ]
         )
 

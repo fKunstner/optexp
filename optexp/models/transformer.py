@@ -161,14 +161,16 @@ class TransformerModule(torch.nn.Module):
         )
         return mask
 
-    # TODO valudate which index goes where
     def forward(self, x):
+        return self.prediction_layer(self.body_forward(x))
+
+    # TODO valudate which index goes where
+    def body_forward(self, x):
         x = self.embedding_dropout(
             self.embeddings(x) + self.positional_encodings[:, : x.shape[1]]
         )
         mask = self.get_attention_mask(x.shape[1]).to(x.device)
         x = self.encoder(x, mask=mask)
-        x = self.prediction_layer(x)
         return x
 
 

@@ -44,7 +44,7 @@ class LossLikeMetric(Metric, ABC):
 
     @abstractmethod
     def unreduced_call(
-        self, inputs: torch.Tensor, labels: torch.Tensor
+        self, inputs: torch.Tensor, labels: torch.Tensor, exp_info: ExpInfo
     ) -> torch.Tensor:
         raise NotImplementedError
 
