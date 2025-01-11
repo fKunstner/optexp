@@ -251,7 +251,7 @@ def make_run_parser(subparsers):
             if args.single is not None:
                 idx = int(args.single)
                 validate_index(experiments, idx)
-                run_locally([experiments[idx]], force_rerun=args.force_rerun)
+                run_experiment(experiments[idx])
                 return
 
             if args.test:
