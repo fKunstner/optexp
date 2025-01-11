@@ -70,7 +70,6 @@ class TransformerModule(torch.nn.Module):
         self.register_buffer("positional_encodings", positional_encodings)
         self.embeddings = self.get_embedding_layer(d_model, n_class)
         self.embedding_dropout = torch.nn.Dropout(p_embedding_dropout)
-        self.prediction_layer = self.get_prediction_layer(d_model, n_class)
 
         encoder_layer = self.get_encoder_layer(
             d_model, n_head, d_mlp, p_residual_dropout, p_attention_dropout
@@ -79,6 +78,8 @@ class TransformerModule(torch.nn.Module):
         self.encoder = torch.nn.TransformerEncoder(
             encoder_layer, num_layers=n_layers, norm=final_norm
         )
+
+        self.prediction_layer = self.get_prediction_layer(d_model, n_class)
 
     def get_encoder_layer(
         self,
@@ -182,3 +183,17 @@ class GPT2Small(Transformer):
     p_embedding_dropout: float = 0.1
     is_autoregressive: bool = True
     initialization: Optional[InitializationStrategy] = GPT2Initialization()
+
+
+@frozen
+class SmallTransformer(Transformer):
+    n_layers: int = 2
+    n_head: int = 2
+    d_model: int = 128
+    d_mlp: Optional[int] = None
+    p_residual_dropout: float = 0.0
+    p_attention_dropout: float = 0.0
+    p_embedding_dropout: float = 0.0
+    is_autoregressive: bool = True
+    initialization: Optional[InitializationStrategy] = None
+
