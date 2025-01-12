@@ -50,6 +50,14 @@ class HasClassCounts:
         raise NotImplementedError()
 
 
+class HasInputCounts:
+    """Extension for datasets that provide input feature frequencies."""
+
+    @abstractmethod
+    def input_counts(self, split: Split) -> torch.Tensor:
+        raise NotImplementedError()
+
+
 class MovableToLocal:
     """Extension for large datasets that need to be moved to local storage on SLURM nodes."""
 
