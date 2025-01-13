@@ -39,9 +39,7 @@ def sync():
 
         try:
             WandbAPI.get_handler().run(
-                entity=Config.get_wandb_entity(),
-                project=Config.get_wandb_project(),
-                run_id=run_id,
+                f"{Config.get_wandb_entity()}/{Config.get_wandb_project()}/{run_id}"
             )
         except ValueError as e:
             print("Syncing failed for", file.name, e)
