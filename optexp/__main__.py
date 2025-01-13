@@ -40,7 +40,7 @@ def sync(upload_every: int, upload_offset: int):
 
         # filename format: offline-run-YYYYMMDD_HHMMSS-runid
         _offline, _run, _date, run_id = file.name.split("-")
-        run_id = run_id.strip(".json")
+        run_id = run_id.replace(".json", "")
 
         try:
             WandbAPI.get_handler().run(
