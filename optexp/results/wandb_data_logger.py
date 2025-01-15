@@ -107,7 +107,7 @@ class WandbDataLogger(DataLogger):
         info = {
             "exp": self.experiment.equivalent_definition(),
             "exp_hash": self.experiment.equivalent_hash(),
-            "folder": self._run_directory(),
+            "folder": str(self._run_directory()),
         }
         basepath = Config.get_workspace_directory() / "syncing" / "to_sync"
         basepath.mkdir(parents=True, exist_ok=True)
