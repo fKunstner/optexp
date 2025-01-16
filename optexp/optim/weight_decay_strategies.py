@@ -1,10 +1,12 @@
 from typing import Dict, Iterable, List, Union
 
+from attr import frozen
 from torch.nn import Module, Parameter
 
 from optexp.optim.optimizer import WeightDecayStrategy
 
 
+@frozen
 class DecayEverything(WeightDecayStrategy):
     """Applies weight decay to all parameters."""
 
@@ -14,6 +16,7 @@ class DecayEverything(WeightDecayStrategy):
         return [{"params": model.parameters(), "weight_decay": weight_decay}]
 
 
+@frozen
 class NoDecayOnBias(WeightDecayStrategy):
     """Applies weight decay to all parameters except biases.
 
@@ -35,6 +38,7 @@ class NoDecayOnBias(WeightDecayStrategy):
         ]
 
 
+@frozen
 class GPT2WeightDecay(WeightDecayStrategy):
     """
     Applies on weight decay on  matrices but not vectors.
