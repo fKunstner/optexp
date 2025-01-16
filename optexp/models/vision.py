@@ -222,7 +222,7 @@ class SimpleViTModule(TransformerModule):
         return MeanAndPredict()
 
     def get_embedding_layer(self, d_model: int, n_class: int) -> torch.nn.Module:
-        """Assumes x has  dimensions [batch, channels, height, width"""
+        """Assumes x has  dimensions [batch, channels, height, width]"""
         patch_dim = self.patch_height * self.patch_width * self.image_channels
 
         class Patchify(torch.nn.Module):

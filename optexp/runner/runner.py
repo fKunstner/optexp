@@ -130,9 +130,6 @@ def run(exp: Experiment) -> ExperimentState:
                 )
                 break
 
-            gc.collect()
-            torch.cuda.empty_cache()
-
     data_logger.finish(exit_code=0, stopped_early=is_stopping)
 
     return exp_state
@@ -281,9 +278,6 @@ def evaluate(
                 )
                 running_sum = SumAndCounter(loss.detach(), weight.detach())
                 running_sum_metrics[metric] += running_sum
-
-                # gc.collect()
-                # torch.cuda.empty_cache()
 
         reduced_results = {
             k: v.reduce_and_divide(fabric) for k, v in running_sum_metrics.items()

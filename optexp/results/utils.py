@@ -87,6 +87,8 @@ def numpyfy(df: pd.DataFrame) -> pd.DataFrame:
             },
         ).infer_objects()
 
+    # TODO this can fail, for whatever reason sometimes per class becomes nan and is recorded as just 'NaN', then later
+    # gets logged as ['NaN'...], which then doesnt get converge to a float and crashes arrow
     for key in df.columns:
         if should_convert_column_to_numpy(df[key]):
             df[key] = df[key].apply(column_to_numpy)
