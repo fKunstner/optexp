@@ -66,7 +66,7 @@ def should_convert_column_to_numpy(series: pd.Series):
         if len(series) == 1:
             return series[0]
 
-        for i in range(len(series)):
+        for i in range(1, len(series)):
             if series[i] is not None and series[i] is not np.nan:
                 return series[i]
 
