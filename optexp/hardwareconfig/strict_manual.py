@@ -105,8 +105,8 @@ class StrictManualConfig(ManualConfig):
         if effective_bs % (tr_mbs * self.num_devices) != 0:
             raise ValueError(
                 "Batch size must be a multiple of micro batch size * num devices. "
-                f"Got batch size : {effective_bs}, "
-                f"micro batch size: {tr_mbs}, num devices: {self.num_devices} (total: {self.num_devices * tr_mbs})"
+                f"Got batch size : {effective_bs}, micro batch size: {tr_mbs}, "
+                f"num devices: {self.num_devices} (total: {self.num_devices * tr_mbs})"
             )
 
         if n_va % (va_mbs * self.num_devices) != 0:

@@ -198,4 +198,3 @@ class SmallTransformer(Transformer):
     p_embedding_dropout: float = 0.0
     is_autoregressive: bool = True
     initialization: Optional[InitializationStrategy] = None
-
