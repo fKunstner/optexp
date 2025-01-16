@@ -62,17 +62,17 @@ def should_convert_column_to_numpy(series: pd.Series):
             list_elem_is_float_or_str_nan(elem) for elem in entry
         )
 
-    more_than_one_entry = len(series) > 1
-    if more_than_one_entry:
-        first_non_none_idx_except_first = 0
-        for i in range(1, len(series)):
-            if series[i] is not None:
-                first_non_none_idx_except_first = i
-                break
-        entry = series[first_non_none_idx_except_first]
-    else:
-        entry = series[0]
+    def find_first_entry_with_actual_data(series):
+        if len(series) == 1:
+            return series[0]
 
+        for i in range(len(series)):
+            if series[i] is not None and series[i] is not np.nan:
+                return series[i]
+
+        return series[0]
+
+    entry = find_first_entry_with_actual_data(series)
     return is_string_repr_of_array(entry) or is_list_of_float_like(entry)
 
 
@@ -87,8 +87,6 @@ def numpyfy(df: pd.DataFrame) -> pd.DataFrame:
             },
         ).infer_objects()
 
-    # TODO this can fail, for whatever reason sometimes per class becomes nan and is recorded as just 'NaN', then later
-    # gets logged as ['NaN'...], which then doesnt get converge to a float and crashes arrow
     for key in df.columns:
         if should_convert_column_to_numpy(df[key]):
             df[key] = df[key].apply(column_to_numpy)
