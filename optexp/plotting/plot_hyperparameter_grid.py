@@ -83,14 +83,14 @@ def make_step_size_grid_for_metric(
             hps,
             [np.min(sanitize(metrics[hp])) for hp in hps],
             [np.max(sanitize(metrics[hp])) for hp in hps],
-            color=Colors.Vibrant.get(i),
+            **optim.plot_style(),
             alpha=0.2,
         )
         ax.plot(
             hps,
             [np.median(sanitize(metrics[hp])) for hp in hps],
-            label=optim.equivalent_definition(),
-            color=Colors.Vibrant.get(i),
+            label=optim.plot_label(),
+            **optim.plot_style(),
             marker="o",
         )
 
@@ -99,7 +99,7 @@ def make_step_size_grid_for_metric(
     set_limits(ax, x_y="x", limits=(min(hp_values), max(hp_values)), log=log_x_y[0])
     set_scale(ax, log_x_y)
 
-    metric_name = metric_key[:2] + " " + metric.plot_name()
+    metric_name = metric_key[:2] + " " + metric.plot_label()
     ax.set_title(f"Grid for {metric_name}")
     ax.set_xlabel(hp)
     ax.set_ylabel(metric_name)

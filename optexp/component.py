@@ -67,6 +67,9 @@ class Component:
     def equivalent_definition(self) -> str:
         return self._repr(show_defaults=False, show_hidden_repr=False)
 
+    def plot_label(self):
+        return self.equivalent_definition()
+
     def full_definition(self) -> str:
         return self._repr(show_defaults=True, show_hidden_repr=True)
 

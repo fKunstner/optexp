@@ -16,9 +16,8 @@ class Optimizer(Component, ABC):
     def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
         pass
 
-    @abstractmethod
-    def plot_name(self) -> str:
-        pass
+    def plot_style(self):
+        return {}
 
 
 class Regularizable(ABC):

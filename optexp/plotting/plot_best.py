@@ -115,9 +115,9 @@ def make_best_plot_for_non_scalar_metric(
                 steps,
                 np.median(values[:, :, j], axis=0),
                 color=Colors.viridis(j, n_series),
-                label=exps[0].optim.equivalent_definition(),
+                label=exps[0].optim.plot_label(),
             )
-        axes[0][i].set_title(opt.plot_name())
+        axes[0][i].set_title(opt.plot_label())
 
     reduced_exp_data = {
         exp: data
@@ -133,7 +133,7 @@ def make_best_plot_for_non_scalar_metric(
         set_limits(ax, x_y="x", limits=xrange, log=log_x_y[0], factor=1.0)
         set_scale(ax, log_x_y)
         ax.set_xlabel("Steps")
-    axes[0][0].set_ylabel(metric_key[:2] + " " + metric.plot_name())
+    axes[0][0].set_ylabel(metric_key[:2] + " " + metric.plot_label())
     return fig
 
 
@@ -151,10 +151,10 @@ def make_best_plot_for_metric(
     metric_key: str,
     log_x_y: Tuple[bool, bool] = (False, False),
 ) -> plt.Figure:
-    fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
+    fig, ax = make_axes(plt, rel_width=0.66, nrows=1, ncols=1)
 
     observed_steps = []
-    for i, (_, exps) in enumerate(best_exps_per_group.items()):
+    for i, (optim, exps) in enumerate(best_exps_per_group.items()):
         steps, values = get_steps_and_values(exps, exps_data, metric_key)
         observed_steps.append(steps)
 
@@ -162,14 +162,13 @@ def make_best_plot_for_metric(
             steps,
             np.min(values, axis=0),
             np.max(values, axis=0),
-            color=Colors.Vibrant.get(i),
-            alpha=0.2,
+            **optim.plot_style(),
         )
         ax.plot(
             steps,
             np.median(values, axis=0),
-            color=Colors.Vibrant.get(i),
-            label=exps[0].optim.equivalent_definition(),
+            label=optim.plot_label(),
+            **optim.plot_style(),
         )
 
     reduced_exp_data = {
@@ -189,8 +188,8 @@ def make_best_plot_for_metric(
     )
     set_scale(ax, log_x_y)
 
-    metric_name = metric_key[:2] + " " + metric.plot_name()
-    ax.set_title(f"Grid for {metric_name}")
+    metric_name = metric_key[:2] + " " + metric.plot_label()
+    ax.set_title(f"Best performance\n for {metric_name}")
     ax.set_xlabel("Steps")
     ax.set_ylabel(metric_name)
     ax.legend()
