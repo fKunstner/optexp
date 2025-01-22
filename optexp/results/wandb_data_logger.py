@@ -1,5 +1,6 @@
 import json
 import subprocess
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -179,7 +180,7 @@ def download_experiments(exps: list[Experiment]) -> None:
                 f"Has the experiment been uploaded? (full experiment: {exp})."
             )
         if len(runs) > 1:
-            raise ValueError(
+            warnings.warn(
                 f"Multiple finished runs found for experiment {exp.short_equivalent_hash()}. "
                 f"Only one run is expected. Check the runs at \n"
                 + "\n".join(
