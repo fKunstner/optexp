@@ -151,7 +151,7 @@ def make_best_plot_for_metric(
     metric_key: str,
     log_x_y: Tuple[bool, bool] = (False, False),
 ) -> plt.Figure:
-    fig, ax = make_axes(plt, rel_width=0.66, nrows=1, ncols=1)
+    fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
     observed_steps = []
     for i, (optim, exps) in enumerate(best_exps_per_group.items()):
