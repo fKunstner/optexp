@@ -47,7 +47,7 @@ def create_screen_file(
     def make_screen_bash_file(name, groups) -> str:
         screen_bash_filename = f"run_in_{name}.sh"
         python_calls = [
-            f"python {python_file} -g {group} run --local" for group in groups
+            f'python {python_file} -g "{group}" run --local' for group in groups
         ]
         with open(screen_bash_filename, "w", encoding="utf-8") as file:
             file.write("#!/bin/bash\n")
