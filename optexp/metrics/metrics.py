@@ -192,8 +192,8 @@ class PerClass(LossLikeMetric):
         return self._group_unreduced_call(values, labels, class_counts)
 
 
-    def plot_name(self) -> str:
-        return self.metric.plot_name() + " Per Class"
+    def plot_label(self) -> str:
+        return self.metric.plot_label() + " Per Class"
 
 
 class CrossEntropyPerClass(LossLikeMetric):

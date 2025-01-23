@@ -47,7 +47,7 @@ def create_screen_file(
     def make_screen_bash_file(name, groups) -> str:
         screen_bash_filename = f"run_in_{name}.sh"
         python_calls = [
-            f"python {python_file} -g {group} run --local" for group in groups
+            f'python {python_file} -g "{group}" run --local' for group in groups
         ]
         with open(screen_bash_filename, "w", encoding="utf-8") as file:
             file.write("#!/bin/bash\n")
@@ -294,6 +294,12 @@ def make_plot_parser(subparsers):
         default=False,
     )
     plot_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Make all plots",
+        default=False,
+    )
+    plot_parser.add_argument(
         "--hyperparam",
         type=str,
         help="Name of the optimizer hyperparameter to use for --grid or --best. Defaults to 'lr'.",
@@ -339,7 +345,7 @@ def make_plot_parser(subparsers):
             args.grid = True
             args.best = True
 
-        if args.grid:
+        if args.grid or args.all:
             folder_name = args.folder
             if folder_name is None:
                 folder_name = group
@@ -350,7 +356,7 @@ def make_plot_parser(subparsers):
                 hp=args.hyperparam,
                 step=args.step,
             )
-        if args.best:
+        if args.best or args.all:
             folder_name = args.folder
             if folder_name is None:
                 folder_name = group

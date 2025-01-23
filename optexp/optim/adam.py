@@ -1,8 +1,10 @@
 import torch
+from attr import fields
 from attrs import frozen
 
 from optexp.optim.optimizer import Optimizer, Regularizable, WeightDecayStrategy
 from optexp.optim.weight_decay_strategies import DecayEverything
+from optexp.plotting.colors import Colors
 
 
 @frozen
@@ -51,17 +53,23 @@ class Adam(Optimizer, Regularizable):
             amsgrad=self.amsgrad,
         )
 
-    def plot_name(self) -> str:
+    def plot_label(self) -> str:
         attributes = []
         if self.lr is not None and self.lr != 0:
             attributes.append(rf"$\alpha={self.lr:.3g}$")
-        if self.beta1 is not None:
+        if self.beta1 is not None and not self.beta1 == fields(Adam).beta1.default:
             attributes.append(rf"$\beta_1={self.beta1:.3g}$")
-        if self.beta2 is not None:
+        if self.beta2 is not None and not self.beta2 == fields(Adam).beta2.default:
             attributes.append(rf"$\beta_2={self.beta2:.3g}$")
         if self.weight_decay is not None and self.weight_decay != 0:
             attributes.append(rf"$\lambda={self.weight_decay:.3g}$")
-        return self.__class__.__name__ + " (" + " ".join(attributes) + ")"
+        return self.__class__.__name__ + " (" + ",".join(attributes) + ")"
+
+    def plot_style(self):
+        return {
+            "color": Colors.HighContrast.red,
+            "linestyle": "-" if self.beta1 > 0 else "--",
+        }
 
 
 @frozen

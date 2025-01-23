@@ -110,11 +110,17 @@ def group_experiments_by_optimizers(
     return groups
 
 
-def sanitize(xs):
-    max_val = 10**50
+def sanitize(xs, metric: Metric):
     xs = np.array(xs, dtype="float")
-    xs[np.isnan(xs)] = max_val
-    xs[xs > max_val] = max_val
+
+    if metric.smaller_is_better():
+        max_val = 10**10
+        xs[np.isnan(xs)] = max_val
+        xs[xs > max_val] = max_val
+    else:
+        min_val = 0
+        xs[np.isnan(xs)] = min_val
+        xs[xs < min_val] = min_val
     return xs
 
 
@@ -182,7 +188,7 @@ def truncate_runs(exps_data, up_to_step):
 
 
 def save_and_close(fig, save_dir, filename_elements):
-    for file_type in ["png", "pdf"]:
+    for file_type in ["pdf"]:
         filepath = save_dir / ("_".join(filename_elements) + "." + file_type)
         fig.savefig(filepath)
         print(f"Saving {filepath}")

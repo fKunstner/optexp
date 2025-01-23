@@ -29,7 +29,7 @@ class Metric(Component, ABC):
         sanitized_key = self.equivalent_definition().replace("()", "")
         return f"{split}_{sanitized_key}"
 
-    def plot_name(self) -> str:
+    def plot_label(self) -> str:
         return self.__class__.__name__
 
 
