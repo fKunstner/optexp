@@ -1,12 +1,13 @@
 import hashlib
 import textwrap
+from enum import Enum
 from typing import Union
 
 import attr
 from attrs import fields, frozen
 
 BasicType = Union[
-    str | bool | int | float | type | None,
+    str | bool | int | float | type | Enum | None,
     list["BasicType"],
     tuple["BasicType", ...],
     set["BasicType"],
@@ -15,7 +16,7 @@ BasicType = Union[
 ]
 ExtendedBasicType = Union[
     "Component",
-    str | bool | int | float | type | None,
+    str | bool | int | float | type | Enum | None,
     list["ExtendedBasicType"],
     dict[str, "ExtendedBasicType"],
 ]
@@ -32,7 +33,7 @@ class Component:
             if isinstance(obj, dict):
                 if not all(isinstance(k, str) for k in obj.keys()):
                     raise ValueError(
-                        f"Dict keys must be strings to have be loggable. Got {obj.keys()}"
+                        f"Dict keys must be strings to be loggable. Got {obj.keys()}"
                     )
 
             if isinstance(obj, Component) and attr.has(obj.__class__):
@@ -42,6 +43,9 @@ class Component:
                 ]
                 loggable_dict.append(("__class__", obj.__class__.__qualname__))
                 return dict(loggable_dict)
+
+            if isinstance(obj, Enum):
+                return obj.value
 
             if isinstance(obj, (list, tuple, set, frozenset)):
                 return list(_loggable_dict(v) for v in obj)  # type: ignore
@@ -78,7 +82,10 @@ class Component:
         def filter_defaults(attribute):
             if show_defaults:
                 return True
-            is_default = getattr(self, attribute.name) == attribute.default
+            is_default = (
+                getattr(self, attribute.name) == attribute.default
+                or getattr(self, attribute.name) is attribute.default
+            )
             return not is_default
 
         def filter_hidden(attribute):
