@@ -294,6 +294,12 @@ def make_plot_parser(subparsers):
         default=False,
     )
     plot_parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Make all plots",
+        default=False,
+    )
+    plot_parser.add_argument(
         "--hyperparam",
         type=str,
         help="Name of the optimizer hyperparameter to use for --grid or --best. Defaults to 'lr'.",
@@ -339,7 +345,7 @@ def make_plot_parser(subparsers):
             args.grid = True
             args.best = True
 
-        if args.grid:
+        if args.grid or args.all:
             folder_name = args.folder
             if folder_name is None:
                 folder_name = group
@@ -350,7 +356,7 @@ def make_plot_parser(subparsers):
                 hp=args.hyperparam,
                 step=args.step,
             )
-        if args.best:
+        if args.best or args.all:
             folder_name = args.folder
             if folder_name is None:
                 folder_name = group
