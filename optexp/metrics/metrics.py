@@ -123,7 +123,7 @@ def _groupby_sum(inputs: Tensor, classes, num_classes) -> Tuple[Tensor, Tensor]:
 
 def _split_frequencies_by_groups(sorted_labels, freq_sorted, n_splits):
     cum_freq_sorted = freq_sorted.cumsum(0)
-    freq_breakpoints = torch.linspace(0, 1, n_splits + 1)[1:-1]
+    freq_breakpoints = torch.linspace(0, 1, n_splits + 1, device=freq_sorted.device)[1:-1]
     indices = torch.searchsorted(cum_freq_sorted, freq_breakpoints, side="left")
 
     split_sizes = []
@@ -153,6 +153,23 @@ class PerClass(LossLikeMetric):
     ) -> Tensor:
         return self.metric.unreduced_call(inputs, labels, exp_info)
 
+
+    def _group_unreduced_call(self, values, labels, class_counts):
+        num_classes = len(class_counts)
+        sum_by_class, counts = _groupby_sum(values, labels, num_classes)
+
+        sort_idx = torch.flip(class_counts.argsort(), dims=[0])
+        all_labels = torch.arange(0, num_classes, device=class_counts.device)
+        sorted_labels = all_labels[sort_idx]
+        freq_sorted = class_counts[sort_idx] / class_counts.sum()
+        groups = _split_frequencies_by_groups(sorted_labels, freq_sorted, self.groups)
+
+        losses_per_group = torch.stack([torch.sum(sum_by_class[g]) for g in groups])
+        counts_per_group = torch.stack([torch.sum(counts[g]) for g in groups])
+
+        return losses_per_group, counts_per_group
+
+
     def __call__(
         self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
     ) -> Tuple[Tensor, Tensor]:
@@ -172,19 +189,8 @@ class PerClass(LossLikeMetric):
 
         values = self.metric.unreduced_call(inputs, labels, exp_info)
         values = values.to(torch.float)
+        return self._group_unreduced_call(values, labels, class_counts)
 
-        sum_by_class, counts = _groupby_sum(values, labels, num_classes)
-
-        sort_idx = torch.flip(class_counts.argsort(), dims=[0])
-        all_labels = torch.arange(0, num_classes, device=class_counts.device)
-        sorted_labels = all_labels[sort_idx]
-        freq_sorted = class_counts[sort_idx] / class_counts.sum()
-        groups = _split_frequencies_by_groups(sorted_labels, freq_sorted, self.groups)
-
-        losses_per_group = torch.stack([torch.sum(sum_by_class[g]) for g in groups])
-        counts_per_group = torch.stack([torch.sum(counts[g]) for g in groups])
-
-        return losses_per_group, counts_per_group
 
     def plot_name(self) -> str:
         return self.metric.plot_name() + " Per Class"
