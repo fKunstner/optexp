@@ -56,7 +56,7 @@ def should_convert_column_to_numpy(series: pd.Series):
         def list_elem_is_float_or_str_nan(x):
             if isinstance(x, (float, int)):
                 return True
-            return isinstance(x, str) and x in ["NaN", "inf"]
+            return isinstance(x, str) and x in ["NaN", "inf", "Infinity"]
 
         return isinstance(entry, list) and all(
             list_elem_is_float_or_str_nan(elem) for elem in entry
