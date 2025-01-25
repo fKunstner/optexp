@@ -75,8 +75,7 @@ def should_early_stop(fabric: ptl.Fabric, live_loss: float):
     return synced_is_diverging
 
 
-def run(exp: Experiment) -> ExperimentState:
-
+def fabric_initialize(exp):
     fabric = ptl.Fabric(
         accelerator=exp.hardware_config.get_accelerator(),
         devices=exp.hardware_config.get_num_devices(),
@@ -84,13 +83,21 @@ def run(exp: Experiment) -> ExperimentState:
         strategy="auto",
     )
     fabric.launch()
+    return fabric
+
+
+def make_datalogger(exp, fabric):
+    if fabric.global_rank == 0:
+        return MainDataLogger(experiment=exp)
+    return DummyDataLogger()
+
+
+def run(exp: Experiment) -> ExperimentState:
+
+    fabric = fabric_initialize(exp)
     loginfo_on_r0(fabric, f"Using device {fabric.device}")
 
-    data_logger: DataLogger
-    if fabric.global_rank == 0:
-        data_logger = MainDataLogger(experiment=exp)
-    else:
-        data_logger = DummyDataLogger()
+    data_logger = make_datalogger(exp, fabric)
 
     with record_function("initialization"):
         loginfo_on_r0(fabric, "=" * 80)
