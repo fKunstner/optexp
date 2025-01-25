@@ -241,6 +241,7 @@ class CrossEntropyPerClass(LossLikeMetric):
     def range(self) -> Tuple[float, float]:
         return CrossEntropy().range()
 
+
 class AccuracyPerClass(LossLikeMetric):
     """Accuracy per class.
 
