@@ -1,3 +1,4 @@
+import math
 import warnings
 from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
@@ -336,6 +337,21 @@ def set_ylimits_to_fit_data_range(ax, exps_data, metric, metric_key, log_y):
     ax.axhline(
         np.median(init_values), color="black", linestyle="--", label="median init"
     )
+
+    if not log_y:
+        data_range = (
+            (
+                min(data_range[0], metric.range()[0])
+                if not math.isinf(metric.range()[0])
+                else data_range[0]
+            ),
+            (
+                max(data_range[1], metric.range()[1])
+                if not math.isinf(metric.range()[1])
+                else data_range[1]
+            ),
+        )
+
     set_limits(ax, x_y="y", limits=data_range, log=log_y)
 
 

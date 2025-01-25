@@ -168,7 +168,7 @@ def make_best_plot_for_metric(
     fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
     observed_steps = []
-    for i, (optim, exps) in enumerate(best_exps_per_group.items()):
+    for _, (optim, exps) in enumerate(best_exps_per_group.items()):
         steps, values = get_steps_and_values(exps, exps_data, metric_key)
         observed_steps.append(steps)
 

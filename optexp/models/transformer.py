@@ -164,7 +164,6 @@ class TransformerModule(torch.nn.Module):
     def forward(self, x):
         return self.prediction_layer(self.body_forward(x))
 
-    # TODO valudate which index goes where
     def body_forward(self, x):
         x = self.embedding_dropout(
             self.embeddings(x) + self.positional_encodings[:, : x.shape[1]]

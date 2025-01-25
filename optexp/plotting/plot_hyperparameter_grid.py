@@ -86,7 +86,7 @@ def make_step_size_grid_for_metric(
     fig, ax = make_axes(plt, rel_width=1.0, nrows=1, ncols=1)
 
     optim_groups = group_experiments_by_optimizers(exps_data.keys(), hp)
-    for i, (optim, exps) in enumerate(optim_groups.items()):
+    for _, (optim, exps) in enumerate(optim_groups.items()):
         group_exps_data = {exp: exps_data[exp] for exp in exps}
         hps, metrics = get_hp_and_metrics_at_end_per_hp(
             group_exps_data, hp, False, metric_key

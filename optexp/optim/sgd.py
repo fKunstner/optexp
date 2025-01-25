@@ -1,7 +1,6 @@
 import torch
 from attrs import frozen
 
-import optexp
 from optexp.optim.optimizer import Optimizer, Regularizable, WeightDecayStrategy
 from optexp.optim.weight_decay_strategies import DecayEverything
 from optexp.plotting.colors import Colors
