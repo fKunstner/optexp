@@ -187,11 +187,12 @@ def truncate_runs(exps_data, up_to_step):
     return exps_data
 
 
-def save_and_close(fig, save_dir, filename_elements):
-    for file_type in ["pdf"]:
-        filepath = save_dir / ("_".join(filename_elements) + "." + file_type)
-        fig.savefig(filepath)
-        print(f"Saving {filepath}")
+def plot_file_name(filename_elements, file_type="pdf"):
+    return "_".join(filename_elements) + "." + file_type
+
+
+def save_and_close(fig, file_path):
+    fig.savefig(file_path)
     plt.close(fig)
 
 

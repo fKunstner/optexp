@@ -1,5 +1,6 @@
 import itertools
 import os
+from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -9,13 +10,13 @@ from pandas import DataFrame
 from optexp.config import Config
 from optexp.experiment import Experiment
 from optexp.metrics import Metric
-from optexp.plotting.colors import Colors
 from optexp.plotting.style import make_axes
 from optexp.plotting.utils import (
     ensure_all_exps_have_hyperparameter,
     ensure_all_exps_have_same_problem,
     get_hp_and_metrics_at_end_per_hp,
     group_experiments_by_optimizers,
+    plot_file_name,
     sanitize,
     save_and_close,
     scale_str,
@@ -32,6 +33,7 @@ def plot_optim_hyperparam_grids(
     folder_name: str,
     hp: str = "lr",
     step: Optional[int] = None,
+    force: bool = False,
 ):
     """
     Args:
@@ -43,24 +45,34 @@ def plot_optim_hyperparam_grids(
     ensure_all_exps_have_hyperparameter(exps, hp)
     problem = ensure_all_exps_have_same_problem(exps)
 
-    exps_data = load_wandb_results(exps)
-    exps_data = truncate_runs(exps_data, step)
+    @lru_cache(1)
+    def load_data_if_needed():
+        return truncate_runs(load_wandb_results(exps), step)
 
     steps_subfolder = "max_steps" if step is None else f"{step}_steps"
     folder = Config.get_plots_directory() / folder_name / "grid" / steps_subfolder
     os.makedirs(folder, exist_ok=True)
+    print(f"In folder {folder}")
 
     for metric, tr_va, log_x_y in itertools.product(
         problem.metrics, ["tr", "va"], itertools.product([True], [True, False])
     ):
         if not metric.is_scalar():
             continue
+
         key = f"{tr_va}_{metric.__class__.__name__}"
-        fig = make_step_size_grid_for_metric(exps_data, hp, metric, key, log_x_y)
-        fig.tight_layout(pad=0)
-        save_and_close(
-            fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
+        file_name = plot_file_name(
+            [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
+
+        if force or not (folder / file_name).exists():
+            exps_data = load_data_if_needed()
+            fig = make_step_size_grid_for_metric(exps_data, hp, metric, key, log_x_y)
+            fig.tight_layout(pad=0)
+            print(f"Saving {file_name}")
+            save_and_close(fig, folder / file_name)
+        else:
+            print(f"Plot {file_name} already exists")
 
 
 def make_step_size_grid_for_metric(

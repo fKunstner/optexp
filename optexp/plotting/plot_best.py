@@ -1,5 +1,6 @@
 import itertools
 import os
+from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ from optexp.plotting.utils import (
     flatten,
     get_best_exps_per_group,
     hack_steps_for_logscale,
+    plot_file_name,
     save_and_close,
     scale_str,
     set_limits,
@@ -35,6 +37,7 @@ def plot_metrics_over_time_for_best(
     regularized: bool = False,
     step: Optional[int] = None,
     metric_key: Optional[str] = None,
+    force: bool = False,
 ):
     """
     Args:
@@ -50,33 +53,44 @@ def plot_metrics_over_time_for_best(
     ensure_all_exps_have_hyperparameter(exps, hp)
     problem = ensure_all_exps_have_same_problem(exps)
 
-    exps_data = load_wandb_results(exps)
-    exps_data = truncate_runs(exps_data, step)
-
-    best_exps_per_group = get_best_exps_per_group(
-        exps_data, hp, problem, regularized, metric_key
-    )
+    @lru_cache(1)
+    def load_data_if_needed():
+        _exps_data = truncate_runs(load_wandb_results(exps), step)
+        _best_exps_per_group = get_best_exps_per_group(
+            exps_data, hp, problem, regularized, metric_key
+        )
+        return _exps_data, _best_exps_per_group
 
     steps_subfolder = "max_steps" if step is None else f"{step}_steps"
     folder = Config.get_plots_directory() / folder_name / "best" / steps_subfolder
     os.makedirs(folder, exist_ok=True)
+    print(f"In folder {folder}")
 
     for metric, tr_va, log_x_y in itertools.product(
         problem.metrics, ["tr", "va"], itertools.product([True, False], [True, False])
     ):
         key = metric.key(tr_va)
-        if metric.is_scalar():
-            fig = make_best_plot_for_metric(
-                best_exps_per_group, exps_data, metric, key, log_x_y
-            )
-        else:
-            fig = make_best_plot_for_non_scalar_metric(
-                best_exps_per_group, exps_data, metric, key, log_x_y
-            )
-        fig.tight_layout(pad=0)
-        save_and_close(
-            fig, folder, [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
+
+        file_name = plot_file_name(
+            [key, f"{scale_str(log_x_y[0])}x", f"{scale_str(log_x_y[1])}y"]
         )
+
+        if force or not (folder / file_name).exists():
+            exps_data, best_exps_per_group = load_data_if_needed()
+
+            if metric.is_scalar():
+                fig = make_best_plot_for_metric(
+                    best_exps_per_group, exps_data, metric, key, log_x_y
+                )
+            else:
+                fig = make_best_plot_for_non_scalar_metric(
+                    best_exps_per_group, exps_data, metric, key, log_x_y
+                )
+            fig.tight_layout(pad=0)
+            save_and_close(fig, folder / file_name)
+            print(f"saving {file_name}")
+        else:
+            print(f"Plot {file_name} already exists.")
 
 
 def make_best_plot_for_non_scalar_metric(

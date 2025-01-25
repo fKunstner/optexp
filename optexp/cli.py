@@ -332,6 +332,14 @@ def make_plot_parser(subparsers):
         help="Folder to save the plots in. Defaults to the group name.",
         default=None,
     )
+    plot_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force re-drawing plots, even if it's already been saved. "
+        "Default behaviors skips plots that have already been made.",
+        default=False,
+    )
 
     def plot_handler(
         args,
@@ -355,6 +363,7 @@ def make_plot_parser(subparsers):
                 folder_name=folder_name,
                 hp=args.hyperparam,
                 step=args.step,
+                force=args.force,
             )
         if args.best or args.all:
             folder_name = args.folder
@@ -373,6 +382,7 @@ def make_plot_parser(subparsers):
                 regularized=args.regularized,
                 step=args.step,
                 metric_key=args.best_metric,
+                force=args.force,
             )
 
     plot_parser.set_defaults(func=plot_handler)
