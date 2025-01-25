@@ -191,7 +191,7 @@ def download_experiments(exps: list[Experiment]) -> None:
             )
 
         run = runs[0]
-        data_df = numpyfy(run.history(pandas=True, samples=10000))
+        data_df = numpyfy(run.history(pandas=True, samples=50_000))
 
         if data_df.empty:
             log_debug_info_empty_history(exp, run)
