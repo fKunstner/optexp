@@ -57,7 +57,7 @@ def plot_metrics_over_time_for_best(
     def load_data_if_needed():
         _exps_data = truncate_runs(load_wandb_results(exps), step)
         _best_exps_per_group = get_best_exps_per_group(
-            exps_data, hp, problem, regularized, metric_key
+            _exps_data, hp, problem, regularized, metric_key
         )
         return _exps_data, _best_exps_per_group
 
