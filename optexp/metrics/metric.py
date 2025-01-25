@@ -32,6 +32,10 @@ class Metric(Component, ABC):
     def plot_label(self) -> str:
         return self.__class__.__name__
 
+    @abstractmethod
+    def range(self) -> Tuple[float, float]:
+        raise NotImplementedError
+
 
 class LossLikeMetric(Metric, ABC):
     """Abstract base class for loss-like metrics, which take inputs and labels."""

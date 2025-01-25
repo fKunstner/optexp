@@ -1,3 +1,4 @@
+import math
 import warnings
 from typing import Tuple
 
@@ -29,6 +30,9 @@ class MSE(LossLikeMetric):
     ) -> Tensor:
         return mse_loss(inputs, labels, reduction="none")
 
+    def range(self) -> Tuple[float, float]:
+        return (0, math.inf)
+
 
 class MAE(LossLikeMetric):
 
@@ -47,6 +51,9 @@ class MAE(LossLikeMetric):
         self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
     ) -> Tensor:
         return l1_loss(inputs, labels, reduction="none")
+
+    def range(self) -> Tuple[float, float]:
+        return (0, math.inf)
 
 
 class CrossEntropy(LossLikeMetric):
@@ -69,6 +76,9 @@ class CrossEntropy(LossLikeMetric):
     ) -> Tensor:
         return cross_entropy(inputs, labels, reduction="none")
 
+    def range(self) -> Tuple[float, float]:
+        return (0, math.inf)
+
 
 class Accuracy(LossLikeMetric):
 
@@ -88,6 +98,9 @@ class Accuracy(LossLikeMetric):
     ) -> Tuple[Tensor, Tensor]:
         acc = self.unreduced_call(inputs, labels, exp_info)
         return torch.sum(acc.float()), torch.tensor(labels.numel())
+
+    def range(self) -> Tuple[float, float]:
+        return (0, 1)
 
 
 def _groupby_sum(inputs: Tensor, classes, num_classes) -> Tuple[Tensor, Tensor]:
@@ -123,7 +136,9 @@ def _groupby_sum(inputs: Tensor, classes, num_classes) -> Tuple[Tensor, Tensor]:
 
 def _split_frequencies_by_groups(sorted_labels, freq_sorted, n_splits):
     cum_freq_sorted = freq_sorted.cumsum(0)
-    freq_breakpoints = torch.linspace(0, 1, n_splits + 1, device=freq_sorted.device)[1:-1]
+    freq_breakpoints = torch.linspace(0, 1, n_splits + 1, device=freq_sorted.device)[
+        1:-1
+    ]
     indices = torch.searchsorted(cum_freq_sorted, freq_breakpoints, side="left")
 
     split_sizes = []
@@ -139,6 +154,7 @@ def _split_frequencies_by_groups(sorted_labels, freq_sorted, n_splits):
 
 @frozen
 class PerClass(LossLikeMetric):
+
     metric: LossLikeMetric
     groups: int = 10
 
@@ -152,7 +168,6 @@ class PerClass(LossLikeMetric):
         self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
     ) -> Tensor:
         return self.metric.unreduced_call(inputs, labels, exp_info)
-
 
     def _group_unreduced_call(self, values, labels, class_counts):
         num_classes = len(class_counts)
@@ -168,7 +183,6 @@ class PerClass(LossLikeMetric):
         counts_per_group = torch.stack([torch.sum(counts[g]) for g in groups])
 
         return losses_per_group, counts_per_group
-
 
     def __call__(
         self, inputs: Tensor, labels: Tensor, exp_info: ExpInfo
@@ -191,9 +205,11 @@ class PerClass(LossLikeMetric):
         values = values.to(torch.float)
         return self._group_unreduced_call(values, labels, class_counts)
 
-
     def plot_label(self) -> str:
         return self.metric.plot_label() + " Per Class"
+
+    def range(self) -> Tuple[float, float]:
+        return self.metric.range()
 
 
 class CrossEntropyPerClass(LossLikeMetric):
@@ -222,6 +238,8 @@ class CrossEntropyPerClass(LossLikeMetric):
     ) -> torch.Tensor:
         return CrossEntropy().unreduced_call(inputs, labels, exp_info)
 
+    def range(self) -> Tuple[float, float]:
+        return CrossEntropy().range()
 
 class AccuracyPerClass(LossLikeMetric):
     """Accuracy per class.
@@ -249,3 +267,6 @@ class AccuracyPerClass(LossLikeMetric):
         self, inputs: torch.Tensor, labels: torch.Tensor, exp_info: ExpInfo
     ) -> torch.Tensor:
         return Accuracy().unreduced_call(inputs, labels, exp_info)
+
+    def range(self) -> Tuple[float, float]:
+        return Accuracy().range()
