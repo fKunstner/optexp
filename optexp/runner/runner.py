@@ -117,7 +117,7 @@ def run(exp: Experiment) -> ExperimentState:
             data_logger.log(current_time(exp_state))
             data_logger.log(regularization(exp, exp_state))
 
-            if t % exp.eval_every == 0:
+            if exp.eval_every != 0 and t % exp.eval_every == 0:
                 with record_function("eval"):
                     data_logger.log(eval_loop(fabric, exp, exp_state))
 
