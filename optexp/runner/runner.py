@@ -159,6 +159,16 @@ def regularization(exp, exp_state):
     return {}
 
 
+def get_losslike_metrics(exp: Experiment) -> list[LossLikeMetric]:
+    return [
+        metric for metric in exp.problem.metrics if isinstance(metric, LossLikeMetric)
+    ]
+
+
+def has_losslike_metrics_to_evaluate(exp: Experiment) -> bool:
+    return len(get_losslike_metrics(exp)) > 0
+
+
 def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
 
     loginfo_on_r0(fabric, "Initialization...")
@@ -178,20 +188,26 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     train_tr_set_dl = exp.problem.dataset.get_dataloader(
         split="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
     )
-    eval_tr_set_dl = exp.problem.dataset.get_dataloader(
-        split="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
-    )
-    eval_va_set_dl = exp.problem.dataset.get_dataloader(
-        split="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
-    )
 
-    loaders = [train_tr_set_dl, eval_tr_set_dl, eval_va_set_dl]
+    loaders = [train_tr_set_dl]
 
-    if exp.problem.dataset.has_test_set():
-        eval_te_set_dl = exp.problem.dataset.get_dataloader(
-            split="te", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+    if has_losslike_metrics_to_evaluate(exp):
+        eval_tr_set_dl = exp.problem.dataset.get_dataloader(
+            split="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
         )
-        loaders.append(eval_te_set_dl)
+        loaders.append(eval_tr_set_dl)
+
+        if exp.problem.dataset.has_test_set():
+            eval_va_set_dl = exp.problem.dataset.get_dataloader(
+                split="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+            )
+            loaders.append(eval_va_set_dl)
+
+        if exp.problem.dataset.has_test_set():
+            eval_te_set_dl = exp.problem.dataset.get_dataloader(
+                split="te", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
+            )
+            loaders.append(eval_te_set_dl)
 
     loginfo_on_r0(fabric, "Loading the model...")
     pytorch_model = exp.problem.model.load_model(
@@ -260,12 +276,9 @@ def evaluate(
     split: Split,
 ) -> Dict[Metric, float | list]:
 
-    metrics = exp.problem.metrics
-    losslike_metrics = [
-        metric for metric in metrics if isinstance(metric, LossLikeMetric)
-    ]
+    losslike_metrics = get_losslike_metrics(exp)
 
-    if len(losslike_metrics) == 0:
+    if has_losslike_metrics_to_evaluate(exp):
         return {}
 
     loader = exp_state.dataloaders.get_val_dataloader(split)
@@ -273,7 +286,7 @@ def evaluate(
 
     running_sum_metrics: Dict[Metric, SumAndCounter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
-        for metric in metrics
+        for metric in losslike_metrics
     }
 
     with EvalMode(model), torch.no_grad():
