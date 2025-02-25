@@ -40,18 +40,25 @@ class IterationCounter:
 @dataclass
 class DataLoaders:
     tr_tr: DataLoader
-    eval_tr: DataLoader
-    eval_va: DataLoader
+    eval_tr: Optional[DataLoader] = None
+    eval_va: Optional[DataLoader] = None
     eval_te: Optional[DataLoader] = None
 
-    def get_val_dataloader(self, split):
+    def get_val_dataloader(self, split) -> DataLoader:
+        dataloader: Optional[DataLoader] = None
         if split == "tr":
-            return self.eval_tr
-        if split == "va":
-            return self.eval_va
-        if split == "te":
-            return self.eval_te
-        raise ValueError(f"Unknown split: {split}")
+            dataloader = self.eval_tr
+        elif split == "va":
+            dataloader = self.eval_va
+        elif split == "te":
+            dataloader = self.eval_te
+
+        if dataloader is None:
+            raise ValueError(
+                f"Dataloader for split {split} was requested, but it was not initialized."
+            )
+
+        return dataloader
 
 
 @dataclass
