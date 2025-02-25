@@ -9,8 +9,8 @@ import torch.nn
 from torch import Tensor
 from tqdm import tqdm as _tqdm
 
-from optexp import Experiment
 from optexp.config import Config, get_logger
+from optexp.experiment import Experiment
 from optexp.metrics import LossLikeMetric
 from optexp.optim.optimizer import Regularizable
 from optexp.results.data_logger import DummyDataLogger
