@@ -155,25 +155,25 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
         split="tr", b=bs_info.mbatchsize_tr, num_workers=bs_info.workers_tr
     )
 
-    loaders = [train_tr_set_dl]
+    loaders = {"tr_tr": train_tr_set_dl}
 
     if has_losslike_metrics_to_evaluate(exp):
         eval_tr_set_dl = exp.problem.dataset.get_dataloader(
             split="tr", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
         )
-        loaders.append(eval_tr_set_dl)
+        loaders["eval_tr"] = eval_tr_set_dl
 
         if exp.problem.dataset.has_test_set():
             eval_va_set_dl = exp.problem.dataset.get_dataloader(
                 split="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
             )
-            loaders.append(eval_va_set_dl)
+            loaders["eval_va"] = eval_va_set_dl
 
         if exp.problem.dataset.has_test_set():
             eval_te_set_dl = exp.problem.dataset.get_dataloader(
                 split="te", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
             )
-            loaders.append(eval_te_set_dl)
+            loaders["eval_te"] = eval_te_set_dl
 
     loginfo_on_r0(fabric, "Loading the model...")
     pytorch_model = exp.problem.model.load_model(
@@ -188,7 +188,9 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
     exp_state = ExperimentState(
         model=ptl_model,
         optimizer=ptl_opt,
-        dataloaders=DataLoaders(*fabric.setup_dataloaders(*loaders)),
+        dataloaders=DataLoaders(
+            **{k: fabric.setup_dataloaders(loader) for k, loader in loaders.items()}
+        ),
         batch_size_info=bs_info,
     )
 
@@ -290,8 +292,9 @@ def training_step(
         for t in range(exp_state.batch_size_info.accumulation_steps):
             is_accumulating = t < exp_state.batch_size_info.accumulation_steps - 1
             with fabric.no_backward_sync(exp_state.model, enabled=is_accumulating):
+                mb = exp_state.get_microbatch()
                 loss, weight = exp.problem.datapipe.compute_metric(
-                    data=exp_state.get_microbatch(),
+                    data=mb,
                     model=exp_state.model,
                     metric=exp.problem.lossfunc,
                     additional_info=AdditionalInfo("tr", exp, exp_state),
