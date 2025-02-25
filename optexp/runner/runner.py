@@ -232,11 +232,14 @@ def eval_loop(
         )
         metrics_dicts.update({m.key("tr"): v for m, v in reduced_metrics_tr.items()})
 
-    with record_function("eval(va)"):
-        reduced_metrics_va = evaluate(
-            fabric=fabric, exp=exp, exp_state=exp_state, split="va"
-        )
-        metrics_dicts.update({m.key("va"): v for m, v in reduced_metrics_va.items()})
+    if exp.problem.dataset.has_validation_set():
+        with record_function("eval(va)"):
+            reduced_metrics_va = evaluate(
+                fabric=fabric, exp=exp, exp_state=exp_state, split="va"
+            )
+            metrics_dicts.update(
+                {m.key("va"): v for m, v in reduced_metrics_va.items()}
+            )
 
     if exp.problem.dataset.has_test_set():
         with record_function("eval(te)"):
@@ -257,18 +260,21 @@ def evaluate(
     split: Split,
 ) -> Dict[Metric, float | list]:
 
-    loader = exp_state.dataloaders.get_val_dataloader(split)
     metrics = exp.problem.metrics
+    losslike_metrics = [
+        metric for metric in metrics if isinstance(metric, LossLikeMetric)
+    ]
+
+    if len(losslike_metrics) == 0:
+        return {}
+
+    loader = exp_state.dataloaders.get_val_dataloader(split)
     model = exp_state.model
 
     running_sum_metrics: Dict[Metric, SumAndCounter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
         for metric in metrics
     }
-
-    losslike_metrics = [
-        metric for metric in metrics if isinstance(metric, LossLikeMetric)
-    ]
 
     with EvalMode(model), torch.no_grad():
         for _, batch in tqdm(enumerate(loader), total=len(loader)):

@@ -36,6 +36,9 @@ class Dataset(ABC, Component):
         """The number of samples in the training or validation sets."""
         raise NotImplementedError()
 
+    def has_validation_set(self) -> bool:
+        return True
+
     @abstractmethod
     def has_test_set(self) -> bool:
         """Does the dataset have a test set."""
