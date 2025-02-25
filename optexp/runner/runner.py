@@ -175,6 +175,8 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
             )
             loaders["eval_te"] = eval_te_set_dl
 
+    processed_loaders = {k: fabric.setup_dataloaders(v) for k, v in loaders.items()}
+
     loginfo_on_r0(fabric, "Loading the model...")
     pytorch_model = exp.problem.model.load_model(
         exp.problem.dataset.data_input_shape(bs_info.mbatchsize_tr),
@@ -189,7 +191,10 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
         model=ptl_model,
         optimizer=ptl_opt,
         dataloaders=DataLoaders(
-            **{k: fabric.setup_dataloaders(loader) for k, loader in loaders.items()}
+            tr_tr=processed_loaders["tr_tr"],
+            eval_tr=processed_loaders.get("eval_tr", None),
+            eval_va=processed_loaders.get("eval_va", None),
+            eval_te=processed_loaders.get("eval_te", None),
         ),
         batch_size_info=bs_info,
     )
