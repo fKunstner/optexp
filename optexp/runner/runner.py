@@ -1,4 +1,3 @@
-import math
 import pprint
 import random
 from typing import Dict, Tuple
@@ -12,10 +11,7 @@ from torch.profiler import ProfilerActivity, profile, record_function
 from optexp.datasets.dataset import Split
 from optexp.datastructures import AdditionalInfo
 from optexp.experiment import Experiment
-from optexp.metrics.metric import LossLikeMetric, Metric
-from optexp.optim.optimizer import Regularizable
-from optexp.results.data_logger import DataLogger, DummyDataLogger
-from optexp.results.main_data_logger import MainDataLogger
+from optexp.metrics.metric import Metric
 from optexp.runner.debugging import (
     export_memory_snapshot,
     start_record_memory_history,
@@ -23,7 +19,19 @@ from optexp.runner.debugging import (
     trace_handler,
 )
 from optexp.runner.exp_state import DataLoaders, ExperimentState
-from optexp.runner.utils import EvalMode, SumAndCounter, TrainMode, loginfo_on_r0, tqdm
+from optexp.runner.utils import (
+    EvalMode,
+    SumAndCounter,
+    TrainMode,
+    current_time,
+    get_losslike_metrics,
+    has_losslike_metrics_to_evaluate,
+    loginfo_on_r0,
+    make_datalogger,
+    regularization,
+    should_early_stop,
+    tqdm,
+)
 
 MetricsDict = Dict[str, float | list[float]]
 
@@ -67,14 +75,6 @@ def run_experiment(
     return run(exp)
 
 
-def should_early_stop(fabric: ptl.Fabric, live_loss: float):
-    is_diverging = math.isnan(live_loss) or math.isinf(live_loss)
-    synced_is_diverging = fabric.strategy.reduce_boolean_decision(
-        is_diverging, all=False
-    )
-    return synced_is_diverging
-
-
 def fabric_initialize(exp):
     fabric = ptl.Fabric(
         accelerator=exp.hardware_config.get_accelerator(),
@@ -84,12 +84,6 @@ def fabric_initialize(exp):
     )
     fabric.launch()
     return fabric
-
-
-def make_datalogger(exp, fabric):
-    if fabric.global_rank == 0:
-        return MainDataLogger(experiment=exp)
-    return DummyDataLogger()
 
 
 def run(exp: Experiment) -> ExperimentState:
@@ -139,34 +133,6 @@ def run(exp: Experiment) -> ExperimentState:
     data_logger.finish(exit_code=0, stopped_early=is_stopping)
 
     return exp_state
-
-
-def current_time(exp_state):
-    return {
-        "epoch": exp_state.iteration_counter.epoch,
-        "step": exp_state.iteration_counter.steps,
-        "step_within_epoch": exp_state.iteration_counter.steps_within_epoch,
-        "mb": exp_state.iteration_counter.microbatches,
-        "mb_within_epoch": exp_state.iteration_counter.microbatches_within_epoch,
-    }
-
-
-def regularization(exp, exp_state):
-    if isinstance(exp.optim, Regularizable):
-        return {
-            "regularization": exp.optim.regularizer_loss(exp_state.model).cpu().item()
-        }
-    return {}
-
-
-def get_losslike_metrics(exp: Experiment) -> list[LossLikeMetric]:
-    return [
-        metric for metric in exp.problem.metrics if isinstance(metric, LossLikeMetric)
-    ]
-
-
-def has_losslike_metrics_to_evaluate(exp: Experiment) -> bool:
-    return len(get_losslike_metrics(exp)) > 0
 
 
 def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
@@ -285,6 +251,7 @@ def evaluate(
     model = exp_state.model
 
     running_sum_metrics: Dict[Metric, SumAndCounter] = {
+        metric: SumAndCounter(torch.tensor(0ter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
         for metric in losslike_metrics
     }

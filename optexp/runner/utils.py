@@ -1,3 +1,4 @@
+import math
 import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
@@ -8,7 +9,12 @@ import torch.nn
 from torch import Tensor
 from tqdm import tqdm as _tqdm
 
+from optexp import Experiment
 from optexp.config import Config, get_logger
+from optexp.metrics import LossLikeMetric
+from optexp.optim.optimizer import Regularizable
+from optexp.results.data_logger import DummyDataLogger
+from optexp.results.main_data_logger import MainDataLogger
 
 
 def reduce_tensor(fabric, val: Tensor, reduce_op: str = "sum") -> Tensor:
@@ -113,3 +119,45 @@ def tqdm(*args, **kwargs):
     if Config.tqdm_enabled:
         return _tqdm(*args, **kwargs)
     return args[0]
+
+
+def make_datalogger(exp, fabric):
+    if fabric.global_rank == 0:
+        return MainDataLogger(experiment=exp)
+    return DummyDataLogger()
+
+
+def get_losslike_metrics(exp: Experiment) -> list[LossLikeMetric]:
+    return [
+        metric for metric in exp.problem.metrics if isinstance(metric, LossLikeMetric)
+    ]
+
+
+def has_losslike_metrics_to_evaluate(exp: Experiment) -> bool:
+    return len(get_losslike_metrics(exp)) > 0
+
+
+def current_time(exp_state):
+    return {
+        "epoch": exp_state.iteration_counter.epoch,
+        "step": exp_state.iteration_counter.steps,
+        "step_within_epoch": exp_state.iteration_counter.steps_within_epoch,
+        "mb": exp_state.iteration_counter.microbatches,
+        "mb_within_epoch": exp_state.iteration_counter.microbatches_within_epoch,
+    }
+
+
+def regularization(exp, exp_state):
+    if isinstance(exp.optim, Regularizable):
+        return {
+            "regularization": exp.optim.regularizer_loss(exp_state.model).cpu().item()
+        }
+    return {}
+
+
+def should_early_stop(fabric: ptl.Fabric, live_loss: float):
+    is_diverging = math.isnan(live_loss) or math.isinf(live_loss)
+    synced_is_diverging = fabric.strategy.reduce_boolean_decision(
+        is_diverging, all=False
+    )
+    return synced_is_diverging
