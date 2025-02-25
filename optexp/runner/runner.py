@@ -244,7 +244,7 @@ def evaluate(
 
     losslike_metrics = get_losslike_metrics(exp)
 
-    if has_losslike_metrics_to_evaluate(exp):
+    if not has_losslike_metrics_to_evaluate(exp):
         return {}
 
     loader = exp_state.dataloaders.get_val_dataloader(split)
