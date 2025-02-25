@@ -251,7 +251,6 @@ def evaluate(
     model = exp_state.model
 
     running_sum_metrics: Dict[Metric, SumAndCounter] = {
-        metric: SumAndCounter(torch.tensor(0ter] = {
         metric: SumAndCounter(torch.tensor(0.0), torch.tensor(0.0))
         for metric in losslike_metrics
     }
