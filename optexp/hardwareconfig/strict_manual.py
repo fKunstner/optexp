@@ -2,7 +2,6 @@ from attrs import frozen
 
 from optexp.hardwareconfig.hardwareconfig import BatchSizeInfo
 from optexp.hardwareconfig.manual import ManualConfig
-from optexp.hardwareconfig.utils import batchsize_mismatch_message
 from optexp.problem import Problem
 
 
@@ -83,32 +82,37 @@ class StrictManualConfig(ManualConfig):
             )
     """
 
-    def get_batch_size_info(self, problem: Problem) -> BatchSizeInfo:
+    def verify_batch_size_divides_train_set(self, problem):
         n_tr = problem.dataset.get_num_samples("tr")
-        n_va = problem.dataset.get_num_samples("va")
+        if n_tr % problem.batch_size != 0:
+            raise ValueError(
+                f"Error in the batch size for train set. "
+                "Batch size must divide number of training samples. "
+                f"Got batch size: {problem}, number of training samples: {n_tr}"
+            )
 
-        effective_bs = problem.batch_size
-        tr_mbs = (
-            self.micro_batch_size
-            if self.micro_batch_size is not None
-            else effective_bs // self.num_devices
-        )
-        va_mbs = (
-            self.eval_micro_batch_size
-            if self.eval_micro_batch_size is not None
-            else tr_mbs
-        )
+    def tr_mbs(self, problem):
+        if self.micro_batch_size is not None:
+            return self.micro_batch_size
+        return problem.batch_size // self.num_devices
 
-        if n_tr % effective_bs != 0:
-            raise ValueError(batchsize_mismatch_message("tr", n_tr, problem))
+    def va_mbs(self, problem):
+        if self.eval_micro_batch_size is not None:
+            return self.eval_micro_batch_size
+        return self.tr_mbs(problem)
 
-        if effective_bs % (tr_mbs * self.num_devices) != 0:
+    def verify_accumulation_tr(self, problem):
+        tr_mbs = self.tr_mbs(problem)
+        if problem.batch_size % (tr_mbs * self.num_devices) != 0:
             raise ValueError(
                 "Batch size must be a multiple of micro batch size * num devices. "
-                f"Got batch size : {effective_bs}, micro batch size: {tr_mbs}, "
+                f"Got batch size : {problem.batch_size}, micro batch size: {tr_mbs}, "
                 f"num devices: {self.num_devices} (total: {self.num_devices * tr_mbs})"
             )
 
+    def verify_accumulation_va(self, problem):
+        n_va = problem.dataset.get_num_samples("va")
+        va_mbs = self.va_mbs(problem)
         if n_va % (va_mbs * self.num_devices) != 0:
             raise ValueError(
                 "Error in the micro batch size for evaluation dataloader. "
@@ -118,10 +122,19 @@ class StrictManualConfig(ManualConfig):
                 f"number of validation samples: {n_va}"
             )
 
+    def get_batch_size_info(self, problem: Problem) -> BatchSizeInfo:
+        self.verify_batch_size_divides_train_set(problem)
+        self.verify_accumulation_tr(problem)
+        if problem.dataset.has_validation_set():
+            self.verify_accumulation_va(problem)
+
+        samples_per_accumulation_step = self.tr_mbs(problem) * self.num_devices
+        accumulation_steps = problem.batch_size // samples_per_accumulation_step
+
         return BatchSizeInfo(
-            mbatchsize_tr=tr_mbs,
-            mbatchsize_va=va_mbs,
-            accumulation_steps=effective_bs // (tr_mbs * self.num_devices),
+            mbatchsize_tr=self.tr_mbs(problem),
+            mbatchsize_va=self.va_mbs(problem),
+            accumulation_steps=accumulation_steps,
             workers_tr=self.num_workers,
             workers_va=self.num_workers,
         )
