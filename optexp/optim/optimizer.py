@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List, Union
+from typing import Dict, Iterable, List, Union, Optional, Callable, overload
 
 import torch
 from attrs import frozen
@@ -18,6 +18,25 @@ class Optimizer(Component, ABC):
 
     def plot_style(self):
         return {}
+
+
+class MultiOptimizer(Optimizer):
+    """A wrapper  for  multiple optimizers"""
+
+    optimizers: List[Optimizer]
+
+    def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
+
+        # todo some sort of validation that all parameters groups of the model are coveredd
+        raise NotImplementedError()
+
+    def validate_groups(self):
+        raise NotImplementedError()
+
+def create_multi_opt(optimizers: List[Optimizer]) -> torch.optim.Optimizer:
+
+    class TorchMultiOptimizer(torch.optim.Optimizer):
+        pass
 
 
 class Regularizable(ABC):
@@ -50,3 +69,21 @@ class WeightDecayStrategy(Component):
         if loss is None:
             return torch.tensor(0.0, device=next(model.parameters()).device)
         return loss  # type: ignore
+
+
+class TorchMultiOptimizer(torch.optim.Optimizer):
+    torch_optimizers: List[torch.optim.Optimizer]
+
+    def __init__(self, torch_optimizers: List[torch.optim.Optimizer]):
+        self.torch_optimizers= torch_optimizers
+    @overload
+    def step(self, closure: None = ...) -> None:
+        ...
+
+    @overload
+    def step(self, closure: Callable[[], float]) -> float:
+        ...
+
+    def step(self, closure: Optional[Callable[[], float]] = None) -> Optional[float]:
+        for opt in self.torch_optimizers:
+            opt.step(closure=closure)
