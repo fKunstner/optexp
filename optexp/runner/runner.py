@@ -163,7 +163,7 @@ def initialize(exp: Experiment, fabric: ptl.Fabric) -> ExperimentState:
         )
         loaders["eval_tr"] = eval_tr_set_dl
 
-        if exp.problem.dataset.has_test_set():
+        if exp.problem.dataset.has_validation_set():
             eval_va_set_dl = exp.problem.dataset.get_dataloader(
                 split="va", b=bs_info.mbatchsize_va, num_workers=bs_info.workers_va
             )
