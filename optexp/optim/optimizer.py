@@ -46,7 +46,6 @@ class MultiOptimizer(Optimizer):
 
     def load(self, model: torch.nn.Module) -> torch.optim.Optimizer:
 
-        # TODO fix  this stupididty
         optimizer_groups = {
             "embeddings": self.optimizer_groups.embeddings,
             "default": self.optimizer_groups.default,
@@ -67,7 +66,9 @@ class MultiOptimizer(Optimizer):
                 named_params = dict(named_modules[m].named_parameters(recurse=True))
                 named_params = {f"{m}.{k}": v for k, v in named_params.items()}
                 parameter_groups[m] = {**parameter_groups[m], **named_params}
-                skip_modules += list(dict(named_modules[m].named_children()).keys())
+                skip_modules += [
+                    f"{m}.{c}" for c in dict(named_modules[m].named_children()).keys()
+                ]
         for m in named_modules.keys():
             if m in skip_modules:
                 continue
@@ -77,7 +78,6 @@ class MultiOptimizer(Optimizer):
                 **parameter_groups["default"],
                 **named_params,
             }
-
         torch_optimizers = {}
         for key, opt in optimizer_groups.items():
             named_param_dict = parameter_groups[key]
