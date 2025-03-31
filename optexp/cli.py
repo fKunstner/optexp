@@ -539,7 +539,8 @@ def run_slurm(
 
     for dataset in datasets:
         if isinstance(dataset, Downloadable):
-            dataset.download()
+            if not dataset.is_downloaded():
+                dataset.download()
 
     print("  Sending experiments to Slurm - executing sbatch file")
     os.system(f"sbatch {tmp_filename}")
