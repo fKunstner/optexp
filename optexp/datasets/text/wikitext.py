@@ -141,6 +141,10 @@ class WikiTextBase(Dataset, HasClassCounts, Downloadable):
         targets_list = [targets[i] for i in range(sequences.shape[0])]
         return ListDataset(sequences_list, targets_list)
 
+    def vocabulary(self):
+        self.build_tokenizer_if_not_exists()
+        return self.tokenizer.vocabulary(self._get_files().base_path())
+
     def build_tokenizer_if_not_exists(self):
         if not self.tokenizer.has_been_trained(self._get_files().base_path()):
             self.tokenizer.build_tokenizer(

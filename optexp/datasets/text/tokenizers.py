@@ -60,6 +60,12 @@ class BPETokenizer(Tokenizer):
         tokenizer.save_model(str(self._tokenizer_path(base_path)))
         tokenizer.save(str(self._tokenizer_path(base_path) / TOKENIZER_FILE))
 
+    def vocabulary(self, base_path: Path):
+        tokenizer = HF_Tokenizer.from_file(
+            str(self._tokenizer_path(base_path) / TOKENIZER_FILE)
+        )
+        return tokenizer.get_vocab()
+
     def tokenize_and_numify(self, base_path: Path, data_path: Path):
         if self.tokenized_path(base_path, data_path).exists():
             return torch.load(self.tokenized_path(base_path, data_path))
