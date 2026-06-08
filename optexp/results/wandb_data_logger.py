@@ -127,7 +127,7 @@ def load_wandb_results(exps: list[Experiment]) -> dict[Experiment, pd.DataFrame]
     missing_experiments = list(filter(lambda exp: not is_downloaded(exp), exps))
     if len(missing_experiments) > 0:
         download_experiments(missing_experiments)
-    return {exp: load_wandb_result(exp) for exp in exps}
+    return {exp: load_wandb_result(exp) for exp in tqdm(exps)}
 
 
 def load_wandb_result(exp: Experiment) -> Optional[pd.DataFrame]:

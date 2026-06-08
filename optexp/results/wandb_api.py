@@ -1,6 +1,7 @@
 from typing import Dict, List
 
 import wandb
+from tqdm import tqdm
 
 from optexp.config import Config, get_logger
 from optexp.experiment import Experiment
@@ -29,29 +30,41 @@ class WandbAPI:
 def _create_wandb_filter(exps):
     """Returns a dictionary of {wandb_key:value} to filter runs on wandb."""
     similar_attributes = {}
-    problem0_class = exps[0].problem.__class__
-    if all(exp.problem.__class__ == problem0_class for exp in exps):
-        similar_attributes["config.exp_config.problem.__class__"] = (
-            problem0_class.__name__
-        )
 
-    dataset0_class = exps[0].problem.dataset.__class__
-    if all(exp.problem.dataset.__class__ == dataset0_class for exp in exps):
-        similar_attributes["config.exp_config.problem.dataset.__class__"] = (
-            dataset0_class.__name__
-        )
+    def add_attr_to_list_if_same_for_all_exps(key, getter):
+        val0 = getter(exps[0])
+        if all(getter(exp) == val0 for exp in exps):
+            similar_attributes[key] = val0
 
-    model0_class = exps[0].problem.model.__class__
-    if all(exp.problem.model.__class__ == model0_class for exp in exps):
-        similar_attributes["config.exp_config.problem.model.__class__"] = (
-            model0_class.__name__
-        )
+    def get_problem(exp: Experiment):
+        return exp.problem.__class__.__name__
 
-    lossfunc0_class = exps[0].problem.lossfunc.__class__
-    if all(exp.problem.lossfunc == lossfunc0_class for exp in exps):
-        similar_attributes["config.exp_config.problem.lossfunc.__class__"] = (
-            lossfunc0_class.__name__
-        )
+    def get_dataset(exp: Experiment):
+        return exp.problem.dataset.__class__.__name__
+
+    def get_model(exp: Experiment):
+        return exp.problem.model.__class__.__name__
+
+    def get_lossfunc(exp: Experiment):
+        return exp.problem.lossfunc.__class__.__name__
+
+    def get_opt(exp: Experiment):
+        return exp.optim.__class__.__name__
+
+    def get_seed(exp: Experiment):
+        return exp.seed
+
+    keys_and_getters = {
+        "config.exp_config.problem.__class__": get_problem,
+        "config.exp_config.problem.dataset.__class__": get_dataset,
+        "config.exp_config.problem.model.__class__": get_model,
+        "config.exp_config.problem.lossfunc.__class__": get_lossfunc,
+        "config.exp_config.optim.__class__": get_opt,
+        "config.exp_config.seed": get_seed,
+    }
+
+    for key, getter in keys_and_getters.items():
+        add_attr_to_list_if_same_for_all_exps(key, getter)
 
     return similar_attributes
 
@@ -76,7 +89,7 @@ def get_wandb_runs_by_hash(
 
     runs_by_hash: Dict[str, List[wandb.apis.public.Run]] = {}
     has_warned = False
-    for run in runs:
+    for run in tqdm(runs):
         if not has_warned and "short_equiv_hash" not in run.config:
             get_logger().warning(
                 "Some runs do not have a short_equiv_hash attribute, "
@@ -101,11 +114,25 @@ def get_wandb_runs(
     exps: List[Experiment],
 ) -> dict[Experiment, List[wandb.apis.public.Run]]:
     """Get the runs of all successful runs on wandb for a list of experiments."""
+
     runs_by_hash = get_wandb_runs_by_hash(exps)
-    filtered_runs_by_exp = {
-        exp: runs_by_hash[exp.short_equivalent_hash()] for exp in exps
-    }
+    filtered_runs_by_exp = {exp: runs_by_hash[exp.short_equivalent_hash()] for exp in exps}
     return filtered_runs_by_exp
+
+    """
+    subsets: List[List[Experiment]] = [
+        exps[x : x + 100] for x in range(0, len(exps), 100)
+    ]
+
+    filtered_runs_by_exp = {}
+    for subset in subsets:
+        runs_by_hash = get_wandb_runs_by_hash(subset)
+        filtered_runs_by_exp.update(
+            {exp: runs_by_hash[exp.short_equivalent_hash()] for exp in subset}
+        )
+
+    return filtered_runs_by_exp
+    """
 
 
 def get_wandb_runs_for_group(group: str) -> List[wandb.apis.public.Run]:

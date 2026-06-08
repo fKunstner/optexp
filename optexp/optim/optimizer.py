@@ -1,15 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import (
+    Any,
+    Callable,
     Dict,
     Iterable,
-    List,
-    Union,
-    Optional,
-    Callable,
-    overload,
-    Any,
     Iterator,
+    List,
+    Optional,
     Tuple,
+    Union,
+    overload,
 )
 
 import torch
